@@ -75,10 +75,13 @@ jobs:
   windows-clang-cl:
     name: windows-clang-cl
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -B build -T ClangCL -D${env:PREFIX}_WERROR=ON
+        run: cmake -B build -T ClangCL -D${PREFIX}_WERROR=ON
       - name: Build
         run: cmake --build build --config Release -j 4
       - name: Test
