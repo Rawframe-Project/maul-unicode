@@ -21,7 +21,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q clang-20 clang-tidy-20 ninja-build
+          sudo apt-get install -y -q clang-20 clang-tidy-20 ninja-build libharfbuzz-dev pkg-config
           pip install clang-format==22.1.5 >/dev/null
       - name: clang-format
         run: |
@@ -43,7 +43,7 @@ jobs:
       - name: clang-tidy
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D${PREFIX}_HARFBUZZ=ON
           for f in src/*.c; do
             clang-tidy-20 -p build --quiet --warnings-as-errors='*' "$f" || exit 1
           done
@@ -62,6 +62,7 @@ jobs:
           - { name: linux-clang-20-asan, os: ubuntu-24.04, cc: clang-20, cxx: clang++-20, config: Debug,   extra: "-DMAUL_UNICODE_SANITIZE=ON" }
           - { name: linux-clang-20-tsan, os: ubuntu-24.04, cc: clang-20, cxx: clang++-20, config: Debug,   extra: "-DMAUL_UNICODE_TSAN=ON" }
           - { name: linux-shared,        os: ubuntu-24.04, cc: clang-20, cxx: clang++-20, config: Release, extra: "-DMAUL_UNICODE_BUILD_SHARED=ON" }
+          - { name: linux-harfbuzz,      os: ubuntu-24.04, cc: gcc-14,   cxx: g++-14,     config: Release, extra: "-DMAUL_UNICODE_HARFBUZZ=ON" }
           - { name: linux-minimal,       os: ubuntu-24.04, cc: gcc-14,   cxx: g++-14,     config: Release, extra: "-DMAUL_UNICODE_NORMALIZATION=OFF -DMAUL_UNICODE_CASE=OFF" }
           - { name: macos-clang,         os: macos-15,     cc: clang,    cxx: clang++,    config: Release, extra: "" }
     steps:
@@ -70,7 +71,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q gcc-14 g++-14 clang-20 ninja-build
+          sudo apt-get install -y -q gcc-14 g++-14 clang-20 ninja-build libharfbuzz-dev pkg-config
       - name: Configure
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -D${PREFIX}_WERROR=ON \

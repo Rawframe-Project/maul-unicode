@@ -92,6 +92,11 @@ format.
 - Build options `MAUL_UNICODE_NORMALIZATION` and `MAUL_UNICODE_CASE`
   (on by default) to leave those components and their tables out
   (muni-0013); CI builds a cell without them.
+- `maul-unicode-harfbuzz` (build option `MAUL_UNICODE_HARFBUZZ`):
+  `muniCreateHarfBuzzFunctions` fills HarfBuzz's Unicode functions
+  (general category, combining class, mirroring, script, compose,
+  decompose) from Maul Unicode. Tested against HarfBuzz's built-in data
+  and through a buffer's script and direction guess; CI builds it.
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
   script run, normalization and case throughput, through iterators and
   the array conveniences.

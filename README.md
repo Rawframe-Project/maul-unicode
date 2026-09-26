@@ -23,7 +23,7 @@ and results are identical on every platform.
 ## Status
 
 Early development. The algorithms arrive in this order; the first
-seven are done but for the HarfBuzz callbacks of the sixth:
+seven are done:
 
 1. The table generator and character properties.
 2. UTF-8 validation and conversion.
@@ -56,6 +56,12 @@ Use the package from CMake with `find_package(maul-unicode)` and link
 Two components can be left out with their tables when a build does not
 need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables) and
 `-DMAUL_UNICODE_CASE=OFF` (9.6 KB).
+
+With `-DMAUL_UNICODE_HARFBUZZ=ON` the build adds the static library
+`maul-unicode-harfbuzz`, whose `muniCreateHarfBuzzFunctions` gives
+HarfBuzz its Unicode data from Maul Unicode (see
+`include/maul-unicode/harfbuzz.h`). It is built from the source tree,
+through `add_subdirectory` or FetchContent; it is not installed.
 
 ## The Maul family
 
