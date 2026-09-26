@@ -72,4 +72,7 @@ void WriteWideTable(const uint16_t* values, const char* fileName, const char* sy
 // properties.c: every property table.
 void WriteProperties(void);
 
+// normalization.c: the decomposition and composition data.
+void WriteNormalization(void);
+
 #endif // MUNIGEN_H

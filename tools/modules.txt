@@ -7,11 +7,14 @@ bidi_core: encoding tables
 bidi_explicit: bidi_core
 bidi_implicit: bidi_brackets bidi_core
 bidi_line: bidi_core
+bits:
 complex: encoding segmenter tables
 cursor: encoding
+decompose: bits tables
 encoding:
 grapheme: segmenter tables
 line: complex segmenter tables
+normalize: decompose encoding tables
 properties: tables
 script_runs: cursor tables
 segment: segmenter

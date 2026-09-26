@@ -91,6 +91,9 @@ extern "C"
         muni_errorUtf8TooLarge = -8,
         // UTF-16: a surrogate that is not half of a pair.
         muni_errorUtf16Surrogate = -9,
+        // The input goes past a documented limit of the algorithm, such as
+        // the number of combining marks normalization reorders at once.
+        muni_errorLimit = -10,
     };
 
     // A library or Unicode version: major, minor and patch.

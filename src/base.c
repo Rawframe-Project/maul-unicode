@@ -44,6 +44,8 @@ const char* muniResultName(muniResult result)
         return "muni_errorUtf8TooLarge";
     case muni_errorUtf16Surrogate:
         return "muni_errorUtf16Surrogate";
+    case muni_errorLimit:
+        return "muni_errorLimit";
     default:
         return "unknown result";
     }

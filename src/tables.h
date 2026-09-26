@@ -55,4 +55,43 @@ extern const int32_t muniBidiMirrorDeltas[];
 uint8_t muniLookupBidiBracket(uint32_t codePoint);
 extern const uint64_t muniBidiBracketHash;
 
+// Normalization data, found through rank indexes: the block table gives
+// a code point's 64-code-point block 1 plus its number, or 0 when the
+// block holds no mapping; the block's bit map marks the code points with
+// one, and the block's rank plus the marked code points before it is the
+// mapping's position. Starts holds each block's first code point >> 6.
+uint8_t muniLookupDecompositionBlock(uint32_t codePoint);
+extern const uint64_t muniDecompositionBlockHash;
+extern const uint16_t muniDecompositionStarts[];
+extern const uint16_t muniDecompositionBlockCount;
+// Canonical pairs: first << 7 | mark index, bit 28 set when excluded
+// from composition; in code point order.
+extern const uint64_t muniDecompositionPairBits[];
+extern const uint16_t muniDecompositionPairRanks[];
+extern const uint32_t muniDecompositionPairs[];
+// The second code points of pairs, sorted; bit 31 set on those that
+// compose with what precedes them.
+extern const uint32_t muniDecompositionMarks[];
+extern const uint16_t muniDecompositionMarkCount;
+// The pairs that compose, as positions in muniDecompositionPairs, sorted
+// by their first code point and mark.
+extern const uint16_t muniCompositionOrder[];
+extern const uint16_t muniCompositionCount;
+// Canonical singletons: the target's low 16 bits, and a bit map of the
+// targets in plane 2.
+extern const uint64_t muniDecompositionSingleBits[];
+extern const uint16_t muniDecompositionSingleRanks[];
+extern const uint16_t muniDecompositionSingles[];
+extern const uint8_t muniDecompositionPlaneTwo[];
+// Compatibility mappings: sequences in the pool, each its length then its
+// code points in UTF-16; Offsets gives where each block's first starts.
+uint8_t muniLookupCompatibilityBlock(uint32_t codePoint);
+extern const uint64_t muniCompatibilityBlockHash;
+extern const uint16_t muniCompatibilityStarts[];
+extern const uint16_t muniCompatibilityBlockCount;
+extern const uint64_t muniCompatibilityBits[];
+extern const uint16_t muniCompatibilityRanks[];
+extern const uint16_t muniCompatibilityOffsets[];
+extern const uint16_t muniCompatibilityPool[];
+
 #endif // MAUL_UNICODE_SRC_TABLES_H

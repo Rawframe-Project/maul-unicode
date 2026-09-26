@@ -50,12 +50,17 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/bidi_line.c
     src/complex.c
     src/cursor.c
+    src/decompose.c
     src/encoding.c
     src/generated/bidi_bracket.c
     src/generated/bidi_class.c
     src/generated/bidi_mirror.c
     src/generated/bidi_mirror_deltas.c
     src/generated/canonical_combining_class.c
+    src/generated/compatibility_blocks.c
+    src/generated/compatibility_data.c
+    src/generated/decomposition_blocks.c
+    src/generated/decomposition_data.c
     src/generated/east_asian_width.c
     src/generated/extended_pictographic.c
     src/generated/general_category.c
@@ -70,6 +75,7 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/generated/word_break.c
     src/grapheme.c
     src/line.c
+    src/normalize.c
     src/properties.c
     src/script_runs.c
     src/segment.c
@@ -85,8 +91,9 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(segment)
     maul_add_test(bidi)
     maul_add_test(script)
+    maul_add_test(normalize)
     # Conformance suites read the Unicode test files in test/data/.
-    foreach(suite segment bidi)
+    foreach(suite segment bidi normalize)
         target_compile_definitions(test_${suite} PRIVATE MUNI_TEST_DATA="${PROJECT_SOURCE_DIR}/test/data")
         if(EMSCRIPTEN)
             target_link_options(test_${suite} PRIVATE -sNODERAWFS=1)
@@ -100,7 +107,7 @@ endif()
 
 # The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.
 if(MAUL_UNICODE_FUZZ)
-    foreach(area encoding segment bidi script)
+    foreach(area encoding segment bidi script normalize)
         add_executable(fuzz_${area} test/fuzz_${area}.c)
         target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
         maul_apply_flags(fuzz_${area})
@@ -112,8 +119,8 @@ endif()
 # The generator writes src/generated/ from tools/ucd/:
 #   munigen tools/ucd src/generated
 if(MAUL_UNICODE_BUILD_TOOLS)
-    add_executable(munigen tools/munigen/main.c tools/munigen/properties.c tools/munigen/table.c
-                           tools/munigen/ucd.c)
+    add_executable(munigen tools/munigen/main.c tools/munigen/normalization.c
+                           tools/munigen/properties.c tools/munigen/table.c tools/munigen/ucd.c)
     maul_apply_flags(munigen)
     # The generator uses standard fopen, which the Windows C runtime
     # reports as deprecated in favor of its own fopen_s.

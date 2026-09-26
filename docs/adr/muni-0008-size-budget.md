@@ -19,6 +19,7 @@ that stores the same data:
 | Word breaking data | 18,488 | ICU4X word break rules |
 | Sentence breaking data | 18,379 | ICU4X sentence break rules |
 | Grapheme breaking data | 12,422 | ICU4X grapheme rules |
+| Compatibility decomposition | 22,623 | Its first measured size (muni-0011) |
 
 Components without a measured reference get their ceiling here when
 their tables first exist. CI reports every component's size; the

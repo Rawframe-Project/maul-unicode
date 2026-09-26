@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Throughput of validation, segmentation, line breaking, bidi and
-// script runs over a mixed text: English, Turkish, Hindi, Japanese,
-// emoji, Hebrew and Arabic, repeated to 4 MiB. Prints the best of five
-// runs in MiB per second.
+// Throughput of validation, segmentation, line breaking, bidi, script
+// runs and normalization over a mixed text: English, Turkish, Hindi,
+// Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints the best
+// of five runs in MiB per second.
 
 #include "maul-unicode/bidi.h"
 #include "maul-unicode/encoding.h"
+#include "maul-unicode/normalize.h"
 #include "maul-unicode/script.h"
 #include "maul-unicode/segment.h"
 
@@ -20,6 +21,7 @@
 static char s_text[TEXT_BYTES];
 static uint8_t s_levels[TEXT_BYTES];
 static uint8_t s_workspace[TEXT_BYTES];
+static char s_normalized[TEXT_BYTES * 3];
 
 static const char s_sample[] =
     "The quick brown fox can't jump 3.14 metres, etc. and so on. Next sentence! "
@@ -104,6 +106,34 @@ static size_t CountScriptRuns(InitFn unused)
     return count;
 }
 
+static size_t Normalize(muniNormalForm form)
+{
+    size_t needed = 0;
+    muniTextResult result = muniNormalize(s_text, TEXT_BYTES, form, muni_convertReplace,
+                                          s_normalized, sizeof(s_normalized), &needed);
+    return result.status == muni_success ? needed : 0;
+}
+
+static size_t NormalizeNfc(InitFn unused)
+{
+    (void)unused;
+    return Normalize(muni_nfc);
+}
+
+static size_t NormalizeNfd(InitFn unused)
+{
+    (void)unused;
+    return Normalize(muni_nfd);
+}
+
+static size_t CheckNfc(InitFn unused)
+{
+    (void)unused;
+    muniQuickCheck answer = muni_quickCheckNo;
+    (void)muniCheckNormalization(s_text, TEXT_BYTES, muni_nfc, &answer);
+    return answer;
+}
+
 static size_t Validate(InitFn unused)
 {
     (void)unused;
@@ -167,6 +197,9 @@ int main(void)
     Run("line breaks", CountBreaks, muniInitLineIterator);
     Run("bidi, resolve and order", ResolveBidi, nullptr);
     Run("script runs, find", CountScriptRuns, nullptr);
+    Run("NFC quick check", CheckNfc, nullptr);
+    Run("NFC", NormalizeNfc, nullptr);
+    Run("NFD", NormalizeNfd, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
     RunFind("word boundaries, find", muniFindWordBreaks);
     RunFind("sentence boundaries, find", muniFindSentenceBreaks);

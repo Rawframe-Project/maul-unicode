@@ -74,6 +74,15 @@ format.
   characters share, and a closing bracket takes its opening bracket's
   script. The iterator takes text in pieces like the segment iterators;
   a fuzz target checks pieces against the whole text.
-- `bench/bench_main.c`: validation, segmentation, line breaking, bidi
-  and script run throughput, through iterators and the array
-  conveniences.
+- Normalization (UAX #15): `muniNormalize` into NFC, NFD, NFKC or NFKD
+  in a caller buffer, `muniCheckNormalization` (quick check),
+  `muniDecomposePair` and `muniComposePair`. Canonical data takes 12,067
+  bytes and compatibility data 22,623, behind rank indexes (muni-0011).
+  Passes all 20,171 cases of NormalizationTest.txt, and leaves every
+  code point the file does not list unchanged; a fuzz target checks
+  idempotence, round trips between forms and quick-check answers. A
+  combining sequence longer than 32 code points is refused with the new
+  `muni_errorLimit`.
+- `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
+  script run and normalization throughput, through iterators and the
+  array conveniences.
