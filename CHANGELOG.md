@@ -58,5 +58,13 @@ format.
   Khmer and Burmese (muni-0005). Line and word iterators hand it each
   run of SA text in the current piece; its breaks replace the default
   ones inside the run, never before a combining mark.
-- `bench/bench_main.c`: validation, segmentation and line breaking
+- The bidirectional algorithm (UAX #9): `muniResolveBidi` gives each
+  byte of a paragraph its embedding level using one workspace byte per
+  byte and no allocation (muni-0010); `muniReorderBidiLine` applies
+  rules L1 and L2 and returns a line's runs in visual order;
+  `muniReorderBidiLevels` and `muniInvertBidiMap` give visual and
+  logical orders for any units. Passes all 91,707 cases of
+  BidiCharacterTest.txt and all 770,241 of BidiTest.txt; a fuzz target
+  checks paragraphs, runs and orders on arbitrary input.
+- `bench/bench_main.c`: validation, segmentation, line breaking and bidi
   throughput, through iterators and the array conveniences.

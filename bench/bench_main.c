@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Throughput of validation, segmentation and line breaking over a mixed text: English,
-// Turkish, Hindi, Japanese and emoji sequences, repeated to 4 MiB. Prints
+// Throughput of validation, segmentation, line breaking and bidi over a mixed text: English,
+// Turkish, Hindi, Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints
 // the best of five runs in MiB per second.
 
+#include "maul-unicode/bidi.h"
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/segment.h"
 
@@ -15,6 +16,8 @@
 #define TEXT_BYTES (4u << 20)
 
 static char s_text[TEXT_BYTES];
+static uint8_t s_levels[TEXT_BYTES];
+static uint8_t s_workspace[TEXT_BYTES];
 
 static const char s_sample[] =
     "The quick brown fox can't jump 3.14 metres, etc. and so on. Next sentence! "
@@ -23,7 +26,8 @@ static const char s_sample[] =
     "\xE0\xA4\x95\xE0\xA5\x8D\xE0\xA4\xB7\xE0\xA4\xBF\xE0\xA4\xA4\xE0\xA4\xBF\xE0\xA5\xA4 "
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E\xE3\x81\xAE\xE6\x96\x87\xE3\x80\x82 "
     "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7 "
-    "\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7\n";
+    "\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7 "
+    "\xD7\xA9\xD7\x9C\xD7\x95\xD7\x9D (\xD8\xB9\xD8\xB1\xD8\xA8\xD9\x8A 42).\n";
 
 static double Seconds(void)
 {
@@ -59,6 +63,35 @@ static size_t CountFound(FindFn find)
     size_t count = 0;
     (void)find(s_text, TEXT_BYTES, nullptr, 0, &count);
     return count;
+}
+
+// Resolves every paragraph and orders each as one line; returns the
+// number of runs.
+static size_t ResolveBidi(InitFn unused)
+{
+    (void)unused;
+    static muniBidiRun runs[4096];
+    size_t total = 0;
+    size_t offset = 0;
+    while (offset < TEXT_BYTES)
+    {
+        size_t length = 0;
+        uint8_t level = 0;
+        if (muniResolveBidi(s_text + offset, TEXT_BYTES - offset, muni_bidiAuto, s_levels + offset,
+                            s_workspace, &length, &level) != muni_success)
+        {
+            return 0;
+        }
+        size_t count = 0;
+        if (muniReorderBidiLine(s_text + offset, s_levels + offset, length, level, runs, 4096,
+                                &count) != muni_success)
+        {
+            return 0;
+        }
+        total += count;
+        offset += length;
+    }
+    return total;
 }
 
 static size_t Validate(InitFn unused)
@@ -122,6 +155,7 @@ int main(void)
     Run("word boundaries", CountBreaks, muniInitWordIterator);
     Run("sentence boundaries", CountBreaks, muniInitSentenceIterator);
     Run("line breaks", CountBreaks, muniInitLineIterator);
+    Run("bidi, resolve and order", ResolveBidi, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
     RunFind("word boundaries, find", muniFindWordBreaks);
     RunFind("sentence boundaries, find", muniFindSentenceBreaks);

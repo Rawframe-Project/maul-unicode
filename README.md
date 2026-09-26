@@ -22,7 +22,7 @@ and results are identical on every platform.
 
 ## Status
 
-Early development. The algorithms arrive in this order; the first four
+Early development. The algorithms arrive in this order; the first five
 are done:
 
 1. The table generator and character properties.

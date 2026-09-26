@@ -43,6 +43,11 @@ else()
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/base.c
+    src/bidi.c
+    src/bidi_brackets.c
+    src/bidi_explicit.c
+    src/bidi_implicit.c
+    src/bidi_line.c
     src/complex.c
     src/cursor.c
     src/encoding.c
@@ -75,8 +80,9 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(encoding)
     maul_add_test(properties WHITEBOX)
     maul_add_test(segment)
+    maul_add_test(bidi)
     # Conformance suites read the Unicode test files in test/data/.
-    foreach(suite segment)
+    foreach(suite segment bidi)
         target_compile_definitions(test_${suite} PRIVATE MUNI_TEST_DATA="${PROJECT_SOURCE_DIR}/test/data")
         if(EMSCRIPTEN)
             target_link_options(test_${suite} PRIVATE -sNODERAWFS=1)
@@ -90,7 +96,7 @@ endif()
 
 # The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.
 if(MAUL_UNICODE_FUZZ)
-    foreach(area encoding segment)
+    foreach(area encoding segment bidi)
         add_executable(fuzz_${area} test/fuzz_${area}.c)
         target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
         maul_apply_flags(fuzz_${area})
