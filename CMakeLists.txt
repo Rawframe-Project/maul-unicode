@@ -112,7 +112,8 @@ endif()
 # The generator writes src/generated/ from tools/ucd/:
 #   munigen tools/ucd src/generated
 if(MAUL_UNICODE_BUILD_TOOLS)
-    add_executable(munigen tools/munigen.c)
+    add_executable(munigen tools/munigen/main.c tools/munigen/properties.c tools/munigen/table.c
+                           tools/munigen/ucd.c)
     maul_apply_flags(munigen)
     # The generator uses standard fopen, which the Windows C runtime
     # reports as deprecated in favor of its own fopen_s.

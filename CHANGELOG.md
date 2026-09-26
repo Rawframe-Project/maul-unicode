@@ -14,7 +14,7 @@ format.
   version and result API (`muniGetVersion`, `muniGetUnicodeVersion`,
   `muniResultName`) and the design records.
 - The Unicode 18.0.0 data files and conformance files, with checksums.
-- `tools/munigen.c`, the table generator: for each property it searches
+- `tools/munigen`, the table generator: for each property it searches
   the multi-level layout with the fewest bytes, verifies every code
   point through the finished table, and writes a lookup with the layout
   compiled in. CI regenerates the tables and fails on any difference.
