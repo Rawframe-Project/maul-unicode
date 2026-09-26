@@ -130,6 +130,138 @@ static uint8_t ValueIndex(const char* const* names, int count, const char* name,
     Fail("unknown value '%s' in %s", name, context);
 }
 
+// Parses "XXXX" or "XXXX..YYYY" into an inclusive range.
+static void ParseRange(const char* text, uint32_t* firstOut, uint32_t* lastOut, const char* context)
+{
+    const char* dots = strstr(text, "..");
+    *firstOut = ParseCodePoint(text, context);
+    *lastOut = dots != nullptr ? ParseCodePoint(dots + 2, context) : *firstOut;
+    if (*lastOut < *firstOut)
+    {
+        Fail("reversed range '%s' in %s", text, context);
+    }
+}
+
+// The short name of a property value, from PropertyValueAliases.txt: the
+// UCD files spell a value by its short or its long name, and the library
+// orders values by short name.
+static void ShortValueName(const char* property, const char* name, char* shortOut, size_t capacity)
+{
+    FILE* file = OpenUcd("PropertyValueAliases.txt");
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        if (line[0] == '#')
+        {
+            continue;
+        }
+        char* fields[6];
+        int count = SplitFields(line, fields, 6);
+        if (count < 3 || strcmp(fields[0], property) != 0)
+        {
+            continue;
+        }
+        for (int i = 1; i < count; i++)
+        {
+            if (strcmp(fields[i], name) == 0)
+            {
+                snprintf(shortOut, capacity, "%s", fields[1]);
+                fclose(file);
+                return;
+            }
+        }
+    }
+    fclose(file);
+    Fail("%s has no value named '%s'", property, name);
+}
+
+// An enumerated property read from a UCD file whose lines are
+// "range ; value" or, when key is not null, "range ; key ; value". The
+// file's @missing lines give the defaults, applied first in the order
+// they appear; names are the library's order of short value names.
+static void LoadEnumerated(const char* fileName, const char* property, const char* key,
+                           const char* const* names, int nameCount, uint8_t* values)
+{
+    FILE* file = OpenUcd(fileName);
+    char line[MAX_LINE];
+    char shortName[64];
+    memset(values, 0, CODE_POINTS);
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        char* text = line;
+        int missing = strncmp(line, "# @missing:", 11) == 0;
+        if (missing)
+        {
+            text = line + 11;
+        }
+        else if (line[0] == '#' || line[0] == '\n')
+        {
+            continue;
+        }
+        char* fields[4];
+        int count = SplitFields(text, fields, 4);
+        int valueField = key != nullptr ? 2 : 1;
+        if (count <= valueField || (key != nullptr && strcmp(fields[1], key) != 0))
+        {
+            continue;
+        }
+        uint32_t first;
+        uint32_t last;
+        ParseRange(fields[0], &first, &last, fileName);
+        ShortValueName(property, fields[valueField], shortName, sizeof(shortName));
+        uint8_t value = ValueIndex(names, nameCount, shortName, fileName);
+        memset(values + first, value, last - first + 1);
+    }
+    fclose(file);
+}
+
+// A binary property: 1 for every code point a line of fileName lists
+// with the given name, 0 elsewhere.
+static void LoadBinary(const char* fileName, const char* name, uint8_t* values)
+{
+    FILE* file = OpenUcd(fileName);
+    char line[MAX_LINE];
+    memset(values, 0, CODE_POINTS);
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        if (line[0] == '#' || line[0] == '\n')
+        {
+            continue;
+        }
+        char* fields[3];
+        if (SplitFields(line, fields, 3) < 2 || strcmp(fields[1], name) != 0)
+        {
+            continue;
+        }
+        uint32_t first;
+        uint32_t last;
+        ParseRange(fields[0], &first, &last, fileName);
+        memset(values + first, 1, last - first + 1);
+    }
+    fclose(file);
+}
+
+// The value orders of the enumerated properties, as the public headers
+// number them.
+static const char* const s_graphemeBreakNames[] = {
+    "XX", "CR", "LF", "CN", "EX", "ZWJ", "RI", "PP", "SM", "L", "V", "T", "LV", "LVT",
+};
+static const char* const s_wordBreakNames[] = {
+    "XX", "CR", "LF", "NL", "Extend", "ZWJ", "RI", "FO", "KA",        "HL",
+    "LE", "SQ", "DQ", "MB", "ML",     "MN",  "NU", "EX", "WSegSpace",
+};
+static const char* const s_sentenceBreakNames[] = {
+    "XX", "CR", "LF", "EX", "SE", "FO", "SP", "LO", "UP", "LE", "NU", "AT", "SC", "ST", "CL",
+};
+static const char* const s_indicConjunctBreakNames[] = {
+    "None",
+    "Linker",
+    "Consonant",
+    "Extend",
+};
+
+#define COUNT_OF(array) ((int)(sizeof(array) / sizeof((array)[0])))
+
 // General_Category from UnicodeData.txt. Ranges appear as a "<..., First>"
 // line followed by its "<..., Last>" line; code points the file does not
 // list are unassigned (Cn, value 0).
@@ -144,7 +276,7 @@ static void LoadGeneralCategory(uint8_t* values)
     char line[MAX_LINE];
     uint32_t rangeFirst = 0;
     int inRange = 0;
-    int nameCount = (int)(sizeof(s_generalCategoryNames) / sizeof(s_generalCategoryNames[0]));
+    int nameCount = COUNT_OF(s_generalCategoryNames);
     while (fgets(line, sizeof(line), file) != nullptr)
     {
         char* fields[15];
@@ -556,6 +688,24 @@ int main(int argc, char** argv)
     LoadGeneralCategory(values);
     WriteTable(values, "general_category", "GeneralCategory", "General_Category",
                "UnicodeData.txt");
+    LoadEnumerated("GraphemeBreakProperty.txt", "GCB", nullptr, s_graphemeBreakNames,
+                   COUNT_OF(s_graphemeBreakNames), values);
+    WriteTable(values, "grapheme_cluster_break", "GraphemeClusterBreak", "Grapheme_Cluster_Break",
+               "GraphemeBreakProperty.txt");
+    LoadEnumerated("WordBreakProperty.txt", "WB", nullptr, s_wordBreakNames,
+                   COUNT_OF(s_wordBreakNames), values);
+    WriteTable(values, "word_break", "WordBreak", "Word_Break", "WordBreakProperty.txt");
+    LoadEnumerated("SentenceBreakProperty.txt", "SB", nullptr, s_sentenceBreakNames,
+                   COUNT_OF(s_sentenceBreakNames), values);
+    WriteTable(values, "sentence_break", "SentenceBreak", "Sentence_Break",
+               "SentenceBreakProperty.txt");
+    LoadEnumerated("DerivedCoreProperties.txt", "InCB", "InCB", s_indicConjunctBreakNames,
+                   COUNT_OF(s_indicConjunctBreakNames), values);
+    WriteTable(values, "indic_conjunct_break", "IndicConjunctBreak", "Indic_Conjunct_Break",
+               "DerivedCoreProperties.txt");
+    LoadBinary("emoji-data.txt", "Extended_Pictographic", values);
+    WriteTable(values, "extended_pictographic", "ExtendedPictographic", "Extended_Pictographic",
+               "emoji-data.txt");
 
     free(values);
     return 0;

@@ -8,6 +8,7 @@
 #ifndef MAUL_UNICODE_BASE_H
 #define MAUL_UNICODE_BASE_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 

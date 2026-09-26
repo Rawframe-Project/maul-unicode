@@ -19,3 +19,7 @@ format.
   point through the finished table, and writes a lookup with the layout
   compiled in. CI regenerates the tables and fails on any difference.
 - `muniGetGeneralCategory`, over a 12,356-byte table.
+- The segmentation properties: `muniGetGraphemeBreak` (3,037 bytes),
+  `muniGetWordBreak` (6,253), `muniGetSentenceBreak` (7,423),
+  `muniGetIndicConjunctBreak` (2,229) and `muniIsExtendedPictographic`
+  (568).

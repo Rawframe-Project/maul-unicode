@@ -61,6 +61,127 @@ extern "C"
     /// Safe from any thread.
     MUNI_API muniGeneralCategory muniGetGeneralCategory(uint32_t codePoint);
 
+    // Grapheme_Cluster_Break (UAX #29), in the library's numbering.
+    typedef uint8_t muniGraphemeBreak;
+
+    enum
+    {
+        muni_gcbOther = 0,
+        muni_gcbCr = 1,
+        muni_gcbLf = 2,
+        muni_gcbControl = 3,
+        muni_gcbExtend = 4,
+        muni_gcbZwj = 5,
+        muni_gcbRegionalIndicator = 6,
+        muni_gcbPrepend = 7,
+        muni_gcbSpacingMark = 8,
+        muni_gcbL = 9,
+        muni_gcbV = 10,
+        muni_gcbT = 11,
+        muni_gcbLv = 12,
+        muni_gcbLvt = 13,
+    };
+
+    // Word_Break (UAX #29), in the library's numbering.
+    typedef uint8_t muniWordBreak;
+
+    enum
+    {
+        muni_wbOther = 0,
+        muni_wbCr = 1,
+        muni_wbLf = 2,
+        muni_wbNewline = 3,
+        muni_wbExtend = 4,
+        muni_wbZwj = 5,
+        muni_wbRegionalIndicator = 6,
+        muni_wbFormat = 7,
+        muni_wbKatakana = 8,
+        muni_wbHebrewLetter = 9,
+        muni_wbALetter = 10,
+        muni_wbSingleQuote = 11,
+        muni_wbDoubleQuote = 12,
+        muni_wbMidNumLet = 13,
+        muni_wbMidLetter = 14,
+        muni_wbMidNum = 15,
+        muni_wbNumeric = 16,
+        muni_wbExtendNumLet = 17,
+        muni_wbWSegSpace = 18,
+    };
+
+    // Sentence_Break (UAX #29), in the library's numbering.
+    typedef uint8_t muniSentenceBreak;
+
+    enum
+    {
+        muni_sbOther = 0,
+        muni_sbCr = 1,
+        muni_sbLf = 2,
+        muni_sbExtend = 3,
+        muni_sbSep = 4,
+        muni_sbFormat = 5,
+        muni_sbSp = 6,
+        muni_sbLower = 7,
+        muni_sbUpper = 8,
+        muni_sbOLetter = 9,
+        muni_sbNumeric = 10,
+        muni_sbATerm = 11,
+        muni_sbSContinue = 12,
+        muni_sbSTerm = 13,
+        muni_sbClose = 14,
+    };
+
+    // Indic_Conjunct_Break, which grapheme cluster rule GB9c reads.
+    typedef uint8_t muniIndicConjunctBreak;
+
+    enum
+    {
+        muni_incbNone = 0,
+        muni_incbLinker = 1,
+        muni_incbConsonant = 2,
+        muni_incbExtend = 3,
+    };
+
+    /// Returns the Grapheme_Cluster_Break of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Other.
+    /// @return The value, one of the muni_gcb values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniGraphemeBreak muniGetGraphemeBreak(uint32_t codePoint);
+
+    /// Returns the Word_Break of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Other.
+    /// @return The value, one of the muni_wb values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniWordBreak muniGetWordBreak(uint32_t codePoint);
+
+    /// Returns the Sentence_Break of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Other.
+    /// @return The value, one of the muni_sb values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniSentenceBreak muniGetSentenceBreak(uint32_t codePoint);
+
+    /// Returns the Indic_Conjunct_Break of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is None.
+    /// @return The value, one of the muni_incb values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniIndicConjunctBreak muniGetIndicConjunctBreak(uint32_t codePoint);
+
+    /// Tells whether a code point has the Extended_Pictographic property
+    /// (UTS #51), which keeps emoji sequences together.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Extended_Pictographic.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsExtendedPictographic(uint32_t codePoint);
+
 #ifdef __cplusplus
 }
 #endif

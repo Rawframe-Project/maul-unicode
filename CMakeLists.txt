@@ -42,7 +42,12 @@ else()
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/base.c
+    src/generated/extended_pictographic.c
     src/generated/general_category.c
+    src/generated/grapheme_cluster_break.c
+    src/generated/indic_conjunct_break.c
+    src/generated/sentence_break.c
+    src/generated/word_break.c
     src/properties.c)
 maul_configure_library(maul-unicode)
 
@@ -58,6 +63,11 @@ endif()
 if(MAUL_UNICODE_BUILD_TOOLS)
     add_executable(munigen tools/munigen.c)
     maul_apply_flags(munigen)
+    # The generator uses standard fopen, which the Windows C runtime
+    # reports as deprecated in favor of its own fopen_s.
+    if(WIN32)
+        target_compile_definitions(munigen PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
 endif()
 
 if(MAUL_UNICODE_BUILD_BENCH AND EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)

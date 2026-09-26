@@ -47,9 +47,68 @@ static void TestGeneralCategoryKnownValues(void)
     CHECK(muniGetGeneralCategory(UINT32_MAX) == muni_gcCn, "UINT32_MAX is unassigned");
 }
 
+static uint8_t GraphemeBreak(uint32_t codePoint)
+{
+    return muniGetGraphemeBreak(codePoint);
+}
+
+static uint8_t WordBreak(uint32_t codePoint)
+{
+    return muniGetWordBreak(codePoint);
+}
+
+static uint8_t SentenceBreak(uint32_t codePoint)
+{
+    return muniGetSentenceBreak(codePoint);
+}
+
+static uint8_t IndicConjunctBreak(uint32_t codePoint)
+{
+    return muniGetIndicConjunctBreak(codePoint);
+}
+
+static uint8_t ExtendedPictographic(uint32_t codePoint)
+{
+    return muniIsExtendedPictographic(codePoint) ? 1 : 0;
+}
+
+static void TestBreakPropertiesMatchTheUcdEverywhere(void)
+{
+    CHECK(HashAll(GraphemeBreak) == muniGraphemeClusterBreakHash, "Grapheme_Cluster_Break hash");
+    CHECK(HashAll(WordBreak) == muniWordBreakHash, "Word_Break hash");
+    CHECK(HashAll(SentenceBreak) == muniSentenceBreakHash, "Sentence_Break hash");
+    CHECK(HashAll(IndicConjunctBreak) == muniIndicConjunctBreakHash, "Indic_Conjunct_Break hash");
+    CHECK(HashAll(ExtendedPictographic) == muniExtendedPictographicHash,
+          "Extended_Pictographic hash");
+}
+
+static void TestBreakPropertiesKnownValues(void)
+{
+    CHECK(muniGetGraphemeBreak('\r') == muni_gcbCr, "CR");
+    CHECK(muniGetGraphemeBreak(0x200D) == muni_gcbZwj, "U+200D is ZWJ");
+    CHECK(muniGetGraphemeBreak(0x1F1E6) == muni_gcbRegionalIndicator, "U+1F1E6 is RI");
+    CHECK(muniGetGraphemeBreak(0xAC00) == muni_gcbLv, "U+AC00 is LV");
+    CHECK(muniGetGraphemeBreak(0x0301) == muni_gcbExtend, "U+0301 is Extend");
+    CHECK(muniGetGraphemeBreak('a') == muni_gcbOther, "a is Other");
+    CHECK(muniGetWordBreak('a') == muni_wbALetter, "a is ALetter");
+    CHECK(muniGetWordBreak('\'') == muni_wbSingleQuote, "apostrophe is Single_Quote");
+    CHECK(muniGetWordBreak(0x05D0) == muni_wbHebrewLetter, "U+05D0 is Hebrew_Letter");
+    CHECK(muniGetWordBreak(0x30A2) == muni_wbKatakana, "U+30A2 is Katakana");
+    CHECK(muniGetSentenceBreak('.') == muni_sbATerm, "full stop is ATerm");
+    CHECK(muniGetSentenceBreak('?') == muni_sbSTerm, "question mark is STerm");
+    CHECK(muniGetSentenceBreak('A') == muni_sbUpper, "A is Upper");
+    CHECK(muniGetIndicConjunctBreak(0x094D) == muni_incbLinker, "U+094D is a linker");
+    CHECK(muniGetIndicConjunctBreak(0x0915) == muni_incbConsonant, "U+0915 is a consonant");
+    CHECK(muniIsExtendedPictographic(0x1F600), "U+1F600 is Extended_Pictographic");
+    CHECK(!muniIsExtendedPictographic('a'), "a is not Extended_Pictographic");
+    CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
+}
+
 int main(void)
 {
     TestGeneralCategoryMatchesTheUcdEverywhere();
     TestGeneralCategoryKnownValues();
+    TestBreakPropertiesMatchTheUcdEverywhere();
+    TestBreakPropertiesKnownValues();
     return s_failures == 0 ? 0 : 1;
 }
