@@ -916,7 +916,7 @@ int main(int argc, char** argv)
     WriteScriptTags(scriptNames, scriptCount);
     static int32_t deltas[MAX_DELTAS];
     int deltaCount = LoadMirroring(values, deltas);
-    WriteTable(values, "bidi_mirror", "BidiMirror", "Bidi_Mirroring_Glyph, as indexes of distances",
+    WriteTable(values, "bidi_mirror", "BidiMirror", "Bidi_Mirroring_Glyph distances",
                "BidiMirroring.txt");
     WriteMirrorDeltas(deltas, deltaCount);
     uint8_t* mirrors = Allocate(CODE_POINTS);
