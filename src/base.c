@@ -22,6 +22,10 @@ const char* muniResultName(muniResult result)
     {
     case muni_success:
         return "muni_success";
+    case muni_done:
+        return "muni_done";
+    case muni_needMoreText:
+        return "muni_needMoreText";
     case muni_errorInvalid:
         return "muni_errorInvalid";
     case muni_errorCapacity:

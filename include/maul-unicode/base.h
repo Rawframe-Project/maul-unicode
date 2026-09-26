@@ -63,6 +63,11 @@ extern "C"
     {
         // The call did what was asked.
         muni_success = 0,
+        // An iterator has reported its last result.
+        muni_done = 1,
+        // An iterator needs the next piece of its text before it can
+        // answer.
+        muni_needMoreText = 2,
         // An argument is invalid: a null pointer where one is required, a
         // value out of range.
         muni_errorInvalid = -1,

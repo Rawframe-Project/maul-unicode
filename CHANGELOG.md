@@ -34,3 +34,10 @@ format.
   Standard recommends. Validation agrees with an independent reference
   on every string of up to three bytes; a fuzz target checks that every
   answer agrees with every other.
+- Grapheme cluster boundaries (UAX #29): `muniFindGraphemeBreaks` into a
+  caller array, and `muniGraphemeIterator`, a 64-byte iterator the
+  caller keeps on the stack, which takes text in pieces cut anywhere,
+  even inside a UTF-8 sequence, and asks for the next piece with
+  `muni_needMoreText`. Passes all 853 cases of GraphemeBreakTest.txt
+  whole, through the iterator and fed one byte at a time; a fuzz target
+  checks that pieces give the boundaries the whole text gives.

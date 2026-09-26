@@ -22,8 +22,8 @@ and results are identical on every platform.
 
 ## Status
 
-Early development. The build, the rules and the version API exist; the
-algorithms arrive in this order:
+Early development. The algorithms arrive in this order; the first two
+are done and the third has grapheme clusters:
 
 1. The table generator and character properties.
 2. UTF-8 validation and conversion.
