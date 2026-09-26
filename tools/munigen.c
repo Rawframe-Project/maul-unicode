@@ -1,0 +1,562 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Sirac Ozmen
+//
+// munigen: writes the property tables in src/generated/ from the Unicode
+// Character Database files in tools/ucd/ (docs/adr/muni-0003 and
+// muni-0004). For each property it builds the full array of values,
+// searches the three-level split that stores it in the fewest bytes,
+// checks every code point through the finished table against the array,
+// and writes the table with a hash of the array.
+//
+// usage: munigen <ucd directory> <output directory>
+//
+// A development tool: it runs on the maintainer's machine and in CI,
+// never in a consumer's build, and it stops at the first problem.
+
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define CODE_POINTS 0x110000u
+#define MAX_LINE    4096
+
+static const char* s_ucdDirectory;
+static const char* s_outputDirectory;
+
+[[noreturn]] static void Fail(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    fputs("munigen: ", stderr);
+    vfprintf(stderr, format, args);
+    fputc('\n', stderr);
+    va_end(args);
+    exit(1);
+}
+
+static void* Allocate(size_t size)
+{
+    void* memory = calloc(1, size);
+    if (memory == nullptr)
+    {
+        Fail("out of memory");
+    }
+    return memory;
+}
+
+// Parsing the UCD.
+
+static FILE* OpenUcd(const char* name)
+{
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s", s_ucdDirectory, name);
+    FILE* file = fopen(path, "r");
+    if (file == nullptr)
+    {
+        Fail("cannot open %s", path);
+    }
+    return file;
+}
+
+// Removes the comment and the surrounding white space of a UCD field.
+static char* Trim(char* text)
+{
+    char* hash = strchr(text, '#');
+    if (hash != nullptr)
+    {
+        *hash = '\0';
+    }
+    while (*text == ' ' || *text == '\t')
+    {
+        text += 1;
+    }
+    size_t length = strlen(text);
+    while (length > 0 && (text[length - 1] == ' ' || text[length - 1] == '\t' ||
+                          text[length - 1] == '\n' || text[length - 1] == '\r'))
+    {
+        text[--length] = '\0';
+    }
+    return text;
+}
+
+// Splits a UCD line at ';' into at most fieldCapacity trimmed fields and
+// returns how many there are. The line is modified.
+static int SplitFields(char* line, char** fields, int fieldCapacity)
+{
+    int count = 0;
+    char* cursor = line;
+    while (count < fieldCapacity)
+    {
+        char* semicolon = strchr(cursor, ';');
+        if (semicolon != nullptr)
+        {
+            *semicolon = '\0';
+        }
+        fields[count] = Trim(cursor);
+        count += 1;
+        if (semicolon == nullptr)
+        {
+            break;
+        }
+        cursor = semicolon + 1;
+    }
+    return count;
+}
+
+static uint32_t ParseCodePoint(const char* text, const char* context)
+{
+    char* end = nullptr;
+    unsigned long value = strtoul(text, &end, 16);
+    if (end == text || value >= CODE_POINTS)
+    {
+        Fail("bad code point '%s' in %s", text, context);
+    }
+    return (uint32_t)value;
+}
+
+// Returns the index of name in names, or fails.
+static uint8_t ValueIndex(const char* const* names, int count, const char* name,
+                          const char* context)
+{
+    for (int i = 0; i < count; i++)
+    {
+        if (strcmp(names[i], name) == 0)
+        {
+            return (uint8_t)i;
+        }
+    }
+    Fail("unknown value '%s' in %s", name, context);
+}
+
+// General_Category from UnicodeData.txt. Ranges appear as a "<..., First>"
+// line followed by its "<..., Last>" line; code points the file does not
+// list are unassigned (Cn, value 0).
+static const char* const s_generalCategoryNames[] = {
+    "Cn", "Lu", "Ll", "Lt", "Lm", "Lo", "Mn", "Mc", "Me", "Nd", "Nl", "No", "Pc", "Pd", "Ps",
+    "Pe", "Pi", "Pf", "Po", "Sm", "Sc", "Sk", "So", "Zs", "Zl", "Zp", "Cc", "Cf", "Cs", "Co",
+};
+
+static void LoadGeneralCategory(uint8_t* values)
+{
+    FILE* file = OpenUcd("UnicodeData.txt");
+    char line[MAX_LINE];
+    uint32_t rangeFirst = 0;
+    int inRange = 0;
+    int nameCount = (int)(sizeof(s_generalCategoryNames) / sizeof(s_generalCategoryNames[0]));
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        char* fields[15];
+        if (SplitFields(line, fields, 15) < 3 || fields[0][0] == '\0')
+        {
+            continue;
+        }
+        uint32_t codePoint = ParseCodePoint(fields[0], "UnicodeData.txt");
+        uint8_t value = ValueIndex(s_generalCategoryNames, nameCount, fields[2], "UnicodeData.txt");
+        size_t nameLength = strlen(fields[1]);
+        if (nameLength > 8 && strcmp(fields[1] + nameLength - 8, ", First>") == 0)
+        {
+            rangeFirst = codePoint;
+            inRange = 1;
+            continue;
+        }
+        uint32_t first = inRange ? rangeFirst : codePoint;
+        for (uint32_t c = first; c <= codePoint; c++)
+        {
+            values[c] = value;
+        }
+        inRange = 0;
+    }
+    fclose(file);
+}
+
+// Building a table.
+//
+// A table stores an array of small values over the code points. Each
+// split cuts the array into blocks of 2^k items, stores every distinct
+// block once in a pool, and replaces the array by the block numbers,
+// which are split again. The search tries up to MAX_SPLITS splits with
+// k from 1 to 9 at each, stores the values in 1, 2, 4 or 8 bits and each
+// index in 8 or 16 bits, and keeps the smallest result. Code points at
+// or above highStart all share highValue and are not stored.
+
+#define MAX_SPLITS 4
+
+typedef struct Array
+{
+    uint32_t* items;
+    uint32_t count;
+} Array;
+
+typedef struct Plan
+{
+    int splits;                   // number of index levels above the data
+    int blockBits[MAX_SPLITS];    // k of each split, from the data upward
+    Array levels[MAX_SPLITS + 1]; // levels[0] is the data, levels[splits] the top index
+    int itemBits[MAX_SPLITS + 1]; // stored bits per item of each level
+    size_t bytes;
+} Plan;
+
+static void FreeArray(Array* array)
+{
+    free(array->items);
+    array->items = nullptr;
+    array->count = 0;
+}
+
+static void FreePlan(Plan* plan)
+{
+    for (int level = 0; level <= plan->splits; level++)
+    {
+        FreeArray(&plan->levels[level]);
+    }
+    memset(plan, 0, sizeof(*plan));
+}
+
+static uint64_t HashBytes(const uint8_t* bytes, size_t length)
+{
+    uint64_t hash = 0xcbf29ce484222325ull;
+    for (size_t i = 0; i < length; i++)
+    {
+        hash ^= bytes[i];
+        hash *= 0x100000001b3ull;
+    }
+    return hash;
+}
+
+static uint32_t MaxItem(const Array* array)
+{
+    uint32_t max = 0;
+    for (uint32_t i = 0; i < array->count; i++)
+    {
+        max = array->items[i] > max ? array->items[i] : max;
+    }
+    return max;
+}
+
+// Bits per stored value in the data level: the smallest of 1, 2, 4 and 8
+// that holds every value.
+static int ValueBits(uint32_t max)
+{
+    return max < 2 ? 1 : max < 4 ? 2 : max < 16 ? 4 : 8;
+}
+
+// Bits per stored block number in an index level, or 0 when it does not
+// fit in 16 bits.
+static int IndexBits(uint32_t max)
+{
+    return max < 256 ? 8 : max < 65536 ? 16 : 0;
+}
+
+static size_t LevelBytes(uint32_t count, int bits)
+{
+    return ((size_t)count * (size_t)bits + 7) / 8;
+}
+
+// Cuts array into blocks of 2^blockBits items (the last one padded with
+// zeros), stores each distinct block once in poolOut and the block
+// numbers in indexOut. Identical blocks are found through a hash table.
+static void SplitArray(const Array* array, int blockBits, Array* poolOut, Array* indexOut)
+{
+    uint32_t blockSize = 1u << blockBits;
+    uint32_t blockCount = (array->count + blockSize - 1) / blockSize;
+    uint32_t* padded = Allocate(sizeof(uint32_t) * (size_t)blockCount * blockSize);
+    memcpy(padded, array->items, sizeof(uint32_t) * array->count);
+    uint32_t slotCount = 1;
+    while (slotCount < blockCount * 2)
+    {
+        slotCount *= 2;
+    }
+    uint32_t* slots = Allocate(sizeof(uint32_t) * slotCount);
+    memset(slots, 0xff, sizeof(uint32_t) * slotCount);
+    poolOut->items = Allocate(sizeof(uint32_t) * (size_t)blockCount * blockSize);
+    poolOut->count = 0;
+    indexOut->items = Allocate(sizeof(uint32_t) * blockCount);
+    indexOut->count = blockCount;
+    for (uint32_t block = 0; block < blockCount; block++)
+    {
+        const uint32_t* items = padded + (size_t)block * blockSize;
+        uint32_t slot = (uint32_t)HashBytes((const uint8_t*)items, sizeof(uint32_t) * blockSize) &
+                        (slotCount - 1);
+        uint32_t number = UINT32_MAX;
+        while (slots[slot] != UINT32_MAX)
+        {
+            const uint32_t* candidate = poolOut->items + (size_t)slots[slot] * blockSize;
+            if (memcmp(candidate, items, sizeof(uint32_t) * blockSize) == 0)
+            {
+                number = slots[slot];
+                break;
+            }
+            slot = (slot + 1) & (slotCount - 1);
+        }
+        if (number == UINT32_MAX)
+        {
+            number = poolOut->count / blockSize;
+            memcpy(poolOut->items + poolOut->count, items, sizeof(uint32_t) * blockSize);
+            poolOut->count += blockSize;
+            slots[slot] = number;
+        }
+        indexOut->items[block] = number;
+    }
+    free(padded);
+    free(slots);
+}
+
+static Array CopyArray(const Array* array)
+{
+    Array copy = {Allocate(sizeof(uint32_t) * (array->count ? array->count : 1)), array->count};
+    memcpy(copy.items, array->items, sizeof(uint32_t) * array->count);
+    return copy;
+}
+
+// The smallest plan for array, which sits at the given level (0 for the
+// data), with at most splitsLeft more splits. Returns a plan whose bytes
+// is SIZE_MAX when nothing fits.
+static Plan SearchPlan(const Array* array, int level, int splitsLeft)
+{
+    Plan best = {0};
+    best.bytes = SIZE_MAX;
+    int bits = level == 0 ? ValueBits(MaxItem(array)) : IndexBits(MaxItem(array));
+    if (bits != 0 && (level > 0 || array->count <= 4096))
+    {
+        best.splits = 0;
+        best.levels[0] = CopyArray(array);
+        best.itemBits[0] = bits;
+        best.bytes = LevelBytes(array->count, bits);
+    }
+    if (splitsLeft == 0)
+    {
+        return best;
+    }
+    for (int blockBits = 1; blockBits <= 9; blockBits++)
+    {
+        if ((1u << blockBits) >= array->count || (level == 0 && (bits << blockBits) < 8))
+        {
+            continue;
+        }
+        Array pool;
+        Array index;
+        SplitArray(array, blockBits, &pool, &index);
+        int poolBits = level == 0 ? ValueBits(MaxItem(&pool)) : IndexBits(MaxItem(&pool));
+        Plan upper = SearchPlan(&index, level + 1, splitsLeft - 1);
+        FreeArray(&index);
+        size_t bytes = upper.bytes == SIZE_MAX || poolBits == 0
+                           ? SIZE_MAX
+                           : upper.bytes + LevelBytes(pool.count, poolBits);
+        if (bytes < best.bytes)
+        {
+            FreePlan(&best);
+            best.splits = upper.splits + 1;
+            best.levels[0] = pool;
+            best.itemBits[0] = poolBits;
+            best.blockBits[0] = blockBits;
+            for (int i = 0; i <= upper.splits; i++)
+            {
+                best.levels[i + 1] = upper.levels[i];
+                best.itemBits[i + 1] = upper.itemBits[i];
+            }
+            for (int i = 0; i < upper.splits; i++)
+            {
+                best.blockBits[i + 1] = upper.blockBits[i];
+            }
+            best.bytes = bytes;
+        }
+        else
+        {
+            FreeArray(&pool);
+            FreePlan(&upper);
+        }
+    }
+    return best;
+}
+
+typedef struct Table
+{
+    Plan plan;
+    uint32_t highStart;
+    uint8_t highValue;
+} Table;
+
+// The same walk as the lookup the generator writes.
+static uint8_t Lookup(const Table* table, uint32_t codePoint)
+{
+    if (codePoint >= table->highStart)
+    {
+        return table->highValue;
+    }
+    const Plan* plan = &table->plan;
+    int shift = 0;
+    for (int level = 0; level < plan->splits; level++)
+    {
+        shift += plan->blockBits[level];
+    }
+    uint32_t item = plan->levels[plan->splits].items[codePoint >> shift];
+    for (int level = plan->splits - 1; level >= 0; level--)
+    {
+        shift -= plan->blockBits[level];
+        uint32_t mask = (1u << plan->blockBits[level]) - 1u;
+        item = plan->levels[level]
+                   .items[(item << plan->blockBits[level]) | ((codePoint >> shift) & mask)];
+    }
+    return (uint8_t)item;
+}
+
+static Table BuildTable(const uint8_t* values, const char* name)
+{
+    Table table = {0};
+    table.highValue = values[CODE_POINTS - 1];
+    table.highStart = CODE_POINTS;
+    while (table.highStart > 0 && values[table.highStart - 1] == table.highValue)
+    {
+        table.highStart -= 1;
+    }
+    Array array = {Allocate(sizeof(uint32_t) * (table.highStart ? table.highStart : 1)),
+                   table.highStart};
+    for (uint32_t c = 0; c < table.highStart; c++)
+    {
+        array.items[c] = values[c];
+    }
+    table.plan = SearchPlan(&array, 0, MAX_SPLITS);
+    FreeArray(&array);
+    if (table.plan.bytes == SIZE_MAX)
+    {
+        Fail("%s: no layout fits in 16-bit indexes", name);
+    }
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        if (Lookup(&table, c) != values[c])
+        {
+            Fail("%s: the table answers %u for U+%04X, the UCD %u", name, Lookup(&table, c), c,
+                 values[c]);
+        }
+    }
+    return table;
+}
+
+// Writing a table.
+
+static void WriteLevel(FILE* file, int level, const Array* array, int bits)
+{
+    size_t bytes = LevelBytes(array->count, bits);
+    if (bits == 16)
+    {
+        fprintf(file, "static const uint16_t s_level%d[%u] = {", level, array->count);
+        for (uint32_t i = 0; i < array->count; i++)
+        {
+            fprintf(file, "%s%u,", i % 16 == 0 ? "\n    " : " ", array->items[i]);
+        }
+    }
+    else
+    {
+        fprintf(file, "static const uint8_t s_level%d[%zu] = {", level, bytes);
+        int perByte = 8 / bits;
+        for (size_t byte = 0; byte < bytes; byte++)
+        {
+            uint32_t packed = 0;
+            for (int k = 0; k < perByte; k++)
+            {
+                size_t item = byte * (size_t)perByte + (size_t)k;
+                if (item < array->count)
+                {
+                    packed |= array->items[item] << (k * bits);
+                }
+            }
+            fprintf(file, "%s%u,", byte % 24 == 0 ? "\n    " : " ", packed);
+        }
+    }
+    fprintf(file, "\n};\n\n");
+}
+
+// Writes the expression that reads item `index` of a level.
+static void WriteRead(FILE* file, int level, int bits, const char* index)
+{
+    if (bits >= 8)
+    {
+        fprintf(file, "s_level%d[%s]", level, index);
+        return;
+    }
+    int perByteBits = bits == 1 ? 3 : bits == 2 ? 2 : 1;
+    fprintf(file, "((uint32_t)s_level%d[(%s) >> %d] >> (((%s) & %du) * %d) & %uu)", level, index,
+            perByteBits, index, (1 << perByteBits) - 1, bits, (1u << bits) - 1u);
+}
+
+// Writes src/generated/<fileName>.c defining muniLookup<symbol> and
+// muni<symbol>Hash.
+static void WriteTable(const uint8_t* values, const char* fileName, const char* symbol,
+                       const char* description, const char* inputs)
+{
+    Table table = BuildTable(values, symbol);
+    const Plan* plan = &table.plan;
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s.c", s_outputDirectory, fileName);
+    FILE* file = fopen(path, "w");
+    if (file == nullptr)
+    {
+        Fail("cannot write %s", path);
+    }
+    fprintf(file, "// SPDX-License-Identifier: MIT\n");
+    fprintf(file, "// Copyright (c) 2026 Sirac Ozmen\n");
+    fprintf(file, "//\n");
+    fprintf(file, "// %s. Generated by tools/munigen.c from %s in tools/ucd/\n", description,
+            inputs);
+    fprintf(file, "// (Unicode 18.0.0); do not edit. %zu bytes of tables.\n", plan->bytes);
+    fprintf(file, "// clang-format off\n\n");
+    fprintf(file, "#include \"../tables.h\"\n\n");
+    for (int level = plan->splits; level >= 0; level--)
+    {
+        WriteLevel(file, level, &plan->levels[level], plan->itemBits[level]);
+    }
+    int shift = 0;
+    for (int level = 0; level < plan->splits; level++)
+    {
+        shift += plan->blockBits[level];
+    }
+    fprintf(file, "uint8_t muniLookup%s(uint32_t codePoint)\n{\n", symbol);
+    fprintf(file, "    if (codePoint >= 0x%Xu)\n    {\n        return %u;\n    }\n",
+            table.highStart, table.highValue);
+    char index[128];
+    snprintf(index, sizeof(index), "codePoint >> %d", shift);
+    fprintf(file, "    uint32_t item = ");
+    WriteRead(file, plan->splits, plan->itemBits[plan->splits], index);
+    fprintf(file, ";\n");
+    for (int level = plan->splits - 1; level >= 0; level--)
+    {
+        shift -= plan->blockBits[level];
+        snprintf(index, sizeof(index), "(item << %d) | ((codePoint >> %d) & %uu)",
+                 plan->blockBits[level], shift, (1u << plan->blockBits[level]) - 1u);
+        fprintf(file, "    item = ");
+        WriteRead(file, level, plan->itemBits[level], index);
+        fprintf(file, ";\n");
+    }
+    fprintf(file, "    return (uint8_t)item;\n}\n\n");
+    fprintf(file, "const uint64_t muni%sHash = 0x%016llxull;\n", symbol,
+            (unsigned long long)HashBytes(values, CODE_POINTS));
+    fclose(file);
+    printf("%-24s %7zu bytes  %d levels, blocks", symbol, plan->bytes, plan->splits + 1);
+    for (int level = 0; level < plan->splits; level++)
+    {
+        printf(" %d", plan->blockBits[level]);
+    }
+    printf(", high start U+%04X\n", table.highStart);
+    FreePlan(&table.plan);
+}
+
+int main(int argc, char** argv)
+{
+    if (argc != 3)
+    {
+        fprintf(stderr, "usage: munigen <ucd directory> <output directory>\n");
+        return 2;
+    }
+    s_ucdDirectory = argv[1];
+    s_outputDirectory = argv[2];
+    uint8_t* values = Allocate(CODE_POINTS);
+
+    LoadGeneralCategory(values);
+    WriteTable(values, "general_category", "GeneralCategory", "General_Category",
+               "UnicodeData.txt");
+
+    free(values);
+    return 0;
+}

@@ -16,6 +16,7 @@ project(maul-unicode
 
 option(MAUL_UNICODE_BUILD_TESTS "Build the test suites" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_BUILD_BENCH "Build the benchmarks" ${PROJECT_IS_TOP_LEVEL})
+option(MAUL_UNICODE_BUILD_TOOLS "Build the table generator" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_BUILD_SHARED "Build a shared library instead of a static one" OFF)
 option(MAUL_UNICODE_INSTALL "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_WERROR "Treat compiler warnings as errors" OFF)
@@ -40,13 +41,23 @@ else()
     set(MAUL_LIBRARY_KIND STATIC)
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
-    src/base.c)
+    src/base.c
+    src/generated/general_category.c
+    src/properties.c)
 maul_configure_library(maul-unicode)
 
 if(MAUL_UNICODE_BUILD_TESTS)
     enable_testing()
     maul_add_test(base)
+    maul_add_test(properties WHITEBOX)
     maul_add_header_tests()
+endif()
+
+# The generator writes src/generated/ from tools/ucd/:
+#   munigen tools/ucd src/generated
+if(MAUL_UNICODE_BUILD_TOOLS)
+    add_executable(munigen tools/munigen.c)
+    maul_apply_flags(munigen)
 endif()
 
 if(MAUL_UNICODE_BUILD_BENCH AND EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)
