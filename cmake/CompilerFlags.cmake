@@ -38,7 +38,9 @@ function(maul_apply_flags target)
 
     if(MSVC)
         # clang-cl: MSVC-style driver options, clang options through /clang:.
-        target_compile_options(${target} PRIVATE /W4 /fp:precise /clang:-ffp-contract=off
+        # Clang's floating-point model is precise by default; turning
+        # contraction off is the only change the family needs.
+        target_compile_options(${target} PRIVATE /W4 /clang:-ffp-contract=off
                                                  /clang:-Wshadow /clang:-Wmissing-prototypes)
         if(${MAUL_PREFIX}_WERROR)
             target_compile_options(${target} PRIVATE /WX)
