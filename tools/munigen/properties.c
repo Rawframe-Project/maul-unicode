@@ -305,6 +305,34 @@ static void LoadGeneralCategory(uint8_t* values)
     fclose(file);
 }
 
+// The identifier properties (UAX #31) as bits: 1 XID_Start,
+// 2 XID_Continue, 4 Pattern_Syntax, 8 Pattern_White_Space.
+static void WriteIdentifier(uint8_t* values)
+{
+    static const struct
+    {
+        const char* file;
+        const char* name;
+    } s_bits[4] = {
+        {"DerivedCoreProperties.txt", "XID_Start"},
+        {"DerivedCoreProperties.txt", "XID_Continue"},
+        {"PropList.txt", "Pattern_Syntax"},
+        {"PropList.txt", "Pattern_White_Space"},
+    };
+    uint8_t* bits = Allocate(CODE_POINTS);
+    for (int bit = 0; bit < 4; bit++)
+    {
+        LoadBinary(s_bits[bit].file, s_bits[bit].name, values);
+        for (uint32_t c = 0; c < CODE_POINTS; c++)
+        {
+            bits[c] |= (uint8_t)(values[c] << bit);
+        }
+    }
+    WriteTable(bits, "identifier", "Identifier", "Identifier properties",
+               "DerivedCoreProperties.txt and PropList.txt");
+    free(bits);
+}
+
 void WriteProperties(void)
 {
     uint8_t* values = Allocate(CODE_POINTS);
@@ -353,6 +381,7 @@ void WriteProperties(void)
     LoadEnumerated("Scripts.txt", "sc", nullptr, scriptList, scriptCount, values);
     WriteTable(values, "script", "Script", "Script", "Scripts.txt");
     WriteScriptTags(scriptNames, scriptCount);
+    WriteIdentifier(values);
     static ScriptSets scriptSets;
     LoadScriptExtensions(values, scriptList, scriptCount, &scriptSets);
     WriteTable(values, "script_extensions", "ScriptExtensions", "Script_Extensions sets",

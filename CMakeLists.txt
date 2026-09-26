@@ -64,6 +64,7 @@ set(MUNI_SOURCES
     src/generated/extended_pictographic.c
     src/generated/general_category.c
     src/generated/grapheme_cluster_break.c
+    src/generated/identifier.c
     src/generated/indic_conjunct_break.c
     src/generated/line_break.c
     src/generated/script.c
@@ -73,6 +74,7 @@ set(MUNI_SOURCES
     src/generated/sentence_break.c
     src/generated/word_break.c
     src/grapheme.c
+    src/identifier.c
     src/line.c
     src/properties.c
     src/script_runs.c
@@ -125,6 +127,7 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(segment)
     maul_add_test(bidi)
     maul_add_test(script)
+    maul_add_test(identifier WHITEBOX)
     set(MUNI_DATA_SUITES segment bidi)
     if(MAUL_UNICODE_NORMALIZATION)
         maul_add_test(normalize)

@@ -55,6 +55,11 @@ extern const int32_t muniBidiMirrorDeltas[];
 uint8_t muniLookupBidiBracket(uint32_t codePoint);
 extern const uint64_t muniBidiBracketHash;
 
+// Identifier properties as bits: 1 XID_Start, 2 XID_Continue,
+// 4 Pattern_Syntax, 8 Pattern_White_Space.
+uint8_t muniLookupIdentifier(uint32_t codePoint);
+extern const uint64_t muniIdentifierHash;
+
 // Normalization data, found through rank indexes: the block table gives
 // a code point's 64-code-point block 1 plus its number, or 0 when the
 // block holds no mapping; the block's bit map marks the code points with

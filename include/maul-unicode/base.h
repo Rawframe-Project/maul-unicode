@@ -94,6 +94,8 @@ extern "C"
         // The input goes past a documented limit of the algorithm, such as
         // the number of combining marks normalization reorders at once.
         muni_errorLimit = -10,
+        // The text is not an identifier (UAX #31).
+        muni_errorIdentifier = -11,
     };
 
     // A library or Unicode version: major, minor and patch.

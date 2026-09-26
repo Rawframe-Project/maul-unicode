@@ -92,6 +92,11 @@ format.
 - Build options `MAUL_UNICODE_NORMALIZATION` and `MAUL_UNICODE_CASE`
   (on by default) to leave those components and their tables out
   (muni-0013); CI builds a cell without them.
+- Identifiers (UAX #31): `muniIsIdentifierStart`,
+  `muniIsIdentifierContinue`, `muniIsPatternSyntax`,
+  `muniIsPatternWhiteSpace` over one 6,215-byte table of bits, and
+  `muniCheckIdentifier` with the new `muni_errorIdentifier`.
+- Generated table headers wrap at 79 columns.
 - `maul-unicode-harfbuzz` (build option `MAUL_UNICODE_HARFBUZZ`):
   `muniCreateHarfBuzzFunctions` fills HarfBuzz's Unicode functions
   (general category, combining class, mirroring, script, compose,

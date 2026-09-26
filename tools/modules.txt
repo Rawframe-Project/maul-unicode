@@ -15,6 +15,7 @@ decompose: bits tables
 encoding:
 grapheme: segmenter tables
 harfbuzz:
+identifier: encoding tables
 line: complex segmenter tables
 normalize: decompose encoding tables writer
 properties: tables

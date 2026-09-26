@@ -32,6 +32,10 @@ FILE* OpenUcd(const char* name);
 // Opens a file in the output directory for writing, or fails.
 FILE* CreateOutput(const char* fileName);
 
+// Writes text as // comment lines of at most 79 columns, wrapped at
+// spaces.
+void WriteComment(FILE* file, const char* text);
+
 // Splits a UCD line at ';' into at most fieldCapacity trimmed fields and
 // returns how many there are. The line is modified.
 int SplitFields(char* line, char** fields, int fieldCapacity);

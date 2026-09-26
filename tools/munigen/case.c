@@ -343,7 +343,8 @@ void WriteCase(void)
         record[4] = data.flags[c];
         values[c] = (uint8_t)RecordIndex(&data, record);
     }
-    WriteTable(values, "case", "Case", "Case records", "UnicodeData.txt and CaseFolding.txt");
+    WriteTable(values, "case", "Case", "Case records",
+               "UnicodeData.txt, CaseFolding.txt and DerivedCoreProperties.txt");
     WriteCaseData(&data);
     for (int kind = 0; kind < 4; kind++)
     {

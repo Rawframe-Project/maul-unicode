@@ -48,6 +48,31 @@ FILE* CreateOutput(const char* fileName)
     return file;
 }
 
+void WriteComment(FILE* file, const char* text)
+{
+    const size_t width = 76;
+    while (*text != '\0')
+    {
+        size_t length = strlen(text);
+        size_t cut = length;
+        if (length > width)
+        {
+            cut = width;
+            while (cut > 0 && text[cut] != ' ')
+            {
+                cut--;
+            }
+            cut = cut == 0 ? width : cut;
+        }
+        fprintf(file, "// %.*s\n", (int)cut, text);
+        text += cut;
+        while (*text == ' ')
+        {
+            text++;
+        }
+    }
+}
+
 // Parsing the UCD.
 
 FILE* OpenUcd(const char* name)
