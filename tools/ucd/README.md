@@ -1,0 +1,33 @@
+# Unicode Character Database 18.0.0
+
+The generator's inputs (docs/adr/muni-0004), exactly as published at
+`https://www.unicode.org/Public/18.0.0/ucd/` (with its `auxiliary/`,
+`extracted/` and `emoji/` subdirectories flattened here). They are
+covered by the Unicode License v3,
+`https://www.unicode.org/license.txt`.
+
+SHA-256 of each file:
+
+```text
+4b3b62e4a14b84ee752808c810c602534921c09a4a1bf78cfbee566d66c125b3  BidiBrackets.txt
+cd54810ebf52f0e61a730c8b9cb25975de6c85f6d788a559b416afd548923fd6  BidiMirroring.txt
+a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d  CaseFolding.txt
+c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e  CompositionExclusions.txt
+d9e23222522551348ea1ccfbb4f62efbf98982afb95840f8959c08ed992c5607  DerivedBidiClass.txt
+09c928886a178fcafd93c29e4bd59073a058e5a100b716d425cb563ab50f68c9  DerivedCoreProperties.txt
+d6b151d2d40ee9b1876d26f417980f45ffae47b6055ccf7203cb31f07a030f94  DerivedGeneralCategory.txt
+98ac7f67d985fe781e317f6182e885e94cabb0c314769e6dd73e48b226931ccd  DerivedNormalizationProps.txt
+a0cf29eacd00cfcaec4381c6b7c281685f18dbb4e7ff82b4076ccb342ca839aa  EastAsianWidth.txt
+80d00f8e616a0ef27fd6b8de3b758c06383b5d917e2977709578e68baf733bf1  emoji-data.txt
+0839dcb79e4ac639ecd538b1abf7c9d22e3f9dd265b7e182d33627aa4d75b45a  GraphemeBreakProperty.txt
+ae8cf1970c73f3f1a12d77852df96c4b2b1723ca8b388e36bb5739250c6849de  LineBreak.txt
+83b8df695f9da543dba02b0be2b8bd72f0b52836ad264be113c6d285021ef025  PropertyAliases.txt
+06c4c8eaf7b0bf34abe73b113da1215bd784ac254d4c223600b90267caa4bbbd  PropertyValueAliases.txt
+f438f532e8737bb8a2702126cdf9c4af5e357c58c7acf9d9eb2fc7c1a1d955d6  PropList.txt
+5c9d34a922f687726f2a8bcf57d49f905987e51f1b21b58c95a00fbe255cec23  ScriptExtensions.txt
+0071fd81b6aeae25f6e8bce8efec3066a6476a91b49bdb2f52dc76e817862a6a  Scripts.txt
+0ac10c9d6dca3b33ac695ff0968f26356465a51626950c463b3dce8fa07e61cc  SentenceBreakProperty.txt
+8538dea57c184f1ef3783885ea79677b10f6efa06423717157e63712f14d1ad2  SpecialCasing.txt
+0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950  UnicodeData.txt
+8dbfa17063e11084201f33c3e76d485d3b9166930c71db8e39ed1c9234171aec  WordBreakProperty.txt
+```

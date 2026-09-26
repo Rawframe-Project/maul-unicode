@@ -171,6 +171,12 @@ and `.gitattributes`.
 - A struct holds one concept. An owner struct composes subsystem
   structs instead of collecting loose fields.
 - No global mutable state. Constant tables are immutable.
+- Generated sources live in `src/generated/`, written by a generator in
+  `tools/`. Each starts with its SPDX line, names the generator and its
+  inputs, and turns clang-format off. They are data: the length,
+  complexity and clang-tidy rules do not apply to them, and they are
+  never edited by hand. CI regenerates them and fails on any
+  difference.
 
 Checked by: `tools/check_modules.py` (graph); `clang-format`
 (include order); `-Wmissing-prototypes`; `tools/check_lengths.py`
@@ -373,8 +379,10 @@ Checked by: review.
   design record, and the dependency's name and license go in
   `THIRD_PARTY.md` at the repository root.
 - Data files from outside (the Unicode Character Database, a gamepad
-  mapping database) are inputs, not code; their licenses are recorded
-  the same way.
+  mapping database) are inputs, not code. They are kept exactly as
+  published, in directories listed in `tools/external-dirs.txt`, each
+  with a `README.md` that names the source, the version, the license
+  and the SHA-256 of every file. The source checks skip them.
 - `testbed/`, `bench/` and test-only harnesses may use outside
   libraries; they are listed in `README.md`.
 

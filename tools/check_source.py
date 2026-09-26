@@ -16,6 +16,9 @@
 #   nothing inside a condition;
 # - C file names are snake_case.
 #
+# Directories listed in tools/external-dirs.txt hold data from outside
+# (the Unicode Character Database, for example) and are not checked.
+#
 # usage: check_source.py
 
 import os
@@ -112,8 +115,27 @@ def library_bans():
     return bans
 
 
+def external_dirs():
+    """Directories, relative to the root, whose files come from outside."""
+    path = os.path.join(ROOT, "tools", "external-dirs.txt")
+    if not os.path.exists(path):
+        return set()
+    result = set()
+    for line in open(path, encoding="utf-8"):
+        line = line.split("#", 1)[0].strip()
+        if line:
+            result.add(os.path.normpath(line))
+    return result
+
+
+EXTERNAL = external_dirs()
+
+
 def walk(top, suffixes):
     for folder, dirs, files in os.walk(os.path.join(ROOT, top)):
+        if os.path.relpath(folder, ROOT) in EXTERNAL:
+            dirs[:] = []
+            continue
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
         for name in sorted(files):
             if name.endswith(suffixes):
