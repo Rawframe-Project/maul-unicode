@@ -83,6 +83,15 @@ format.
   idempotence, round trips between forms and quick-check answers. A
   combining sequence longer than 32 code points is refused with the new
   `muni_errorLimit`.
+- Case mapping and folding: `muniToLower`, `muniToUpper`, `muniToTitle`,
+  `muniFoldCase` and `muniIsCased` per code point, and
+  `muniConvertCase` over text with the full mappings, the final sigma,
+  titlecase by word, and the Turkish and Azerbaijani rules through
+  `muni_caseTurkic` (muni-0012). 9,629 bytes of tables; a fuzz target
+  checks idempotence and short output buffers.
+- Build options `MAUL_UNICODE_NORMALIZATION` and `MAUL_UNICODE_CASE`
+  (on by default) to leave those components and their tables out
+  (muni-0013); CI builds a cell without them.
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
-  script run and normalization throughput, through iterators and the
-  array conveniences.
+  script run, normalization and case throughput, through iterators and
+  the array conveniences.

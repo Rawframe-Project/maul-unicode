@@ -25,5 +25,6 @@ int main(int argc, char** argv)
     SetDirectories(argv[1], argv[2]);
     WriteProperties();
     WriteNormalization();
+    WriteCase();
     return 0;
 }

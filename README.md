@@ -22,9 +22,8 @@ and results are identical on every platform.
 
 ## Status
 
-Early development. The algorithms arrive in this order; the first five
-are done, script itemization of the sixth, and normalization of the
-seventh:
+Early development. The algorithms arrive in this order; the first
+seven are done but for the HarfBuzz callbacks of the sixth:
 
 1. The table generator and character properties.
 2. UTF-8 validation and conversion.
@@ -53,6 +52,10 @@ ctest --test-dir build
 
 Use the package from CMake with `find_package(maul-unicode)` and link
 `maul-unicode::maul-unicode`, or through pkg-config.
+
+Two components can be left out with their tables when a build does not
+need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables) and
+`-DMAUL_UNICODE_CASE=OFF` (9.6 KB).
 
 ## The Maul family
 

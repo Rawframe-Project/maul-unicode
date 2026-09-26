@@ -14,6 +14,7 @@
 #include "decompose.h"
 #include "encoding.h"
 #include "tables.h"
+#include "writer.h"
 
 #define MAX_SEGMENT 32
 
@@ -24,25 +25,8 @@ typedef struct Normalizer
     size_t count;
     bool compose;
     bool compatibility;
-    char* output;
-    size_t capacity;
-    size_t needed; // bytes the output needs so far
+    muniWriter writer;
 } Normalizer;
-
-static void Emit(Normalizer* normalizer, uint32_t codePoint)
-{
-    char bytes[4];
-    size_t size = 0;
-    (void)muniEncodeUtf8(codePoint, bytes, &size);
-    for (size_t i = 0; i < size; i++)
-    {
-        if (normalizer->needed + i < normalizer->capacity)
-        {
-            normalizer->output[normalizer->needed + i] = bytes[i];
-        }
-    }
-    normalizer->needed += size;
-}
 
 // Canonical composition of the segment (UAX #15 D117): each mark that no
 // uncomposed mark before it blocks tries to compose with the starter.
@@ -83,7 +67,7 @@ static void Flush(Normalizer* normalizer)
     }
     for (size_t i = 0; i < normalizer->count; i++)
     {
-        Emit(normalizer, normalizer->segment[i]);
+        muniWriterPut(&normalizer->writer, normalizer->segment[i]);
     }
     normalizer->count = 0;
 }
@@ -150,9 +134,7 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
     normalizer.count = 0;
     normalizer.compose = form == muni_nfc || form == muni_nfkc;
     normalizer.compatibility = form == muni_nfkc || form == muni_nfkd;
-    normalizer.output = output;
-    normalizer.capacity = capacity;
-    normalizer.needed = 0;
+    normalizer.writer = (muniWriter){output, capacity, 0};
     const uint8_t* bytes = (const uint8_t*)text;
     size_t offset = 0;
     while (offset < length)
@@ -163,7 +145,7 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
         if (status != muni_success && mode == muni_convertStrict)
         {
             Flush(&normalizer);
-            *neededOut = normalizer.needed;
+            *neededOut = normalizer.writer.needed;
             return (muniTextResult){status, offset};
         }
         uint32_t parts[MUNI_MAX_DECOMPOSITION];
@@ -177,15 +159,15 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
         {
             if (!Add(&normalizer, parts[i]))
             {
-                *neededOut = normalizer.needed;
+                *neededOut = normalizer.writer.needed;
                 return (muniTextResult){muni_errorLimit, offset};
             }
         }
         offset += size;
     }
     Flush(&normalizer);
-    *neededOut = normalizer.needed;
-    return (muniTextResult){normalizer.needed > capacity ? muni_errorCapacity : muni_success,
+    *neededOut = normalizer.writer.needed;
+    return (muniTextResult){normalizer.writer.needed > capacity ? muni_errorCapacity : muni_success,
                             length};
 }
 

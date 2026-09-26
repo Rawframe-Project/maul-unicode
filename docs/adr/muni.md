@@ -16,3 +16,5 @@ are listed in [README.md](README.md).
 | [muni-0009](muni-0009-one-segment-iterator.md) | One segment iterator, rules that may hold a boundary | Accepted |
 | [muni-0010](muni-0010-bidi-in-caller-memory.md) | Bidi in two bytes per byte of caller memory | Accepted |
 | [muni-0011](muni-0011-normalization-data.md) | Normalization data behind rank indexes | Accepted |
+| [muni-0012](muni-0012-case-data-and-language-rules.md) | Case data and language rules | Accepted |
+| [muni-0013](muni-0013-optional-components.md) | Normalization and case as optional components | Accepted |

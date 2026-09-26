@@ -94,4 +94,26 @@ extern const uint16_t muniCompatibilityRanks[];
 extern const uint16_t muniCompatibilityOffsets[];
 extern const uint16_t muniCompatibilityPool[];
 
+// Case data. The Case table stores a record index; a record holds the
+// indexes of the upper, lower, title and fold distances in
+// muniCaseDeltas, then flags. Special code points, sorted, pack their
+// code point << 8 with the lengths of their upper, lower, title and fold
+// full mappings in two bits each, from the lowest; the mappings follow
+// each other in UTF-16 in the pool from the code point's offset.
+uint8_t muniLookupCase(uint32_t codePoint);
+extern const uint64_t muniCaseHash;
+extern const int32_t muniCaseDeltas[];
+extern const uint8_t muniCaseRecords[][5];
+extern const uint32_t muniCaseSpecials[];
+extern const uint16_t muniCaseSpecialOffsets[];
+extern const uint16_t muniCaseSpecialPool[];
+extern const uint16_t muniCaseSpecialCount;
+
+enum
+{
+    muni_caseFlagCased = 1,
+    muni_caseFlagIgnorable = 2,
+    muni_caseFlagSpecial = 4,
+};
+
 #endif // MAUL_UNICODE_SRC_TABLES_H

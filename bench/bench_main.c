@@ -2,11 +2,12 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // Throughput of validation, segmentation, line breaking, bidi, script
-// runs and normalization over a mixed text: English, Turkish, Hindi,
-// Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints the best
-// of five runs in MiB per second.
+// runs, normalization and case over a mixed text: English, Turkish,
+// Hindi, Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints
+// the best of five runs in MiB per second.
 
 #include "maul-unicode/bidi.h"
+#include "maul-unicode/case.h"
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
 #include "maul-unicode/script.h"
@@ -134,6 +135,27 @@ static size_t CheckNfc(InitFn unused)
     return answer;
 }
 
+static size_t ConvertCase(muniCaseOperation operation)
+{
+    size_t needed = 0;
+    muniTextResult result =
+        muniConvertCase(s_text, TEXT_BYTES, operation, muni_caseDefault, muni_convertReplace,
+                        s_normalized, sizeof(s_normalized), &needed);
+    return result.status == muni_success ? needed : 0;
+}
+
+static size_t Lowercase(InitFn unused)
+{
+    (void)unused;
+    return ConvertCase(muni_caseLower);
+}
+
+static size_t Fold(InitFn unused)
+{
+    (void)unused;
+    return ConvertCase(muni_caseFold);
+}
+
 static size_t Validate(InitFn unused)
 {
     (void)unused;
@@ -200,6 +222,8 @@ int main(void)
     Run("NFC quick check", CheckNfc, nullptr);
     Run("NFC", NormalizeNfc, nullptr);
     Run("NFD", NormalizeNfd, nullptr);
+    Run("lowercase", Lowercase, nullptr);
+    Run("case fold", Fold, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
     RunFind("word boundaries, find", muniFindWordBreaks);
     RunFind("sentence boundaries, find", muniFindSentenceBreaks);

@@ -24,6 +24,9 @@ option(MAUL_UNICODE_SANITIZE "Instrument with AddressSanitizer and UBSan" OFF)
 option(MAUL_UNICODE_TSAN "Instrument with ThreadSanitizer" OFF)
 option(MAUL_UNICODE_COVERAGE "Instrument for gcov coverage" OFF)
 option(MAUL_UNICODE_FUZZ "Build the libFuzzer targets (Clang only)" OFF)
+# Components a build may leave out, with their code and their tables.
+option(MAUL_UNICODE_NORMALIZATION "Include normalization (UAX #15)" ON)
+option(MAUL_UNICODE_CASE "Include case mapping and folding" ON)
 
 # Every executable (tests, benchmarks, tools) lands in the top of the
 # build tree, so scripts and CI find them in one place.
@@ -41,7 +44,7 @@ if(MAUL_UNICODE_BUILD_SHARED)
 else()
     set(MAUL_LIBRARY_KIND STATIC)
 endif()
-add_library(maul-unicode ${MAUL_LIBRARY_KIND}
+set(MUNI_SOURCES
     src/base.c
     src/bidi.c
     src/bidi_brackets.c
@@ -50,17 +53,12 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/bidi_line.c
     src/complex.c
     src/cursor.c
-    src/decompose.c
     src/encoding.c
     src/generated/bidi_bracket.c
     src/generated/bidi_class.c
     src/generated/bidi_mirror.c
     src/generated/bidi_mirror_deltas.c
     src/generated/canonical_combining_class.c
-    src/generated/compatibility_blocks.c
-    src/generated/compatibility_data.c
-    src/generated/decomposition_blocks.c
-    src/generated/decomposition_data.c
     src/generated/east_asian_width.c
     src/generated/extended_pictographic.c
     src/generated/general_category.c
@@ -75,12 +73,29 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/generated/word_break.c
     src/grapheme.c
     src/line.c
-    src/normalize.c
     src/properties.c
     src/script_runs.c
     src/segment.c
     src/sentence.c
     src/word.c)
+set(MUNI_NORMALIZATION_SOURCES
+    src/decompose.c
+    src/normalize.c
+    src/generated/compatibility_blocks.c
+    src/generated/compatibility_data.c
+    src/generated/decomposition_blocks.c
+    src/generated/decomposition_data.c)
+set(MUNI_CASE_SOURCES
+    src/case.c
+    src/generated/case.c
+    src/generated/case_data.c)
+if(MAUL_UNICODE_NORMALIZATION)
+    list(APPEND MUNI_SOURCES ${MUNI_NORMALIZATION_SOURCES})
+endif()
+if(MAUL_UNICODE_CASE)
+    list(APPEND MUNI_SOURCES ${MUNI_CASE_SOURCES})
+endif()
+add_library(maul-unicode ${MAUL_LIBRARY_KIND} ${MUNI_SOURCES})
 maul_configure_library(maul-unicode)
 
 if(MAUL_UNICODE_BUILD_TESTS)
@@ -91,9 +106,16 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(segment)
     maul_add_test(bidi)
     maul_add_test(script)
-    maul_add_test(normalize)
+    set(MUNI_DATA_SUITES segment bidi)
+    if(MAUL_UNICODE_NORMALIZATION)
+        maul_add_test(normalize)
+        list(APPEND MUNI_DATA_SUITES normalize)
+    endif()
+    if(MAUL_UNICODE_CASE)
+        maul_add_test(case WHITEBOX)
+    endif()
     # Conformance suites read the Unicode test files in test/data/.
-    foreach(suite segment bidi normalize)
+    foreach(suite ${MUNI_DATA_SUITES})
         target_compile_definitions(test_${suite} PRIVATE MUNI_TEST_DATA="${PROJECT_SOURCE_DIR}/test/data")
         if(EMSCRIPTEN)
             target_link_options(test_${suite} PRIVATE -sNODERAWFS=1)
@@ -107,7 +129,14 @@ endif()
 
 # The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.
 if(MAUL_UNICODE_FUZZ)
-    foreach(area encoding segment bidi script normalize)
+    set(MUNI_FUZZ_AREAS encoding segment bidi script)
+    if(MAUL_UNICODE_NORMALIZATION)
+        list(APPEND MUNI_FUZZ_AREAS normalize)
+    endif()
+    if(MAUL_UNICODE_CASE)
+        list(APPEND MUNI_FUZZ_AREAS case)
+    endif()
+    foreach(area ${MUNI_FUZZ_AREAS})
         add_executable(fuzz_${area} test/fuzz_${area}.c)
         target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
         maul_apply_flags(fuzz_${area})
@@ -119,7 +148,7 @@ endif()
 # The generator writes src/generated/ from tools/ucd/:
 #   munigen tools/ucd src/generated
 if(MAUL_UNICODE_BUILD_TOOLS)
-    add_executable(munigen tools/munigen/main.c tools/munigen/normalization.c
+    add_executable(munigen tools/munigen/case.c tools/munigen/main.c tools/munigen/normalization.c
                            tools/munigen/properties.c tools/munigen/table.c tools/munigen/ucd.c)
     maul_apply_flags(munigen)
     # The generator uses standard fopen, which the Windows C runtime
@@ -129,7 +158,9 @@ if(MAUL_UNICODE_BUILD_TOOLS)
     endif()
 endif()
 
-if(MAUL_UNICODE_BUILD_BENCH AND EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)
+# The benchmarks measure every component, so they need them all.
+if(MAUL_UNICODE_BUILD_BENCH AND MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE AND
+   EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)
     add_subdirectory(bench)
 endif()
 

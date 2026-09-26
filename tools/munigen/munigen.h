@@ -75,4 +75,7 @@ void WriteProperties(void);
 // normalization.c: the decomposition and composition data.
 void WriteNormalization(void);
 
+// case.c: the case mappings and foldings.
+void WriteCase(void);
+
 #endif // MUNIGEN_H

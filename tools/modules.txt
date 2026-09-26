@@ -8,13 +8,14 @@ bidi_explicit: bidi_core
 bidi_implicit: bidi_brackets bidi_core
 bidi_line: bidi_core
 bits:
+case: encoding tables writer
 complex: encoding segmenter tables
 cursor: encoding
 decompose: bits tables
 encoding:
 grapheme: segmenter tables
 line: complex segmenter tables
-normalize: decompose encoding tables
+normalize: decompose encoding tables writer
 properties: tables
 script_runs: cursor tables
 segment: segmenter
@@ -22,3 +23,4 @@ segmenter: cursor
 sentence: segmenter tables
 tables:
 word: complex segmenter tables
+writer:
