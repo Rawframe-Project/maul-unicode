@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// libFuzzer target for segmentation. The first input byte picks the kind
-// and a piece size; the rest is the text. Feeding the text in pieces must
+// libFuzzer target for segmentation and line breaking. The first input
+// byte picks the kind and a piece size; the rest is the text. Feeding the text in pieces must
 // give exactly the boundaries the whole text gives, and those must rise
 // strictly, fall on code point starts and end at the length of the text.
 // Word and sentence boundaries need not be grapheme boundaries: the
@@ -42,6 +42,12 @@ static bool StartsCodePoint(const char* text, size_t length, size_t offset)
 typedef muniResult (*InitFn)(muniSegmentIterator*, const char*, size_t, bool);
 typedef muniResult (*FindFn)(const char*, size_t, size_t*, size_t, size_t*);
 
+static muniResult FindLines(const char* text, size_t length, size_t* offsets, size_t capacity,
+                            size_t* countOut)
+{
+    return muniFindLineBreaks(text, length, offsets, nullptr, capacity, countOut);
+}
+
 static size_t Chunked(InitFn init, const char* text, size_t length, size_t piece, size_t* breaks)
 {
     size_t fed = piece < length ? piece : length;
@@ -77,15 +83,15 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
-    static const InitFn inits[3] = {muniInitGraphemeIterator, muniInitWordIterator,
-                                    muniInitSentenceIterator};
-    static const FindFn finds[3] = {muniFindGraphemeBreaks, muniFindWordBreaks,
-                                    muniFindSentenceBreaks};
+    static const InitFn inits[4] = {muniInitGraphemeIterator, muniInitWordIterator,
+                                    muniInitSentenceIterator, muniInitLineIterator};
+    static const FindFn finds[4] = {muniFindGraphemeBreaks, muniFindWordBreaks,
+                                    muniFindSentenceBreaks, FindLines};
     if (size == 0 || size > MAX_BREAKS)
     {
         return 0;
     }
-    size_t kind = (size_t)(data[0] >> 4) % 3;
+    size_t kind = (size_t)(data[0] >> 4) % 4;
     size_t piece = (size_t)(data[0] % 8) + 1;
     const char* text = (const char*)data + 1;
     size_t length = size - 1;

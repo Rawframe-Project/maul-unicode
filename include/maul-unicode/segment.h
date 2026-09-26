@@ -4,7 +4,8 @@
 // Text segmentation (UAX #29): the boundaries of grapheme clusters, the
 // units a user perceives as one character, which caret movement,
 // selection and backspace must never split; of words, for double-click
-// selection, word movement and search; and of sentences.
+// selection, word movement and search; and of sentences. Line breaking
+// (UAX #14): the positions where a line may, or must, end.
 //
 // An iterator walks UTF-8 text and reports each boundary after the start
 // of the text, the last one being the end of the text; empty text has
@@ -30,12 +31,13 @@ extern "C"
 {
 #endif
 
-    // An iterator over grapheme cluster, word or sentence boundaries. Its
-    // contents are private; it is plain data the caller keeps anywhere,
-    // usually on the stack, and needs no cleanup.
+    // An iterator over grapheme cluster, word or sentence boundaries or
+    // line break opportunities. Its contents are private; it is plain data
+    // the caller keeps anywhere, usually on the stack, and needs no
+    // cleanup.
     typedef struct muniSegmentIterator
     {
-        uint64_t opaque[8];
+        uint64_t opaque[10];
     } muniSegmentIterator;
 
     /// Starts an iterator over the grapheme cluster boundaries of a UTF-8 text or
@@ -83,6 +85,23 @@ extern "C"
                                                                 const char* text, size_t length,
                                                                 bool moreFollows);
 
+    /// Starts an iterator over the line break opportunities of a UTF-8
+    /// text or its first piece, with the default rules of UAX #14.
+    /// Thai, Lao, Khmer and Burmese letters (class SA) are resolved as rule
+    /// LB1 says without a dictionary: no opportunities between them.
+    ///
+    /// @param iterator     The iterator to initialize.
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param moreFollows  true when more pieces of the text will be fed.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator
+    ///         or a NULL text with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniInitLineIterator(muniSegmentIterator* iterator,
+                                                            const char* text, size_t length,
+                                                            bool moreFollows);
+
     /// Hands an iterator the next piece of its text, after it returned
     /// muni_needMoreText. The iterator keeps no pointer to earlier pieces.
     ///
@@ -111,6 +130,21 @@ extern "C"
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniNextSegmentBreak(muniSegmentIterator* iterator,
                                                             size_t* offsetOut);
+
+    /// Finds the next line break opportunity of a line iterator, and
+    /// whether the line must end there: after a mandatory break character
+    /// (BK, CR, LF or NL) and at the end of the text.
+    ///
+    /// @param iterator      An iterator from muniInitLineIterator.
+    /// @param offsetOut     Receives the opportunity's byte offset from the
+    ///                      start of the whole text.
+    /// @param mandatoryOut  Receives true when the break is mandatory.
+    /// @return As muniNextSegmentBreak; `muni_errorInvalid` also for an
+    ///         iterator of another kind.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniNextLineBreak(muniSegmentIterator* iterator,
+                                                         size_t* offsetOut, bool* mandatoryOut);
 
     /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.
@@ -162,6 +196,26 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniFindSentenceBreaks(const char* text, size_t length,
                                                               size_t* offsets, size_t capacity,
                                                               size_t* countOut);
+
+    /// Writes the line break opportunities of a whole UTF-8 text into
+    /// caller arrays: every opportunity after the start, the end included,
+    /// and optionally whether each is mandatory.
+    ///
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param offsets      The output. May be NULL when capacity is 0.
+    /// @param mandatory    NULL, or an array of capacity flags that receive
+    ///                     true for each mandatory break.
+    /// @param capacity     The number of entries the outputs can hold.
+    /// @param countOut     Receives the number of opportunities, which may
+    ///                     exceed capacity; the ones that fit are written.
+    /// @return `muni_success`, `muni_errorCapacity` when they do not all
+    ///         fit, or `muni_errorInvalid` for a NULL argument.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniFindLineBreaks(const char* text, size_t length,
+                                                          size_t* offsets, bool* mandatory,
+                                                          size_t capacity, size_t* countOut);
 
 #ifdef __cplusplus
 }

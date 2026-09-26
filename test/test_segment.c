@@ -79,6 +79,12 @@ static int SameBreaks(const size_t* found, size_t foundCount, const Case* expect
 
 typedef muniResult (*InitFn)(muniSegmentIterator*, const char*, size_t, bool);
 
+static muniResult FindLines(const char* text, size_t length, size_t* offsets, size_t capacity,
+                            size_t* countOut)
+{
+    return muniFindLineBreaks(text, length, offsets, nullptr, capacity, countOut);
+}
+
 // A segmentation kind: its conformance file and its functions.
 typedef struct Kind
 {
@@ -196,6 +202,8 @@ static void TestConformance(void)
     RunConformance(&grapheme, 800);
     RunConformance(&word, 1800);
     RunConformance(&sentence, 500);
+    static const Kind line = {"LineBreakTest.txt", muniInitLineIterator, FindLines};
+    RunConformance(&line, 19000);
 }
 
 static void TestGraphemeEdges(void)
@@ -234,6 +242,33 @@ static void TestWordAndSentence(void)
           "an abbreviation does not end the sentence");
 }
 
+static void TestLineBreaks(void)
+{
+    size_t offsets[16];
+    bool mandatory[16];
+    size_t count = 0;
+    // "Hello ", "world\n", "a-b": after the space, after the newline
+    // (mandatory), and the end (mandatory); "a-b" stays whole before a
+    // letter only when the hyphen starts a word, so it breaks after "-".
+    const char text[] = "Hello world\na-b";
+    CHECK(muniFindLineBreaks(text, 15, offsets, mandatory, 16, &count) == muni_success &&
+              count == 4,
+          "four line break opportunities");
+    CHECK(offsets[0] == 6 && !mandatory[0], "after the space, allowed");
+    CHECK(offsets[1] == 12 && mandatory[1], "after the newline, mandatory");
+    CHECK(offsets[2] == 14 && !mandatory[2], "after the hyphen, allowed");
+    CHECK(offsets[3] == 15 && mandatory[3], "the end, mandatory");
+    muniSegmentIterator iterator;
+    size_t offset;
+    bool must = false;
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success, "a word iterator");
+    CHECK(muniNextLineBreak(&iterator, &offset, &must) == muni_errorInvalid,
+          "line breaks need a line iterator");
+    CHECK(muniInitLineIterator(&iterator, "a b", 3, false) == muni_success, "a line iterator");
+    CHECK(muniNextLineBreak(&iterator, &offset, &must) == muni_success && offset == 2 && !must,
+          "after the space");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -256,6 +291,7 @@ int main(void)
     TestConformance();
     TestGraphemeEdges();
     TestWordAndSentence();
+    TestLineBreaks();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

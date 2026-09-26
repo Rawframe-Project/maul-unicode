@@ -45,4 +45,11 @@ format.
   WordBreakTest.txt (1,944) and SentenceBreakTest.txt (512) whole,
   through the iterator and fed one byte at a time; a fuzz target checks
   that pieces give the boundaries the whole text gives.
-- `bench/bench_main.c`: validation and segmentation throughput.
+- Line breaking (UAX #14) with the default rules: `muniInitLineIterator`
+  on the same iterator, `muniNextLineBreak`, which also tells whether a
+  break is mandatory, and `muniFindLineBreaks`. The five rules that look
+  ahead (LB15b, LB15c, LB19a, LB25 and LB28a) hold the boundary like
+  the segmentation rules. Passes all 19,346 cases of LineBreakTest.txt
+  whole, through the iterator and fed one byte at a time.
+- `bench/bench_main.c`: validation, segmentation and line breaking
+  throughput.

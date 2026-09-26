@@ -35,7 +35,7 @@ enum
 
 static bool In(uint8_t value, uint32_t set)
 {
-    return (BIT(value) & set) != 0;
+    return ((set >> (value & 31u)) & 1u) != 0;
 }
 
 // SB8 to SB11: after "SATerm Close* Sp*".
@@ -101,6 +101,10 @@ static muniDecision Resolve(const muniSegmenter* segmenter, uint8_t value, uint3
 {
     (void)segmenter;
     (void)codePoint;
+    if (value == muni_segmentEnd)
+    {
+        return muni_decideBreak;
+    }
     if (value == muni_sbLower)
     {
         return muni_decideJoin;

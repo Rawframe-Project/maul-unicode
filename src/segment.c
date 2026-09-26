@@ -57,6 +57,12 @@ muniResult muniInitSentenceIterator(muniSegmentIterator* iterator, const char* t
     return Init(iterator, muni_segmentSentence, text, length, moreFollows);
 }
 
+muniResult muniInitLineIterator(muniSegmentIterator* iterator, const char* text, size_t length,
+                                bool moreFollows)
+{
+    return Init(iterator, muni_segmentLine, text, length, moreFollows);
+}
+
 muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* text, size_t length,
                                    bool moreFollows)
 {
@@ -84,6 +90,8 @@ static muniResult Next(muniSegmenter* segmenter, size_t* offsetOut)
         return muniNextWordSegment(segmenter, offsetOut);
     case muni_segmentSentence:
         return muniNextSentenceSegment(segmenter, offsetOut);
+    case muni_segmentLine:
+        return muniNextLineSegment(segmenter, offsetOut);
     default:
         return muni_errorInvalid;
     }
@@ -102,8 +110,26 @@ muniResult muniNextSegmentBreak(muniSegmentIterator* iterator, size_t* offsetOut
     return status;
 }
 
+muniResult muniNextLineBreak(muniSegmentIterator* iterator, size_t* offsetOut, bool* mandatoryOut)
+{
+    if (iterator == nullptr || offsetOut == nullptr || mandatoryOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    if (segmenter.kind != muni_segmentLine)
+    {
+        return muni_errorInvalid;
+    }
+    muniResult status = Next(&segmenter, offsetOut);
+    segmenter.waiting = status == muni_needMoreText;
+    *mandatoryOut = status == muni_success && segmenter.mandatory;
+    Store(iterator, &segmenter);
+    return status;
+}
+
 static muniResult Find(uint8_t kind, const char* text, size_t length, size_t* offsets,
-                       size_t capacity, size_t* countOut)
+                       bool* mandatory, size_t capacity, size_t* countOut)
 {
     if ((offsets == nullptr && capacity != 0) || countOut == nullptr ||
         (text == nullptr && length != 0))
@@ -121,6 +147,10 @@ static muniResult Find(uint8_t kind, const char* text, size_t length, size_t* of
         if (count < capacity)
         {
             offsets[count] = offset;
+            if (mandatory != nullptr)
+            {
+                mandatory[count] = segmenter.mandatory;
+            }
         }
         count += 1;
     }
@@ -131,17 +161,23 @@ static muniResult Find(uint8_t kind, const char* text, size_t length, size_t* of
 muniResult muniFindGraphemeBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
                                   size_t* countOut)
 {
-    return Find(muni_segmentGrapheme, text, length, offsets, capacity, countOut);
+    return Find(muni_segmentGrapheme, text, length, offsets, nullptr, capacity, countOut);
 }
 
 muniResult muniFindWordBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
                               size_t* countOut)
 {
-    return Find(muni_segmentWord, text, length, offsets, capacity, countOut);
+    return Find(muni_segmentWord, text, length, offsets, nullptr, capacity, countOut);
 }
 
 muniResult muniFindSentenceBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
                                   size_t* countOut)
 {
-    return Find(muni_segmentSentence, text, length, offsets, capacity, countOut);
+    return Find(muni_segmentSentence, text, length, offsets, nullptr, capacity, countOut);
+}
+
+muniResult muniFindLineBreaks(const char* text, size_t length, size_t* offsets, bool* mandatory,
+                              size_t capacity, size_t* countOut)
+{
+    return Find(muni_segmentLine, text, length, offsets, mandatory, capacity, countOut);
 }

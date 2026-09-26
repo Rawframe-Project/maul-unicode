@@ -32,7 +32,7 @@ enum
 
 static bool In(uint8_t value, uint32_t set)
 {
-    return (BIT(value) & set) != 0;
+    return ((set >> (value & 31u)) & 1u) != 0;
 }
 
 // WB3 to WB4: the rules about the actual previous code point.
@@ -154,6 +154,10 @@ static muniDecision Resolve(const muniSegmenter* segmenter, uint8_t value, uint3
 {
     (void)codePoint;
     const muniWordRules* state = &segmenter->rules.word;
+    if (value == muni_segmentEnd)
+    {
+        return muni_decideBreak;
+    }
     if (In(value, Ignored))
     {
         return muni_decideContinue; // WB4

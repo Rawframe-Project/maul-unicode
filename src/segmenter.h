@@ -24,16 +24,28 @@ enum
     muni_segmentGrapheme = 1,
     muni_segmentWord = 2,
     muni_segmentSentence = 3,
+    muni_segmentLine = 4,
 };
 
-// A rule set's answer about the position before a code point.
-typedef enum muniDecision
+// A rule set's answer about the position before a code point. A hold
+// may carry a kind, muni_decideHold plus a small number, which the engine
+// keeps in holdKind for the resolve rule.
+typedef uint8_t muniDecision;
+
+enum
 {
-    muni_decideBreak,    // a boundary
-    muni_decideJoin,     // no boundary
-    muni_decideHold,     // undecided until later text is seen
-    muni_decideContinue, // while holding: still undecided, read on
-} muniDecision;
+    muni_decideBreak = 0,     // a boundary
+    muni_decideMandatory = 1, // a boundary that must be taken (line breaking)
+    muni_decideJoin = 2,      // no boundary
+    muni_decideContinue = 3,  // while holding: still undecided, read on
+    muni_decideHold = 4,      // undecided until later text is seen
+};
+
+// The value the resolve rule sees at the end of the text.
+enum
+{
+    muni_segmentEnd = 0xFF,
+};
 
 // The state of each rule set, beyond the previous code point.
 typedef struct muniGraphemeRules
@@ -61,6 +73,20 @@ typedef struct muniSentenceRules
     bool aterm;       // the ending's terminator is an ATerm
 } muniSentenceRules;
 
+typedef struct muniLineRules
+{
+    uint32_t previousCodePoint; // the code point behind previous
+    uint32_t beforeCodePoint;   // the code point behind before
+    uint8_t actual;             // the previous code point's class after LB1
+    uint8_t previous;           // the previous class after LB9 and LB10
+    uint8_t before;             // the one before that
+    uint8_t lead;               // the last class other than SP
+    uint8_t number;             // where an LB25 number stands
+    bool leadInitialQuote;      // lead is an LB15a initial quotation mark
+    bool sawInfix;              // an LB25 hold has read "OP IS"
+    bool oddRegional;           // an odd number of regional indicators precedes
+} muniLineRules;
+
 typedef struct muniSegmenter
 {
     muniCursor cursor;
@@ -70,12 +96,15 @@ typedef struct muniSegmenter
     bool endReported;  // the boundary at the end has been reported
     bool holding;      // a boundary at heldOffset is undecided
     bool waiting;      // the last call returned muni_needMoreText
+    bool mandatory;    // the last boundary reported must be taken
+    uint8_t holdKind;  // the kind of the open hold
 
     union
     {
         muniGraphemeRules grapheme;
         muniWordRules word;
         muniSentenceRules sentence;
+        muniLineRules line;
     } rules;
 } muniSegmenter;
 
@@ -89,6 +118,36 @@ typedef uint8_t (*muniLookupRule)(uint32_t codePoint);
 typedef muniDecision (*muniDecideRule)(const muniSegmenter* segmenter, uint8_t value,
                                        uint32_t codePoint);
 typedef void (*muniAbsorbRule)(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint);
+
+// Reports a boundary.
+static inline muniResult muniSegmenterReport(muniSegmenter* segmenter, size_t offset,
+                                             bool mandatory, size_t* offsetOut)
+{
+    segmenter->mandatory = mandatory;
+    *offsetOut = offset;
+    return muni_success;
+}
+
+// The end of the text: a hold resolves with muni_segmentEnd, then the end
+// itself is a boundary unless the text is empty.
+static inline muniResult muniSegmenterEnd(muniSegmenter* segmenter, size_t* offsetOut,
+                                          muniDecideRule resolve)
+{
+    if (segmenter->holding)
+    {
+        segmenter->holding = false;
+        if (resolve(segmenter, muni_segmentEnd, 0) != muni_decideJoin)
+        {
+            return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut);
+        }
+    }
+    if (!segmenter->started || segmenter->endReported)
+    {
+        return muni_done;
+    }
+    segmenter->endReported = true;
+    return muniSegmenterReport(segmenter, segmenter->cursor.offset, true, offsetOut);
+}
 
 // Finds the next boundary: muni_success and its offset, muni_done after
 // the end, or muni_needMoreText.
@@ -107,19 +166,7 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
         }
         if (status == muni_done)
         {
-            if (segmenter->holding)
-            {
-                segmenter->holding = false; // the end is never what a hold waits for
-                *offsetOut = segmenter->heldOffset;
-                return muni_success;
-            }
-            if (!segmenter->started || segmenter->endReported)
-            {
-                return muni_done;
-            }
-            segmenter->endReported = true;
-            *offsetOut = segmenter->cursor.offset;
-            return muni_success;
+            return muniSegmenterEnd(segmenter, offsetOut, resolve);
         }
         uint8_t value = lookup(codePoint);
         muniDecision decision = muni_decideJoin;
@@ -131,8 +178,7 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
                 // The hold failed: report it, and decide about this code
                 // point on the next call.
                 segmenter->holding = false;
-                *offsetOut = segmenter->heldOffset;
-                return muni_success;
+                return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut);
             }
             segmenter->holding = decision == muni_decideContinue;
         }
@@ -141,26 +187,28 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
             decision = decide(segmenter, value, codePoint);
         }
         size_t offset = segmenter->cursor.offset;
-        if (decision == muni_decideHold)
+        if (decision >= muni_decideHold)
         {
             segmenter->holding = true;
+            segmenter->holdKind = (uint8_t)(decision - muni_decideHold);
             segmenter->heldOffset = offset;
         }
         absorb(segmenter, value, codePoint);
         segmenter->started = true;
         muniCursorAdvance(&segmenter->cursor, size);
-        if (decision == muni_decideBreak)
+        if (decision <= muni_decideMandatory)
         {
-            *offsetOut = offset;
-            return muni_success;
+            return muniSegmenterReport(segmenter, offset, decision == muni_decideMandatory,
+                                       offsetOut);
         }
     }
 }
 
-// The engine's entry for each rule set, defined in grapheme.c, word.c and
-// sentence.c.
+// The engine's entry for each rule set, defined in grapheme.c, word.c,
+// sentence.c and line.c.
 muniResult muniNextGraphemeSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextWordSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut);
+muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut);
 
 #endif // MAUL_UNICODE_SRC_SEGMENTER_H

@@ -4,6 +4,7 @@ base:
 cursor: encoding
 encoding:
 grapheme: segmenter tables
+line: segmenter tables
 properties: tables
 segment: segmenter
 segmenter: cursor

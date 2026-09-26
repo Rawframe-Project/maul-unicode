@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Throughput of validation and segmentation over a mixed text: English,
+// Throughput of validation, segmentation and line breaking over a mixed text: English,
 // Turkish, Hindi, Japanese and emoji sequences, repeated to 4 MiB. Prints
 // the best of five runs in MiB per second.
 
@@ -85,5 +85,6 @@ int main(void)
     Run("grapheme boundaries", CountBreaks, muniInitGraphemeIterator);
     Run("word boundaries", CountBreaks, muniInitWordIterator);
     Run("sentence boundaries", CountBreaks, muniInitSentenceIterator);
+    Run("line breaks", CountBreaks, muniInitLineIterator);
     return 0;
 }
