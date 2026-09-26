@@ -57,7 +57,7 @@ def parameter_name(parameter):
 
 def declarations(lines, macro):
     """Yields (line number, doc lines, declaration text) for each API function."""
-    start_pattern = re.compile(r"^\s*" + macro + r"_API\b")
+    start_pattern = re.compile(r"^\s*(?:" + macro + r"_NODISCARD\s+)?" + macro + r"_API\b")
     i = 0
     while i < len(lines):
         if start_pattern.match(lines[i]):

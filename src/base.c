@@ -26,6 +26,20 @@ const char* muniResultName(muniResult result)
         return "muni_errorInvalid";
     case muni_errorCapacity:
         return "muni_errorCapacity";
+    case muni_errorUtf8Lead:
+        return "muni_errorUtf8Lead";
+    case muni_errorUtf8Continuation:
+        return "muni_errorUtf8Continuation";
+    case muni_errorUtf8Truncated:
+        return "muni_errorUtf8Truncated";
+    case muni_errorUtf8Overlong:
+        return "muni_errorUtf8Overlong";
+    case muni_errorUtf8Surrogate:
+        return "muni_errorUtf8Surrogate";
+    case muni_errorUtf8TooLarge:
+        return "muni_errorUtf8TooLarge";
+    case muni_errorUtf16Surrogate:
+        return "muni_errorUtf16Surrogate";
     default:
         return "unknown result";
     }

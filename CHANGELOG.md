@@ -27,3 +27,10 @@ format.
   `muniGetEastAsianWidth` (2,076), `muniGetBidiClass` (4,896),
   `muniGetCombiningClass` (2,221) and `muniGetScript` (14,201), which
   returns ISO 15924 tags built by `MUNI_SCRIPT`.
+- UTF-8, UTF-16 and UTF-32: `muniValidateUtf8` and `muniValidateUtf16`
+  with the kind and offset of the first error, `muniDecodeUtf8`,
+  `muniEncodeUtf8`, and conversions between the three in strict mode or
+  with U+FFFD for each maximal ill-formed subpart, as the Unicode
+  Standard recommends. Validation agrees with an independent reference
+  on every string of up to three bytes; a fuzz target checks that every
+  answer agrees with every other.

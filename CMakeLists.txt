@@ -23,6 +23,7 @@ option(MAUL_UNICODE_WERROR "Treat compiler warnings as errors" OFF)
 option(MAUL_UNICODE_SANITIZE "Instrument with AddressSanitizer and UBSan" OFF)
 option(MAUL_UNICODE_TSAN "Instrument with ThreadSanitizer" OFF)
 option(MAUL_UNICODE_COVERAGE "Instrument for gcov coverage" OFF)
+option(MAUL_UNICODE_FUZZ "Build the libFuzzer targets (Clang only)" OFF)
 
 # Every executable (tests, benchmarks, tools) lands in the top of the
 # build tree, so scripts and CI find them in one place.
@@ -42,6 +43,7 @@ else()
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/base.c
+    src/encoding.c
     src/generated/bidi_class.c
     src/generated/canonical_combining_class.c
     src/generated/east_asian_width.c
@@ -60,8 +62,20 @@ maul_configure_library(maul-unicode)
 if(MAUL_UNICODE_BUILD_TESTS)
     enable_testing()
     maul_add_test(base)
+    maul_add_test(encoding)
     maul_add_test(properties WHITEBOX)
     maul_add_header_tests()
+endif()
+
+# The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.
+if(MAUL_UNICODE_FUZZ)
+    foreach(area encoding)
+        add_executable(fuzz_${area} test/fuzz_${area}.c)
+        target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
+        maul_apply_flags(fuzz_${area})
+        target_compile_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined)
+        target_link_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined)
+    endforeach()
 endif()
 
 # The generator writes src/generated/ from tools/ucd/:

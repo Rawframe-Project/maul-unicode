@@ -68,6 +68,24 @@ extern "C"
         muni_errorInvalid = -1,
         // A caller buffer or a named limit is too small for the result.
         muni_errorCapacity = -2,
+        // UTF-8: a byte that cannot start a sequence (a continuation byte,
+        // or 0xF8 to 0xFF).
+        muni_errorUtf8Lead = -3,
+        // UTF-8: a lead byte not followed by the continuation bytes it
+        // needs.
+        muni_errorUtf8Continuation = -4,
+        // UTF-8: a sequence cut short by the end of the input. When text
+        // arrives in pieces, the next piece may complete it.
+        muni_errorUtf8Truncated = -5,
+        // UTF-8: an overlong form, a code point encoded in more bytes
+        // than it needs.
+        muni_errorUtf8Overlong = -6,
+        // UTF-8: an encoded surrogate, U+D800 to U+DFFF.
+        muni_errorUtf8Surrogate = -7,
+        // UTF-8: a value past U+10FFFF.
+        muni_errorUtf8TooLarge = -8,
+        // UTF-16: a surrogate that is not half of a pair.
+        muni_errorUtf16Surrogate = -9,
     };
 
     // A library or Unicode version: major, minor and patch.

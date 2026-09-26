@@ -224,7 +224,9 @@ em dash, `/* */` comments); review (content).
 ## 8. Errors and assertions
 
 - A function that can fail returns a status from its library's closed
-  result enum, marked `PP_NODISCARD`. What it produces goes through
+  result enum, marked `PP_NODISCARD`, which comes first in the
+  declaration (`PP_NODISCARD PP_API ...`) because C++ accepts a standard
+  attribute only there. What it produces goes through
   out-parameters. Where the position of a failure matters (validation,
   decoding, parsing of external bytes) it returns a small result struct
   holding the status and the byte offset.
