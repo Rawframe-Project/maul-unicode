@@ -269,6 +269,67 @@ static void TestLineBreaks(void)
           "after the space");
 }
 
+// "Hello" in Thai, two words: U+0E2A U+0E27 U+0E31 U+0E2A U+0E14 U+0E35
+// (18 bytes), then U+0E04 U+0E23 U+0E31 U+0E1A (12 bytes). U+0E31 and
+// U+0E35 are combining vowels.
+static const char s_thai[] = "\xE0\xB8\xAA\xE0\xB8\xA7\xE0\xB8\xB1\xE0\xB8\xAA\xE0\xB8\x94"
+                             "\xE0\xB8\xB5\xE0\xB8\x84\xE0\xB8\xA3\xE0\xB8\xB1\xE0\xB8\x9A";
+
+// A toy dictionary: its context lists the breaks of the run.
+static size_t ToyBreaker(void* context, const char* run, size_t length, size_t from)
+{
+    (void)run;
+    for (const size_t* stop = context; *stop != 0; stop++)
+    {
+        if (*stop > from && *stop < length)
+        {
+            return *stop;
+        }
+    }
+    return length;
+}
+
+static size_t CollectBreaks(muniSegmentIterator* iterator, size_t* offsets)
+{
+    size_t count = 0;
+    size_t offset;
+    while (count < 16 && muniNextSegmentBreak(iterator, &offset) == muni_success)
+    {
+        offsets[count++] = offset;
+    }
+    return count;
+}
+
+static void TestComplexBreaker(void)
+{
+    static const size_t words[] = {18, 0};
+    // 6 lies before the combining vowel U+0E31, which no break may split.
+    static const size_t badStop[] = {6, 18, 0};
+    size_t offsets[16];
+    muniSegmentIterator iterator;
+    CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+          "a line iterator takes a breaker");
+    CHECK(CollectBreaks(&iterator, offsets) == 2 && offsets[0] == 18 && offsets[1] == 30,
+          "line breaks between Thai words");
+    CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)badStop) == muni_success,
+          "a word iterator takes a breaker");
+    CHECK(CollectBreaks(&iterator, offsets) == 2 && offsets[0] == 18 && offsets[1] == 30,
+          "whole Thai words, no break before a mark");
+    CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 7,
+          "without a breaker, one word per cluster");
+    CHECK(muniInitGraphemeIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+          "grapheme iterators take no breaker");
+    size_t offset;
+    CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+          "no breaker after the first break");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -292,6 +353,7 @@ int main(void)
     TestGraphemeEdges();
     TestWordAndSentence();
     TestLineBreaks();
+    TestComplexBreaker();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

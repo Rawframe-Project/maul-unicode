@@ -43,6 +43,7 @@ else()
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/base.c
+    src/complex.c
     src/cursor.c
     src/encoding.c
     src/generated/bidi_class.c

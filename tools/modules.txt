@@ -1,13 +1,14 @@
 # The internal module graph (docs/conventions.md, section 6): each module
 # and the modules it may use. tools/check_modules.py enforces it.
 base:
+complex: encoding segmenter tables
 cursor: encoding
 encoding:
 grapheme: segmenter tables
-line: segmenter tables
+line: complex segmenter tables
 properties: tables
 segment: segmenter
 segmenter: cursor
 sentence: segmenter tables
 tables:
-word: segmenter tables
+word: complex segmenter tables

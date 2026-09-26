@@ -22,8 +22,8 @@ and results are identical on every platform.
 
 ## Status
 
-Early development. The algorithms arrive in this order; the first
-three are done, and line breaking has its default rules:
+Early development. The algorithms arrive in this order; the first four
+are done:
 
 1. The table generator and character properties.
 2. UTF-8 validation and conversion.

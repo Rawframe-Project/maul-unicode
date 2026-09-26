@@ -51,5 +51,9 @@ format.
   ahead (LB15b, LB15c, LB19a, LB25 and LB28a) hold the boundary like
   the segmentation rules. Passes all 19,346 cases of LineBreakTest.txt
   whole, through the iterator and fed one byte at a time.
+- `muniSetComplexBreaker`: a caller's word segmenter for Thai, Lao,
+  Khmer and Burmese (muni-0005). Line and word iterators hand it each
+  run of SA text in the current piece; its breaks replace the default
+  ones inside the run, never before a combining mark.
 - `bench/bench_main.c`: validation, segmentation and line breaking
-  throughput.
+  throughput, through iterators and the array conveniences.

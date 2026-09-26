@@ -50,10 +50,47 @@ static size_t CountBreaks(InitFn init)
     return count;
 }
 
+typedef muniResult (*FindFn)(const char*, size_t, size_t*, size_t, size_t*);
+
+// The array conveniences, measured through their count: with no room for
+// offsets they still find every boundary.
+static size_t CountFound(FindFn find)
+{
+    size_t count = 0;
+    (void)find(s_text, TEXT_BYTES, nullptr, 0, &count);
+    return count;
+}
+
 static size_t Validate(InitFn unused)
 {
     (void)unused;
     return muniValidateUtf8(s_text, TEXT_BYTES).offset;
+}
+
+static void Report(const char* name, double best, size_t result)
+{
+    double mib = (double)TEXT_BYTES / (1024.0 * 1024.0);
+    printf("%-26s %9.1f MiB/s  (%zu)\n", name, mib / best, result);
+}
+
+static void RunFind(const char* name, FindFn find)
+{
+    double best = 1e30;
+    size_t result = 0;
+    for (int run = 0; run < 5; run++)
+    {
+        double start = Seconds();
+        result = CountFound(find);
+        double elapsed = Seconds() - start;
+        best = elapsed < best ? elapsed : best;
+    }
+    Report(name, best, result);
+}
+
+static muniResult FindLines(const char* text, size_t length, size_t* offsets, size_t capacity,
+                            size_t* countOut)
+{
+    return muniFindLineBreaks(text, length, offsets, nullptr, capacity, countOut);
 }
 
 static void Run(const char* name, size_t (*work)(InitFn), InitFn init)
@@ -67,8 +104,7 @@ static void Run(const char* name, size_t (*work)(InitFn), InitFn init)
         double elapsed = Seconds() - start;
         best = elapsed < best ? elapsed : best;
     }
-    double mib = (double)TEXT_BYTES / (1024.0 * 1024.0);
-    printf("%-22s %9.1f MiB/s  (%zu)\n", name, mib / best, result);
+    Report(name, best, result);
 }
 
 int main(void)
@@ -86,5 +122,9 @@ int main(void)
     Run("word boundaries", CountBreaks, muniInitWordIterator);
     Run("sentence boundaries", CountBreaks, muniInitSentenceIterator);
     Run("line breaks", CountBreaks, muniInitLineIterator);
+    RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
+    RunFind("word boundaries, find", muniFindWordBreaks);
+    RunFind("sentence boundaries, find", muniFindSentenceBreaks);
+    RunFind("line breaks, find", FindLines);
     return 0;
 }

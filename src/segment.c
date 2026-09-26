@@ -63,6 +63,25 @@ muniResult muniInitLineIterator(muniSegmentIterator* iterator, const char* text,
     return Init(iterator, muni_segmentLine, text, length, moreFollows);
 }
 
+muniResult muniSetComplexBreaker(muniSegmentIterator* iterator, muniComplexBreakFn breaker,
+                                 void* context)
+{
+    if (iterator == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    bool supported = segmenter.kind == muni_segmentLine || segmenter.kind == muni_segmentWord;
+    if (!supported || segmenter.started || segmenter.waiting)
+    {
+        return muni_errorInvalid;
+    }
+    segmenter.complex.breaker = breaker;
+    segmenter.complex.context = context;
+    Store(iterator, &segmenter);
+    return muni_success;
+}
+
 muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* text, size_t length,
                                    bool moreFollows)
 {

@@ -79,6 +79,33 @@ static size_t Chunked(InitFn init, const char* text, size_t length, size_t piece
     }
 }
 
+// A breaker that answers anything, in or out of range, the same way for
+// the same run and offset.
+static size_t WildBreaker(void* context, const char* run, size_t length, size_t from)
+{
+    (void)context;
+    uint8_t byte = from < length ? (uint8_t)run[from] : 0;
+    return from + (size_t)(byte % 11) - 2;
+}
+
+// With a breaker, over the whole text: boundaries still rise, fall on
+// code point starts and end at the length.
+static void CheckBreaker(InitFn init, const char* text, size_t length)
+{
+    muniSegmentIterator iterator;
+    Require(init(&iterator, text, length, false) == muni_success);
+    Require(muniSetComplexBreaker(&iterator, WildBreaker, nullptr) == muni_success);
+    size_t previous = 0;
+    size_t offset = 0;
+    muniResult status;
+    while ((status = muniNextSegmentBreak(&iterator, &offset)) == muni_success)
+    {
+        Require(offset > previous && StartsCodePoint(text, length, offset));
+        previous = offset;
+    }
+    Require(status == muni_done && previous == length);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -107,5 +134,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     Require(Chunked(inits[kind], text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+    if (kind == 1 || kind == 3)
+    {
+        CheckBreaker(inits[kind], text, length);
+    }
     return 0;
 }

@@ -87,9 +87,22 @@ typedef struct muniLineRules
     bool oddRegional;           // an odd number of regional indicators precedes
 } muniLineRules;
 
+// A run of Thai, Lao, Khmer or Burmese (Line_Break=SA) that a caller's
+// breaker segments (muni-0005). The run lies in the current piece.
+typedef struct muniComplexRun
+{
+    muniComplexBreakFn breaker; // NULL when the caller set none
+    void* context;              // the breaker's context
+    const uint8_t* text;        // the run, or NULL outside a run
+    size_t start;               // its offset in the whole text
+    size_t length;              // its length in bytes
+    size_t next;                // the next break in it, relative to start
+} muniComplexRun;
+
 typedef struct muniSegmenter
 {
     muniCursor cursor;
+    muniComplexRun complex;
     size_t heldOffset; // the offset of the undecided boundary
     uint8_t kind;      // a muni_segment value
     bool started;      // a code point has been read

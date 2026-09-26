@@ -14,6 +14,7 @@
 // infix separator, LB25 one or two past an opening punctuation after a
 // prefix or postfix, and LB28a one past an aksara.
 
+#include "complex.h"
 #include "segmenter.h"
 #include "tables.h"
 
@@ -346,6 +347,10 @@ static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32
     {
         return decision;
     }
+    if (muniComplexBreakAt(segmenter) == muni_complexBreak && !In(value, Marks))
+    {
+        return muni_decideBreak; // a break the caller's SA segmenter found
+    }
     if (In(value, Marks))
     {
         if (!In(state->previous, NoBase))
@@ -415,6 +420,7 @@ static uint8_t NextNumber(uint8_t number, uint8_t value)
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     muniLineRules* state = &segmenter->rules.line;
+    muniComplexTrack(segmenter, codePoint);
     bool folded = In(value, Marks) && segmenter->started && !In(state->previous, NoBase);
     state->actual = value;
     if (folded)

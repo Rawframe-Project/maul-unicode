@@ -9,6 +9,7 @@
 // and WB12 (the same for numbers). Those hold the boundary before the
 // middle code point until the next code point after rule WB4 is seen.
 
+#include "complex.h"
 #include "segmenter.h"
 #include "tables.h"
 
@@ -127,6 +128,14 @@ static muniDecision DecideNumbers(const muniWordRules* state, uint8_t value)
 static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     const muniWordRules* state = &segmenter->rules.word;
+    muniComplexAnswer complex = muniComplexBreakAt(segmenter);
+    if (complex != muni_complexNone)
+    {
+        // Inside an SA run the caller's segmenter replaces the rules,
+        // except that WB4 keeps marks with their letters.
+        return complex == muni_complexBreak && !In(value, Ignored) ? muni_decideBreak
+                                                                   : muni_decideJoin;
+    }
     muniDecision decision = DecideAdjacent(state, value, codePoint);
     if (decision == muni_decideContinue)
     {
@@ -170,8 +179,8 @@ static muniDecision Resolve(const muniSegmenter* segmenter, uint8_t value, uint3
 
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
-    (void)codePoint;
     muniWordRules* state = &segmenter->rules.word;
+    muniComplexTrack(segmenter, codePoint);
     // WB4 skips Extend, Format and ZWJ, except at the start and after a
     // newline, where they count as themselves.
     bool skipped = In(value, Ignored) && segmenter->started && !In(state->actual, Newlines);

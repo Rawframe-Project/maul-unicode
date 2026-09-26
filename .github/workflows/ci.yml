@@ -99,6 +99,10 @@ jobs:
         run: |
           for target in build/fuzz_*; do
             mkdir -p "corpus-$(basename $target)"
+            # Seeds reach inputs random bytes rarely form, like Thai text.
+            if [ -d "test/seeds/$(basename $target)" ]; then
+              cp test/seeds/"$(basename $target)"/* "corpus-$(basename $target)"/
+            fi
             "$target" -max_total_time=60 -max_len=256 "corpus-$(basename $target)"
           done
 

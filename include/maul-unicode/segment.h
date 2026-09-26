@@ -37,8 +37,17 @@ extern "C"
     // cleanup.
     typedef struct muniSegmentIterator
     {
-        uint64_t opaque[10];
+        uint64_t opaque[16];
     } muniSegmentIterator;
+
+    // A caller's word segmenter for Thai, Lao, Khmer and Burmese, which
+    // write words without spaces (Line_Break=SA). It receives a maximal
+    // run of SA text as UTF-8 and a byte offset from inside it, and
+    // returns the byte offset of the first break between words after
+    // from, or length when there is none. It must return the same answer
+    // for the same run and offset each time it is asked.
+    typedef size_t (*muniComplexBreakFn)(void* context, const char* run, size_t length,
+                                         size_t from);
 
     /// Starts an iterator over the grapheme cluster boundaries of a UTF-8 text or
     /// its first piece.
@@ -88,7 +97,8 @@ extern "C"
     /// Starts an iterator over the line break opportunities of a UTF-8
     /// text or its first piece, with the default rules of UAX #14.
     /// Thai, Lao, Khmer and Burmese letters (class SA) are resolved as rule
-    /// LB1 says without a dictionary: no opportunities between them.
+    /// LB1 says without a dictionary, with no opportunities between them,
+    /// unless muniSetComplexBreaker supplies a word segmenter.
     ///
     /// @param iterator     The iterator to initialize.
     /// @param text         The text. May be NULL when length is 0.
@@ -101,6 +111,27 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniInitLineIterator(muniSegmentIterator* iterator,
                                                             const char* text, size_t length,
                                                             bool moreFollows);
+
+    /// Sets the word segmenter a line or word iterator hands runs of SA
+    /// text to. Inside such a run its breaks replace the default ones:
+    /// line breaking then allows a break between words, and word
+    /// segmentation finds whole words instead of single letters. A break
+    /// before a combining mark is ignored. A run lies within one piece of
+    /// text; a piece boundary inside a run hands the run over in parts.
+    /// Without a segmenter, SA text follows rule LB1 of UAX #14 and the
+    /// default word rules.
+    ///
+    /// @param iterator  A line or word iterator not yet asked for a break.
+    /// @param breaker   The segmenter, or NULL for the default rules.
+    /// @param context   Passed to the segmenter unchanged.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
+    ///         another kind of iterator or one already started.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time,
+    /// and calls the segmenter on that thread.
+    MUNI_NODISCARD MUNI_API muniResult muniSetComplexBreaker(muniSegmentIterator* iterator,
+                                                             muniComplexBreakFn breaker,
+                                                             void* context);
 
     /// Hands an iterator the next piece of its text, after it returned
     /// muni_needMoreText. The iterator keeps no pointer to earlier pieces.
