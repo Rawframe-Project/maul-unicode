@@ -58,7 +58,10 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/generated/sentence_break.c
     src/generated/word_break.c
     src/grapheme.c
-    src/properties.c)
+    src/properties.c
+    src/segment.c
+    src/sentence.c
+    src/word.c)
 maul_configure_library(maul-unicode)
 
 if(MAUL_UNICODE_BUILD_TESTS)

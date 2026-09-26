@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// libFuzzer target for segmentation. The first input byte picks a piece
-// size; the rest is the text. Feeding the text in pieces must give exactly
-// the boundaries the whole text gives, and those must rise strictly, fall
-// on code point starts and end at the length of the text.
+// libFuzzer target for segmentation. The first input byte picks the kind
+// and a piece size; the rest is the text. Feeding the text in pieces must
+// give exactly the boundaries the whole text gives, and those must rise
+// strictly, fall on code point starts and end at the length of the text.
+// Word and sentence boundaries need not be grapheme boundaries: the
+// UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
+// to grapheme clusters) when punctuation follows, for example.
 
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/segment.h"
@@ -36,16 +39,19 @@ static bool StartsCodePoint(const char* text, size_t length, size_t offset)
     return position == offset;
 }
 
-static size_t Chunked(const char* text, size_t length, size_t piece, size_t* breaks)
+typedef muniResult (*InitFn)(muniSegmentIterator*, const char*, size_t, bool);
+typedef muniResult (*FindFn)(const char*, size_t, size_t*, size_t, size_t*);
+
+static size_t Chunked(InitFn init, const char* text, size_t length, size_t piece, size_t* breaks)
 {
     size_t fed = piece < length ? piece : length;
-    muniGraphemeIterator iterator;
-    Require(muniInitGraphemeIterator(&iterator, text, fed, fed < length) == muni_success);
+    muniSegmentIterator iterator;
+    Require(init(&iterator, text, fed, fed < length) == muni_success);
     size_t count = 0;
     for (;;)
     {
         size_t offset;
-        muniResult status = muniNextGraphemeBreak(&iterator, &offset);
+        muniResult status = muniNextSegmentBreak(&iterator, &offset);
         if (status == muni_success)
         {
             Require(count < MAX_BREAKS);
@@ -55,7 +61,7 @@ static size_t Chunked(const char* text, size_t length, size_t piece, size_t* bre
         {
             Require(fed < length);
             size_t next = length - fed < piece ? length - fed : piece;
-            Require(muniFeedGraphemeIterator(&iterator, text + fed, next, fed + next < length) ==
+            Require(muniFeedSegmentIterator(&iterator, text + fed, next, fed + next < length) ==
                     muni_success);
             fed += next;
         }
@@ -71,24 +77,29 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
+    static const InitFn inits[3] = {muniInitGraphemeIterator, muniInitWordIterator,
+                                    muniInitSentenceIterator};
+    static const FindFn finds[3] = {muniFindGraphemeBreaks, muniFindWordBreaks,
+                                    muniFindSentenceBreaks};
     if (size == 0 || size > MAX_BREAKS)
     {
         return 0;
     }
+    size_t kind = (size_t)(data[0] >> 4) % 3;
     size_t piece = (size_t)(data[0] % 8) + 1;
     const char* text = (const char*)data + 1;
     size_t length = size - 1;
     static size_t whole[MAX_BREAKS];
     static size_t pieces[MAX_BREAKS];
     size_t count = 0;
-    Require(muniFindGraphemeBreaks(text, length, whole, MAX_BREAKS, &count) == muni_success);
+    Require(finds[kind](text, length, whole, MAX_BREAKS, &count) == muni_success);
     Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
     for (size_t i = 0; i < count; i++)
     {
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(text, length, piece, pieces) == count);
+    Require(Chunked(inits[kind], text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
     return 0;
 }

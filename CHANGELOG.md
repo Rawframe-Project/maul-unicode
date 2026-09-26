@@ -34,10 +34,15 @@ format.
   Standard recommends. Validation agrees with an independent reference
   on every string of up to three bytes; a fuzz target checks that every
   answer agrees with every other.
-- Grapheme cluster boundaries (UAX #29): `muniFindGraphemeBreaks` into a
-  caller array, and `muniGraphemeIterator`, a 64-byte iterator the
-  caller keeps on the stack, which takes text in pieces cut anywhere,
-  even inside a UTF-8 sequence, and asks for the next piece with
-  `muni_needMoreText`. Passes all 853 cases of GraphemeBreakTest.txt
-  whole, through the iterator and fed one byte at a time; a fuzz target
-  checks that pieces give the boundaries the whole text gives.
+- Grapheme cluster, word and sentence boundaries (UAX #29):
+  `muniFindGraphemeBreaks`, `muniFindWordBreaks` and
+  `muniFindSentenceBreaks` into a caller array, and
+  `muniSegmentIterator`, a 64-byte iterator the caller keeps on the
+  stack, which takes text in pieces cut anywhere, even inside a UTF-8
+  sequence, and asks for the next piece with `muni_needMoreText`. Rules
+  that look ahead (WB6, WB7b, WB12 and SB8) hold the boundary without
+  buffering text. Passes every case of GraphemeBreakTest.txt (853),
+  WordBreakTest.txt (1,944) and SentenceBreakTest.txt (512) whole,
+  through the iterator and fed one byte at a time; a fuzz target checks
+  that pieces give the boundaries the whole text gives.
+- `bench/bench_main.c`: validation and segmentation throughput.

@@ -77,44 +77,54 @@ static int SameBreaks(const size_t* found, size_t foundCount, const Case* expect
            memcmp(found, expected->breaks, foundCount * sizeof(size_t)) == 0;
 }
 
-static int RunGraphemeWhole(const Case* c)
+typedef muniResult (*InitFn)(muniSegmentIterator*, const char*, size_t, bool);
+
+// A segmentation kind: its conformance file and its functions.
+typedef struct Kind
+{
+    const char* file;
+    InitFn init;
+    FindFn find;
+} Kind;
+
+static int RunWhole(const Kind* kind, const Case* c)
 {
     size_t found[MAX_BREAKS];
     size_t count = 0;
-    muniGraphemeIterator iterator;
-    if (muniInitGraphemeIterator(&iterator, c->text, c->length, false) != muni_success)
+    muniSegmentIterator iterator;
+    if (kind->init(&iterator, c->text, c->length, false) != muni_success)
     {
         return 0;
     }
     size_t offset;
-    while (count < MAX_BREAKS && muniNextGraphemeBreak(&iterator, &offset) == muni_success)
+    while (count < MAX_BREAKS && muniNextSegmentBreak(&iterator, &offset) == muni_success)
     {
         found[count++] = offset;
     }
     return SameBreaks(found, count, c);
 }
 
-static int RunGraphemeBytewise(const Case* c)
+static int RunBytewise(const Kind* kind, const Case* c)
 {
     size_t found[MAX_BREAKS];
     size_t count = 0;
-    muniGraphemeIterator iterator;
+    muniSegmentIterator iterator;
     size_t fed = c->length > 0 ? 1 : 0;
-    if (muniInitGraphemeIterator(&iterator, c->text, fed, fed < c->length) != muni_success)
+    if (kind->init(&iterator, c->text, fed, fed < c->length) != muni_success)
     {
         return 0;
     }
     for (;;)
     {
         size_t offset;
-        muniResult status = muniNextGraphemeBreak(&iterator, &offset);
+        muniResult status = muniNextSegmentBreak(&iterator, &offset);
         if (status == muni_success && count < MAX_BREAKS)
         {
             found[count++] = offset;
         }
         else if (status == muni_needMoreText)
         {
-            if (muniFeedGraphemeIterator(&iterator, c->text + fed, 1, fed + 1 < c->length) !=
+            if (muniFeedSegmentIterator(&iterator, c->text + fed, 1, fed + 1 < c->length) !=
                 muni_success)
             {
                 return 0;
@@ -129,29 +139,27 @@ static int RunGraphemeBytewise(const Case* c)
     return SameBreaks(found, count, c);
 }
 
-static int RunFind(FindFn find, const Case* c)
+static int RunFind(const Kind* kind, const Case* c)
 {
     size_t found[MAX_BREAKS];
     size_t count = 0;
-    if (find(c->text, c->length, found, MAX_BREAKS, &count) != muni_success)
+    if (kind->find(c->text, c->length, found, MAX_BREAKS, &count) != muni_success)
     {
         return 0;
     }
     return SameBreaks(found, count, c);
 }
 
-// Runs every case of a conformance file; returns the number of cases.
-static int RunFile(const char* name, FindFn find, int (*whole)(const Case*),
-                   int (*bytewise)(const Case*), int* failuresOut)
+// Runs every case of a conformance file three ways.
+static void RunConformance(const Kind* kind, int minimumCases)
 {
     char path[1024];
-    snprintf(path, sizeof(path), "%s/%s", MUNI_TEST_DATA, name);
+    snprintf(path, sizeof(path), "%s/%s", MUNI_TEST_DATA, kind->file);
     FILE* file = fopen(path, "r");
+    CHECK(file != nullptr, "the conformance file opens");
     if (file == nullptr)
     {
-        printf("cannot open %s\n", path);
-        *failuresOut = 1;
-        return 0;
+        return;
     }
     char line[4096];
     int cases = 0;
@@ -166,25 +174,28 @@ static int RunFile(const char* name, FindFn find, int (*whole)(const Case*),
             continue;
         }
         cases += 1;
-        int ok = RunFind(find, &c) && whole(&c) && bytewise(&c);
+        int ok = RunFind(kind, &c) && RunWhole(kind, &c) && RunBytewise(kind, &c);
         if (!ok && failures < 10)
         {
-            printf("%s:%d: %s", name, lineNumber, line);
+            printf("%s:%d: %s", kind->file, lineNumber, line);
         }
         failures += ok ? 0 : 1;
     }
     fclose(file);
-    *failuresOut = failures;
-    return cases;
+    printf("%s: %d cases, %d failures\n", kind->file, cases, failures);
+    CHECK(cases >= minimumCases && failures == 0, "every conformance case");
 }
 
-static void TestGraphemeConformance(void)
+static void TestConformance(void)
 {
-    int failures = 0;
-    int cases = RunFile("GraphemeBreakTest.txt", muniFindGraphemeBreaks, RunGraphemeWhole,
-                        RunGraphemeBytewise, &failures);
-    printf("GraphemeBreakTest.txt: %d cases, %d failures\n", cases, failures);
-    CHECK(cases > 500 && failures == 0, "every grapheme conformance case");
+    static const Kind grapheme = {"GraphemeBreakTest.txt", muniInitGraphemeIterator,
+                                  muniFindGraphemeBreaks};
+    static const Kind word = {"WordBreakTest.txt", muniInitWordIterator, muniFindWordBreaks};
+    static const Kind sentence = {"SentenceBreakTest.txt", muniInitSentenceIterator,
+                                  muniFindSentenceBreaks};
+    RunConformance(&grapheme, 800);
+    RunConformance(&word, 1800);
+    RunConformance(&sentence, 500);
 }
 
 static void TestGraphemeEdges(void)
@@ -206,9 +217,45 @@ static void TestGraphemeEdges(void)
           "ill-formed bytes");
 }
 
+static void TestWordAndSentence(void)
+{
+    size_t offsets[16];
+    size_t count = 0;
+    // "can't", ",", " ", "3.14", ".": the apostrophe and the decimal
+    // point hold until the next code point shows they join.
+    const char words[] = "can't, 3.14.";
+    CHECK(muniFindWordBreaks(words, 12, offsets, 16, &count) == muni_success && count == 5 &&
+              offsets[0] == 5 && offsets[3] == 11 && offsets[4] == 12,
+          "word boundaries around an apostrophe and a decimal point");
+    // SB8: after "etc." a lowercase word continues the sentence.
+    const char sentences[] = "See etc. and more. Next";
+    CHECK(muniFindSentenceBreaks(sentences, 23, offsets, 16, &count) == muni_success &&
+              count == 2 && offsets[0] == 19 && offsets[1] == 23,
+          "an abbreviation does not end the sentence");
+}
+
+static void TestFeedingRules(void)
+{
+    muniSegmentIterator iterator;
+    size_t offset;
+    CHECK(muniInitWordIterator(&iterator, "ab", 2, false) == muni_success, "init");
+    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorInvalid,
+          "no piece was announced");
+    CHECK(muniInitWordIterator(&iterator, "ab", 2, true) == muni_success, "init with more");
+    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorInvalid,
+          "a piece before the iterator asked");
+    CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText, "the word may go on");
+    CHECK(muniFeedSegmentIterator(&iterator, " d", 2, false) == muni_success, "feed");
+    CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_success && offset == 2, "after ab");
+    muniSegmentIterator zeroed = {{0}};
+    CHECK(muniNextSegmentBreak(&zeroed, &offset) == muni_errorInvalid, "never initialized");
+}
+
 int main(void)
 {
-    TestGraphemeConformance();
+    TestConformance();
     TestGraphemeEdges();
+    TestWordAndSentence();
+    TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

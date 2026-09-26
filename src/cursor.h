@@ -9,6 +9,8 @@
 #ifndef MAUL_UNICODE_SRC_CURSOR_H
 #define MAUL_UNICODE_SRC_CURSOR_H
 
+#include "encoding.h"
+
 #include "maul-unicode/base.h"
 
 typedef struct muniCursor
@@ -25,17 +27,43 @@ typedef struct muniCursor
 void muniCursorInit(muniCursor* cursor, const char* text, size_t length, bool moreFollows);
 
 // Hands the cursor its next piece. Bytes still unread in the current
-// piece are kept as pending; there are at most three.
-void muniCursorFeed(muniCursor* cursor, const char* text, size_t length, bool moreFollows);
+// piece are kept as pending. Returns false, changing nothing, when no
+// piece was announced or when more than a cut-off sequence is unread,
+// which happens only when the caller feeds before muni_needMoreText.
+bool muniCursorFeed(muniCursor* cursor, const char* text, size_t length, bool moreFollows);
+
+// The slow paths of muniCursorPeek and muniCursorAdvance: bytes pending
+// from an earlier piece, or fewer than four left in this one.
+muniResult muniCursorPeekSlow(const muniCursor* cursor, uint32_t* codePointOut, size_t* sizeOut);
+void muniCursorAdvanceSlow(muniCursor* cursor, size_t size);
 
 // Decodes the next code point without consuming it. Returns muni_success
 // with the code point and its size in bytes, muni_done at the end of the
 // whole text, or muni_needMoreText when the piece ends before the code
 // point does and more pieces will come. An ill-formed sequence decodes as
 // U+FFFD over its maximal subpart.
-muniResult muniCursorPeek(const muniCursor* cursor, uint32_t* codePointOut, size_t* sizeOut);
+static inline muniResult muniCursorPeek(const muniCursor* cursor, uint32_t* codePointOut,
+                                        size_t* sizeOut)
+{
+    size_t remaining = cursor->length - cursor->position;
+    if (cursor->pendingCount == 0 && remaining >= 4)
+    {
+        (void)muniStepUtf8(cursor->text + cursor->position, remaining, codePointOut, sizeOut);
+        return muni_success;
+    }
+    return muniCursorPeekSlow(cursor, codePointOut, sizeOut);
+}
 
 // Consumes the code point the last successful peek decoded.
-void muniCursorAdvance(muniCursor* cursor, size_t size);
+static inline void muniCursorAdvance(muniCursor* cursor, size_t size)
+{
+    if (cursor->pendingCount == 0)
+    {
+        cursor->offset += size;
+        cursor->position += size;
+        return;
+    }
+    muniCursorAdvanceSlow(cursor, size);
+}
 
 #endif // MAUL_UNICODE_SRC_CURSOR_H

@@ -3,17 +3,22 @@
 //
 // Text segmentation (UAX #29): the boundaries of grapheme clusters, the
 // units a user perceives as one character, which caret movement,
-// selection and backspace must never split.
+// selection and backspace must never split; of words, for double-click
+// selection, word movement and search; and of sentences.
 //
 // An iterator walks UTF-8 text and reports each boundary after the start
 // of the text, the last one being the end of the text; empty text has
 // none. Offsets are in bytes from the start of the whole text. Each
-// maximal ill-formed UTF-8 subpart counts as one U+FFFD.
+// maximal ill-formed UTF-8 subpart counts as one U+FFFD. Word boundaries
+// are the positions UAX #29 defines; between two of them may lie a word,
+// a run of spaces or a punctuation mark, which the caller tells apart.
 //
 // Text may arrive in pieces. An iterator initialized with more text to
 // follow stops with muni_needMoreText when the next boundary depends on
-// text it has not seen; muniFeedGraphemeIterator hands it the next piece,
-// which may begin in the middle of a UTF-8 sequence.
+// text it has not seen; muniFeedSegmentIterator hands it the next piece,
+// which may begin in the middle of a UTF-8 sequence. Some rules look
+// ahead: a word boundary may wait for the next code point, and a
+// sentence boundary after an abbreviation's period for the next letter.
 
 #ifndef MAUL_UNICODE_SEGMENT_H
 #define MAUL_UNICODE_SEGMENT_H
@@ -25,15 +30,16 @@ extern "C"
 {
 #endif
 
-    // An iterator over grapheme cluster boundaries. Its contents are
-    // private; it is plain data the caller keeps anywhere, usually on the
-    // stack, and needs no cleanup.
-    typedef struct muniGraphemeIterator
+    // An iterator over grapheme cluster, word or sentence boundaries. Its
+    // contents are private; it is plain data the caller keeps anywhere,
+    // usually on the stack, and needs no cleanup.
+    typedef struct muniSegmentIterator
     {
         uint64_t opaque[8];
-    } muniGraphemeIterator;
+    } muniSegmentIterator;
 
-    /// Starts an iterator over a UTF-8 text or its first piece.
+    /// Starts an iterator over the grapheme cluster boundaries of a UTF-8 text or
+    /// its first piece.
     ///
     /// @param iterator     The iterator to initialize.
     /// @param text         The text. May be NULL when length is 0.
@@ -43,7 +49,37 @@ extern "C"
     ///         or a NULL text with a nonzero length.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult muniInitGraphemeIterator(muniGraphemeIterator* iterator,
+    MUNI_NODISCARD MUNI_API muniResult muniInitGraphemeIterator(muniSegmentIterator* iterator,
+                                                                const char* text, size_t length,
+                                                                bool moreFollows);
+
+    /// Starts an iterator over the word boundaries of a UTF-8 text or
+    /// its first piece.
+    ///
+    /// @param iterator     The iterator to initialize.
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param moreFollows  true when more pieces of the text will be fed.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator
+    ///         or a NULL text with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniInitWordIterator(muniSegmentIterator* iterator,
+                                                            const char* text, size_t length,
+                                                            bool moreFollows);
+
+    /// Starts an iterator over the sentence boundaries of a UTF-8 text or
+    /// its first piece.
+    ///
+    /// @param iterator     The iterator to initialize.
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param moreFollows  true when more pieces of the text will be fed.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator
+    ///         or a NULL text with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniInitSentenceIterator(muniSegmentIterator* iterator,
                                                                 const char* text, size_t length,
                                                                 bool moreFollows);
 
@@ -54,14 +90,16 @@ extern "C"
     /// @param text         The next piece. May be NULL when length is 0.
     /// @param length       The number of bytes.
     /// @param moreFollows  true when still more pieces will be fed.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument,
+    ///         an iterator never initialized, one initialized without more
+    ///         text to follow, or a piece fed before the iterator asked.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult muniFeedGraphemeIterator(muniGraphemeIterator* iterator,
-                                                                const char* text, size_t length,
-                                                                bool moreFollows);
+    MUNI_NODISCARD MUNI_API muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator,
+                                                               const char* text, size_t length,
+                                                               bool moreFollows);
 
-    /// Finds the next grapheme cluster boundary.
+    /// Finds the next boundary.
     ///
     /// @param iterator   The iterator.
     /// @param offsetOut  Receives the boundary's byte offset from the start
@@ -71,11 +109,11 @@ extern "C"
     ///         text not yet fed; `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult muniNextGraphemeBreak(muniGraphemeIterator* iterator,
-                                                             size_t* offsetOut);
+    MUNI_NODISCARD MUNI_API muniResult muniNextSegmentBreak(muniSegmentIterator* iterator,
+                                                            size_t* offsetOut);
 
-    /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a
-    /// caller array: every boundary after the start, the end included.
+    /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a caller
+    /// array: every boundary after the start, the end included.
     ///
     /// @param text         The text. May be NULL when length is 0.
     /// @param length       The number of bytes.
@@ -88,6 +126,40 @@ extern "C"
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindGraphemeBreaks(const char* text, size_t length,
+                                                              size_t* offsets, size_t capacity,
+                                                              size_t* countOut);
+
+    /// Writes the word boundaries of a whole UTF-8 text into a caller
+    /// array: every boundary after the start, the end included.
+    ///
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param offsets      The output. May be NULL when capacity is 0.
+    /// @param capacity     The number of offsets the output can hold.
+    /// @param countOut     Receives the number of boundaries, which may
+    ///                     exceed capacity; the ones that fit are written.
+    /// @return `muni_success`, `muni_errorCapacity` when they do not all
+    ///         fit, or `muni_errorInvalid` for a NULL argument.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniFindWordBreaks(const char* text, size_t length,
+                                                          size_t* offsets, size_t capacity,
+                                                          size_t* countOut);
+
+    /// Writes the sentence boundaries of a whole UTF-8 text into a caller
+    /// array: every boundary after the start, the end included.
+    ///
+    /// @param text         The text. May be NULL when length is 0.
+    /// @param length       The number of bytes.
+    /// @param offsets      The output. May be NULL when capacity is 0.
+    /// @param capacity     The number of offsets the output can hold.
+    /// @param countOut     Receives the number of boundaries, which may
+    ///                     exceed capacity; the ones that fit are written.
+    /// @return `muni_success`, `muni_errorCapacity` when they do not all
+    ///         fit, or `muni_errorInvalid` for a NULL argument.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniFindSentenceBreaks(const char* text, size_t length,
                                                               size_t* offsets, size_t capacity,
                                                               size_t* countOut);
 

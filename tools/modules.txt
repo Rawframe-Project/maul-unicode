@@ -3,6 +3,10 @@
 base:
 cursor: encoding
 encoding:
-grapheme: cursor tables
-tables:
+grapheme: segmenter tables
 properties: tables
+segment: segmenter
+segmenter: cursor
+sentence: segmenter tables
+tables:
+word: segmenter tables

@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Sirac Ozmen
+//
+// Throughput of validation and segmentation over a mixed text: English,
+// Turkish, Hindi, Japanese and emoji sequences, repeated to 4 MiB. Prints
+// the best of five runs in MiB per second.
+
+#include "maul-unicode/encoding.h"
+#include "maul-unicode/segment.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
+
+#define TEXT_BYTES (4u << 20)
+
+static char s_text[TEXT_BYTES];
+
+static const char s_sample[] =
+    "The quick brown fox can't jump 3.14 metres, etc. and so on. Next sentence! "
+    "\xC4\xB0stanbul'da ya\xC4\x9Fmur ya\xC4\x9F\xC4\xB1yor. "
+    "\xE0\xA4\xA8\xE0\xA4\xAE\xE0\xA4\xB8\xE0\xA5\x8D\xE0\xA4\xA4\xE0\xA5\x87 "
+    "\xE0\xA4\x95\xE0\xA5\x8D\xE0\xA4\xB7\xE0\xA4\xBF\xE0\xA4\xA4\xE0\xA4\xBF\xE0\xA5\xA4 "
+    "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E\xE3\x81\xAE\xE6\x96\x87\xE3\x80\x82 "
+    "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7 "
+    "\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7\n";
+
+static double Seconds(void)
+{
+    struct timespec now;
+    timespec_get(&now, TIME_UTC);
+    return (double)now.tv_sec + (double)now.tv_nsec * 1e-9;
+}
+
+typedef muniResult (*InitFn)(muniSegmentIterator*, const char*, size_t, bool);
+
+static size_t CountBreaks(InitFn init)
+{
+    muniSegmentIterator iterator;
+    if (init(&iterator, s_text, TEXT_BYTES, false) != muni_success)
+    {
+        return 0;
+    }
+    size_t count = 0;
+    size_t offset;
+    while (muniNextSegmentBreak(&iterator, &offset) == muni_success)
+    {
+        count += 1;
+    }
+    return count;
+}
+
+static size_t Validate(InitFn unused)
+{
+    (void)unused;
+    return muniValidateUtf8(s_text, TEXT_BYTES).offset;
+}
+
+static void Run(const char* name, size_t (*work)(InitFn), InitFn init)
+{
+    double best = 1e30;
+    size_t result = 0;
+    for (int run = 0; run < 5; run++)
+    {
+        double start = Seconds();
+        result = work(init);
+        double elapsed = Seconds() - start;
+        best = elapsed < best ? elapsed : best;
+    }
+    double mib = (double)TEXT_BYTES / (1024.0 * 1024.0);
+    printf("%-22s %9.1f MiB/s  (%zu)\n", name, mib / best, result);
+}
+
+int main(void)
+{
+    size_t sampleLength = sizeof(s_sample) - 1;
+    size_t filled = 0;
+    while (filled + sampleLength <= TEXT_BYTES)
+    {
+        memcpy(s_text + filled, s_sample, sampleLength);
+        filled += sampleLength;
+    }
+    memset(s_text + filled, ' ', TEXT_BYTES - filled);
+    Run("validate UTF-8", Validate, nullptr);
+    Run("grapheme boundaries", CountBreaks, muniInitGraphemeIterator);
+    Run("word boundaries", CountBreaks, muniInitWordIterator);
+    Run("sentence boundaries", CountBreaks, muniInitSentenceIterator);
+    return 0;
+}
