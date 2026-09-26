@@ -104,8 +104,70 @@ static void TestBreakPropertiesKnownValues(void)
     CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
 }
 
+static uint8_t LineBreak(uint32_t codePoint)
+{
+    return muniGetLineBreak(codePoint);
+}
+
+static uint8_t EastAsianWidth(uint32_t codePoint)
+{
+    return muniGetEastAsianWidth(codePoint);
+}
+
+static uint8_t BidiClass(uint32_t codePoint)
+{
+    return muniGetBidiClass(codePoint);
+}
+
+static uint8_t CombiningClass(uint32_t codePoint)
+{
+    return muniGetCombiningClass(codePoint);
+}
+
+static uint8_t ScriptIndex(uint32_t codePoint)
+{
+    return muniLookupScript(codePoint);
+}
+
+static void TestLayoutPropertiesMatchTheUcdEverywhere(void)
+{
+    CHECK(HashAll(LineBreak) == muniLineBreakHash, "Line_Break hash");
+    CHECK(HashAll(EastAsianWidth) == muniEastAsianWidthHash, "East_Asian_Width hash");
+    CHECK(HashAll(BidiClass) == muniBidiClassHash, "Bidi_Class hash");
+    CHECK(HashAll(CombiningClass) == muniCombiningClassHash, "Canonical_Combining_Class hash");
+    CHECK(HashAll(ScriptIndex) == muniScriptHash, "Script hash");
+}
+
+static void TestLayoutPropertiesKnownValues(void)
+{
+    CHECK(muniGetLineBreak(' ') == muni_lbSp, "space is SP");
+    CHECK(muniGetLineBreak('\n') == muni_lbLf, "LF");
+    CHECK(muniGetLineBreak(0x0E01) == muni_lbSa, "Thai U+0E01 is SA");
+    CHECK(muniGetLineBreak(0x4E00) == muni_lbId, "U+4E00 is ID");
+    CHECK(muniGetLineBreak('(') == muni_lbOp, "( is OP");
+    CHECK(muniGetEastAsianWidth('a') == muni_eawNarrow, "a is Narrow");
+    CHECK(muniGetEastAsianWidth(0x4E00) == muni_eawWide, "U+4E00 is Wide");
+    CHECK(muniGetEastAsianWidth(0xFF21) == muni_eawFullwidth, "U+FF21 is Fullwidth");
+    CHECK(muniGetBidiClass('a') == muni_bcL, "a is L");
+    CHECK(muniGetBidiClass(0x05D0) == muni_bcR, "U+05D0 is R");
+    CHECK(muniGetBidiClass(0x0627) == muni_bcAl, "U+0627 is AL");
+    CHECK(muniGetBidiClass('1') == muni_bcEn, "1 is EN");
+    CHECK(muniGetBidiClass(0x05FF) == muni_bcR, "unassigned U+05FF defaults to R");
+    CHECK(muniGetBidiClass(0x2067) == muni_bcRli, "U+2067 is RLI");
+    CHECK(muniGetCombiningClass(0x0301) == 230, "U+0301 has class 230");
+    CHECK(muniGetCombiningClass('a') == 0, "a has class 0");
+    CHECK(muniGetScript('a') == MUNI_SCRIPT('L', 'a', 't', 'n'), "a is Latin");
+    CHECK(muniGetScript(0x0627) == MUNI_SCRIPT('A', 'r', 'a', 'b'), "U+0627 is Arabic");
+    CHECK(muniGetScript(' ') == MUNI_SCRIPT_COMMON, "space is Common");
+    CHECK(muniGetScript(0x0301) == MUNI_SCRIPT_INHERITED, "U+0301 is Inherited");
+    CHECK(muniGetScript(0x0378) == MUNI_SCRIPT_UNKNOWN, "U+0378 is Unknown");
+    CHECK(muniGetScript(0x110000) == MUNI_SCRIPT_UNKNOWN, "past U+10FFFF is Unknown");
+}
+
 int main(void)
 {
+    TestLayoutPropertiesMatchTheUcdEverywhere();
+    TestLayoutPropertiesKnownValues();
     TestGeneralCategoryMatchesTheUcdEverywhere();
     TestGeneralCategoryKnownValues();
     TestBreakPropertiesMatchTheUcdEverywhere();

@@ -182,6 +182,163 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsExtendedPictographic(uint32_t codePoint);
 
+    // Line_Break (UAX #14), in the library's numbering; the comments give
+    // the long names.
+    typedef uint8_t muniLineBreak;
+
+    enum
+    {
+        muni_lbXx = 0,   // Unknown
+        muni_lbBk = 1,   // Mandatory_Break
+        muni_lbCr = 2,   // Carriage_Return
+        muni_lbLf = 3,   // Line_Feed
+        muni_lbCm = 4,   // Combining_Mark
+        muni_lbNl = 5,   // Next_Line
+        muni_lbSg = 6,   // Surrogate
+        muni_lbWj = 7,   // Word_Joiner
+        muni_lbZw = 8,   // ZWSpace
+        muni_lbGl = 9,   // Glue
+        muni_lbSp = 10,  // Space
+        muni_lbZwj = 11, // ZWJ
+        muni_lbB2 = 12,  // Break_Both
+        muni_lbBa = 13,  // Break_After
+        muni_lbBb = 14,  // Break_Before
+        muni_lbHy = 15,  // Hyphen
+        muni_lbCb = 16,  // Contingent_Break
+        muni_lbCl = 17,  // Close_Punctuation
+        muni_lbCp = 18,  // Close_Parenthesis
+        muni_lbEx = 19,  // Exclamation
+        muni_lbIn = 20,  // Inseparable
+        muni_lbNs = 21,  // Nonstarter
+        muni_lbOp = 22,  // Open_Punctuation
+        muni_lbQu = 23,  // Quotation
+        muni_lbIs = 24,  // Infix_Numeric
+        muni_lbNu = 25,  // Numeric
+        muni_lbPo = 26,  // Postfix_Numeric
+        muni_lbPr = 27,  // Prefix_Numeric
+        muni_lbSy = 28,  // Break_Symbols
+        muni_lbAi = 29,  // Ambiguous
+        muni_lbAl = 30,  // Alphabetic
+        muni_lbCj = 31,  // Conditional_Japanese_Starter
+        muni_lbEb = 32,  // E_Base
+        muni_lbEm = 33,  // E_Modifier
+        muni_lbH2 = 34,  // H2
+        muni_lbH3 = 35,  // H3
+        muni_lbHl = 36,  // Hebrew_Letter
+        muni_lbId = 37,  // Ideographic
+        muni_lbJl = 38,  // JL
+        muni_lbJv = 39,  // JV
+        muni_lbJt = 40,  // JT
+        muni_lbRi = 41,  // Regional_Indicator
+        muni_lbSa = 42,  // Complex_Context
+        muni_lbAk = 43,  // Aksara
+        muni_lbAp = 44,  // Aksara_Prebase
+        muni_lbAs = 45,  // Aksara_Start
+        muni_lbVf = 46,  // Virama_Final
+        muni_lbVi = 47,  // Virama
+        muni_lbHh = 48,  // Unambiguous_Hyphen
+    };
+
+    // East_Asian_Width (UAX #11), in the library's numbering.
+    typedef uint8_t muniEastAsianWidth;
+
+    enum
+    {
+        muni_eawNeutral = 0,
+        muni_eawAmbiguous = 1,
+        muni_eawHalfwidth = 2,
+        muni_eawWide = 3,
+        muni_eawFullwidth = 4,
+        muni_eawNarrow = 5,
+    };
+
+    // Bidi_Class (UAX #9), in the library's numbering; the comments give
+    // the long names.
+    typedef uint8_t muniBidiClass;
+
+    enum
+    {
+        muni_bcL = 0,    // Left_To_Right
+        muni_bcR = 1,    // Right_To_Left
+        muni_bcAl = 2,   // Arabic_Letter
+        muni_bcEn = 3,   // European_Number
+        muni_bcEs = 4,   // European_Separator
+        muni_bcEt = 5,   // European_Terminator
+        muni_bcAn = 6,   // Arabic_Number
+        muni_bcCs = 7,   // Common_Separator
+        muni_bcNsm = 8,  // Nonspacing_Mark
+        muni_bcBn = 9,   // Boundary_Neutral
+        muni_bcB = 10,   // Paragraph_Separator
+        muni_bcS = 11,   // Segment_Separator
+        muni_bcWs = 12,  // White_Space
+        muni_bcOn = 13,  // Other_Neutral
+        muni_bcLre = 14, // Left_To_Right_Embedding
+        muni_bcLro = 15, // Left_To_Right_Override
+        muni_bcRle = 16, // Right_To_Left_Embedding
+        muni_bcRlo = 17, // Right_To_Left_Override
+        muni_bcPdf = 18, // Pop_Directional_Format
+        muni_bcLri = 19, // Left_To_Right_Isolate
+        muni_bcRli = 20, // Right_To_Left_Isolate
+        muni_bcFsi = 21, // First_Strong_Isolate
+        muni_bcPdi = 22, // Pop_Directional_Isolate
+    };
+
+    // A script as its ISO 15924 tag: four ASCII letters, big-endian, so
+    // MUNI_SCRIPT('L', 'a', 't', 'n') is Latin. The same encoding as
+    // HarfBuzz's hb_script_t.
+    typedef uint32_t muniScript;
+
+#define MUNI_SCRIPT(a, b, c, d)                                                                    \
+    ((muniScript)(((uint32_t)(uint8_t)(a) << 24) | ((uint32_t)(uint8_t)(b) << 16) |                \
+                  ((uint32_t)(uint8_t)(c) << 8) | (uint32_t)(uint8_t)(d)))
+// Common, for characters used by several scripts.
+#define MUNI_SCRIPT_COMMON MUNI_SCRIPT('Z', 'y', 'y', 'y')
+// Inherited, for marks that take the script of their base.
+#define MUNI_SCRIPT_INHERITED MUNI_SCRIPT('Z', 'i', 'n', 'h')
+// Unknown, for unassigned code points.
+#define MUNI_SCRIPT_UNKNOWN MUNI_SCRIPT('Z', 'z', 'z', 'z')
+
+    /// Returns the Line_Break class of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Unknown (XX).
+    /// @return The class, one of the muni_lb values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniLineBreak muniGetLineBreak(uint32_t codePoint);
+
+    /// Returns the East_Asian_Width of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Neutral.
+    /// @return The width, one of the muni_eaw values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniEastAsianWidth muniGetEastAsianWidth(uint32_t codePoint);
+
+    /// Returns the Bidi_Class of a code point, with the UCD's defaults for
+    /// unassigned code points in right-to-left blocks.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Left_To_Right.
+    /// @return The class, one of the muni_bc values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniBidiClass muniGetBidiClass(uint32_t codePoint);
+
+    /// Returns the Canonical_Combining_Class of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has class 0.
+    /// @return The class, from 0 (not reordered) to 254.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API uint8_t muniGetCombiningClass(uint32_t codePoint);
+
+    /// Returns the Script of a code point.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF is Unknown.
+    /// @return The script's ISO 15924 tag, as MUNI_SCRIPT builds it.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniScript muniGetScript(uint32_t codePoint);
+
 #ifdef __cplusplus
 }
 #endif

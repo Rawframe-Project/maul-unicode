@@ -42,10 +42,16 @@ else()
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/base.c
+    src/generated/bidi_class.c
+    src/generated/canonical_combining_class.c
+    src/generated/east_asian_width.c
     src/generated/extended_pictographic.c
     src/generated/general_category.c
     src/generated/grapheme_cluster_break.c
     src/generated/indic_conjunct_break.c
+    src/generated/line_break.c
+    src/generated/script.c
+    src/generated/script_tags.c
     src/generated/sentence_break.c
     src/generated/word_break.c
     src/properties.c)

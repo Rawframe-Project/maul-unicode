@@ -24,4 +24,17 @@ extern const uint64_t muniIndicConjunctBreakHash;
 uint8_t muniLookupExtendedPictographic(uint32_t codePoint);
 extern const uint64_t muniExtendedPictographicHash;
 
+uint8_t muniLookupLineBreak(uint32_t codePoint);
+extern const uint64_t muniLineBreakHash;
+uint8_t muniLookupEastAsianWidth(uint32_t codePoint);
+extern const uint64_t muniEastAsianWidthHash;
+uint8_t muniLookupBidiClass(uint32_t codePoint);
+extern const uint64_t muniBidiClassHash;
+uint8_t muniLookupCombiningClass(uint32_t codePoint);
+extern const uint64_t muniCombiningClassHash;
+// The Script table stores an index into muniScriptTags.
+uint8_t muniLookupScript(uint32_t codePoint);
+extern const uint64_t muniScriptHash;
+extern const uint32_t muniScriptTags[];
+
 #endif // MAUL_UNICODE_SRC_TABLES_H

@@ -36,3 +36,28 @@ bool muniIsExtendedPictographic(uint32_t codePoint)
 {
     return muniLookupExtendedPictographic(codePoint) != 0;
 }
+
+muniLineBreak muniGetLineBreak(uint32_t codePoint)
+{
+    return muniLookupLineBreak(codePoint);
+}
+
+muniEastAsianWidth muniGetEastAsianWidth(uint32_t codePoint)
+{
+    return muniLookupEastAsianWidth(codePoint);
+}
+
+muniBidiClass muniGetBidiClass(uint32_t codePoint)
+{
+    return muniLookupBidiClass(codePoint);
+}
+
+uint8_t muniGetCombiningClass(uint32_t codePoint)
+{
+    return muniLookupCombiningClass(codePoint);
+}
+
+muniScript muniGetScript(uint32_t codePoint)
+{
+    return muniScriptTags[muniLookupScript(codePoint)];
+}

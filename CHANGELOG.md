@@ -23,3 +23,7 @@ format.
   `muniGetWordBreak` (6,253), `muniGetSentenceBreak` (7,423),
   `muniGetIndicConjunctBreak` (2,229) and `muniIsExtendedPictographic`
   (568).
+- The layout properties: `muniGetLineBreak` (11,437 bytes),
+  `muniGetEastAsianWidth` (2,076), `muniGetBidiClass` (4,896),
+  `muniGetCombiningClass` (2,221) and `muniGetScript` (14,201), which
+  returns ISO 15924 tags built by `MUNI_SCRIPT`.
