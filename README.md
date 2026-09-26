@@ -23,7 +23,7 @@ and results are identical on every platform.
 ## Status
 
 Early development. The algorithms arrive in this order; the first five
-are done:
+are done, and script itemization of the sixth:
 
 1. The table generator and character properties.
 2. UTF-8 validation and conversion.

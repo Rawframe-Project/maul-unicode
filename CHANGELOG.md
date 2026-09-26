@@ -66,5 +66,14 @@ format.
   logical orders for any units. Passes all 91,707 cases of
   BidiCharacterTest.txt and all 770,241 of BidiTest.txt; a fuzz target
   checks paragraphs, runs and orders on arbitrary input.
-- `bench/bench_main.c`: validation, segmentation, line breaking and bidi
-  throughput, through iterators and the array conveniences.
+- `muniGetScriptExtensions` (Script_Extensions, 1,633 bytes of table
+  and 120 sets).
+- Script runs for shaping: `muniScriptIterator`, `muniNextScriptRun`
+  and `muniFindScriptRuns`. Common and Inherited characters join the
+  run around them, Script_Extensions narrow a run to the scripts its
+  characters share, and a closing bracket takes its opening bracket's
+  script. The iterator takes text in pieces like the segment iterators;
+  a fuzz target checks pieces against the whole text.
+- `bench/bench_main.c`: validation, segmentation, line breaking, bidi
+  and script run throughput, through iterators and the array
+  conveniences.

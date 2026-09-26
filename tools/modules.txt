@@ -13,6 +13,7 @@ encoding:
 grapheme: segmenter tables
 line: complex segmenter tables
 properties: tables
+script_runs: cursor tables
 segment: segmenter
 segmenter: cursor
 sentence: segmenter tables

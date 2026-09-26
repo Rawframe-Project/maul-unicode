@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Throughput of validation, segmentation, line breaking and bidi over a mixed text: English,
-// Turkish, Hindi, Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints
-// the best of five runs in MiB per second.
+// Throughput of validation, segmentation, line breaking, bidi and
+// script runs over a mixed text: English, Turkish, Hindi, Japanese,
+// emoji, Hebrew and Arabic, repeated to 4 MiB. Prints the best of five
+// runs in MiB per second.
 
 #include "maul-unicode/bidi.h"
 #include "maul-unicode/encoding.h"
+#include "maul-unicode/script.h"
 #include "maul-unicode/segment.h"
 
 #include <stdio.h>
@@ -94,6 +96,14 @@ static size_t ResolveBidi(InitFn unused)
     return total;
 }
 
+static size_t CountScriptRuns(InitFn unused)
+{
+    (void)unused;
+    size_t count = 0;
+    (void)muniFindScriptRuns(s_text, TEXT_BYTES, nullptr, 0, &count);
+    return count;
+}
+
 static size_t Validate(InitFn unused)
 {
     (void)unused;
@@ -156,6 +166,7 @@ int main(void)
     Run("sentence boundaries", CountBreaks, muniInitSentenceIterator);
     Run("line breaks", CountBreaks, muniInitLineIterator);
     Run("bidi, resolve and order", ResolveBidi, nullptr);
+    Run("script runs, find", CountScriptRuns, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
     RunFind("word boundaries, find", muniFindWordBreaks);
     RunFind("sentence boundaries, find", muniFindSentenceBreaks);

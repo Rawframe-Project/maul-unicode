@@ -36,6 +36,14 @@ extern const uint64_t muniCombiningClassHash;
 uint8_t muniLookupScript(uint32_t codePoint);
 extern const uint64_t muniScriptHash;
 extern const uint32_t muniScriptTags[];
+// The ScriptExtensions table stores 0 when a code point's extensions are
+// its Script alone, or 1 plus the index of a set: set i holds the Script
+// indexes muniScriptSetMembers[muniScriptSetStarts[i]] up to
+// muniScriptSetStarts[i + 1].
+uint8_t muniLookupScriptExtensions(uint32_t codePoint);
+extern const uint64_t muniScriptExtensionsHash;
+extern const uint16_t muniScriptSetStarts[];
+extern const uint8_t muniScriptSetMembers[];
 
 // The BidiMirror table stores 0, or 1 plus an index into
 // muniBidiMirrorDeltas, the distance to the Bidi_Mirroring_Glyph.

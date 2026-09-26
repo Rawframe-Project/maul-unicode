@@ -129,6 +129,11 @@ static uint8_t BracketType(uint32_t codePoint)
     return muniGetBracketType(codePoint);
 }
 
+static uint8_t ScriptExtensionsIndex(uint32_t codePoint)
+{
+    return muniLookupScriptExtensions(codePoint);
+}
+
 static uint8_t CombiningClass(uint32_t codePoint)
 {
     return muniGetCombiningClass(codePoint);
@@ -146,12 +151,25 @@ static void TestLayoutPropertiesMatchTheUcdEverywhere(void)
     CHECK(HashAll(BidiClass) == muniBidiClassHash, "Bidi_Class hash");
     CHECK(HashAll(CombiningClass) == muniCombiningClassHash, "Canonical_Combining_Class hash");
     CHECK(HashAll(MirrorIndex) == muniBidiMirrorHash, "Bidi_Mirroring_Glyph hash");
+    CHECK(HashAll(ScriptExtensionsIndex) == muniScriptExtensionsHash, "Script_Extensions hash");
     CHECK(HashAll(BracketType) == muniBidiBracketHash, "Bidi_Paired_Bracket_Type hash");
     CHECK(HashAll(ScriptIndex) == muniScriptHash, "Script hash");
 }
 
 static void TestLayoutPropertiesKnownValues(void)
 {
+    muniScript scripts[32];
+    size_t count = 0;
+    CHECK(muniGetScriptExtensions('a', scripts, 32, &count) == muni_success && count == 1 &&
+              scripts[0] == MUNI_SCRIPT('L', 'a', 't', 'n'),
+          "a is Latin only");
+    CHECK(muniGetScriptExtensions(0x0964, scripts, 32, &count) == muni_success && count > 5,
+          "the Devanagari danda serves many scripts");
+    CHECK(muniGetScriptExtensions(0x0964, scripts, 1, &count) == muni_errorCapacity,
+          "capacity for the danda");
+    CHECK(muniGetScriptExtensions(0x060C, scripts, 32, &count) == muni_success &&
+              scripts[0] == MUNI_SCRIPT('A', 'r', 'a', 'b'),
+          "the Arabic comma lists Arabic first");
     CHECK(muniGetMirroringGlyph('(') == ')' && muniGetMirroringGlyph(')') == '(', "( and )");
     CHECK(muniGetMirroringGlyph(0x00AB) == 0x00BB, "guillemets mirror");
     CHECK(muniGetMirroringGlyph('a') == 'a', "a has no mirror");

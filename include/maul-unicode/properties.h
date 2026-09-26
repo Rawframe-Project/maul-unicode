@@ -369,6 +369,24 @@ extern "C"
     /// Safe from any thread.
     MUNI_API muniScript muniGetScript(uint32_t codePoint);
 
+    /// Writes the Script_Extensions of a code point (UAX #24): the scripts
+    /// it is used with. A code point without listed extensions has its
+    /// Script alone, so there is always at least one.
+    ///
+    /// @param codePoint  Any value.
+    /// @param scripts    The output. May be NULL when capacity is 0.
+    /// @param capacity   The number of scripts the output can hold; 32
+    ///                   always suffice.
+    /// @param countOut   Receives the number of scripts.
+    /// @return `muni_success`, `muni_errorCapacity` when they do not all
+    ///         fit (the ones that fit are written), or `muni_errorInvalid`
+    ///         for a NULL argument.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniGetScriptExtensions(uint32_t codePoint,
+                                                               muniScript* scripts, size_t capacity,
+                                                               size_t* countOut);
+
 #ifdef __cplusplus
 }
 #endif
