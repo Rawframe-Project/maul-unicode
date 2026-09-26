@@ -52,6 +52,18 @@ muniBidiClass muniGetBidiClass(uint32_t codePoint)
     return muniLookupBidiClass(codePoint);
 }
 
+uint32_t muniGetMirroringGlyph(uint32_t codePoint)
+{
+    uint8_t index = muniLookupBidiMirror(codePoint);
+    return index == 0 ? codePoint
+                      : (uint32_t)((int32_t)codePoint + muniBidiMirrorDeltas[index - 1]);
+}
+
+muniBracketType muniGetBracketType(uint32_t codePoint)
+{
+    return muniLookupBidiBracket(codePoint);
+}
+
 uint8_t muniGetCombiningClass(uint32_t codePoint)
 {
     return muniLookupCombiningClass(codePoint);

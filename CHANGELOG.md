@@ -27,6 +27,9 @@ format.
   `muniGetEastAsianWidth` (2,076), `muniGetBidiClass` (4,896),
   `muniGetCombiningClass` (2,221) and `muniGetScript` (14,201), which
   returns ISO 15924 tags built by `MUNI_SCRIPT`.
+- `muniGetMirroringGlyph` (Bidi_Mirroring_Glyph, 812 bytes of table and
+  38 distances) and `muniGetBracketType` (Bidi_Paired_Bracket_Type, 304
+  bytes); the generator checks that every paired bracket is its mirror.
 - UTF-8, UTF-16 and UTF-32: `muniValidateUtf8` and `muniValidateUtf16`
   with the kind and offset of the first error, `muniDecodeUtf8`,
   `muniEncodeUtf8`, and conversions between the three in strict mode or

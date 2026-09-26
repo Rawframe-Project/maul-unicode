@@ -37,4 +37,14 @@ uint8_t muniLookupScript(uint32_t codePoint);
 extern const uint64_t muniScriptHash;
 extern const uint32_t muniScriptTags[];
 
+// The BidiMirror table stores 0, or 1 plus an index into
+// muniBidiMirrorDeltas, the distance to the Bidi_Mirroring_Glyph.
+uint8_t muniLookupBidiMirror(uint32_t codePoint);
+extern const uint64_t muniBidiMirrorHash;
+extern const int32_t muniBidiMirrorDeltas[];
+// Bidi_Paired_Bracket_Type: 0 none, 1 open, 2 close. The paired bracket
+// is the Bidi_Mirroring_Glyph.
+uint8_t muniLookupBidiBracket(uint32_t codePoint);
+extern const uint64_t muniBidiBracketHash;
+
 #endif // MAUL_UNICODE_SRC_TABLES_H

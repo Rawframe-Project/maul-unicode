@@ -46,7 +46,10 @@ add_library(maul-unicode ${MAUL_LIBRARY_KIND}
     src/complex.c
     src/cursor.c
     src/encoding.c
+    src/generated/bidi_bracket.c
     src/generated/bidi_class.c
+    src/generated/bidi_mirror.c
+    src/generated/bidi_mirror_deltas.c
     src/generated/canonical_combining_class.c
     src/generated/east_asian_width.c
     src/generated/extended_pictographic.c

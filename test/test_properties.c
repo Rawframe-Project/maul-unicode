@@ -119,6 +119,16 @@ static uint8_t BidiClass(uint32_t codePoint)
     return muniGetBidiClass(codePoint);
 }
 
+static uint8_t MirrorIndex(uint32_t codePoint)
+{
+    return muniLookupBidiMirror(codePoint);
+}
+
+static uint8_t BracketType(uint32_t codePoint)
+{
+    return muniGetBracketType(codePoint);
+}
+
 static uint8_t CombiningClass(uint32_t codePoint)
 {
     return muniGetCombiningClass(codePoint);
@@ -135,11 +145,21 @@ static void TestLayoutPropertiesMatchTheUcdEverywhere(void)
     CHECK(HashAll(EastAsianWidth) == muniEastAsianWidthHash, "East_Asian_Width hash");
     CHECK(HashAll(BidiClass) == muniBidiClassHash, "Bidi_Class hash");
     CHECK(HashAll(CombiningClass) == muniCombiningClassHash, "Canonical_Combining_Class hash");
+    CHECK(HashAll(MirrorIndex) == muniBidiMirrorHash, "Bidi_Mirroring_Glyph hash");
+    CHECK(HashAll(BracketType) == muniBidiBracketHash, "Bidi_Paired_Bracket_Type hash");
     CHECK(HashAll(ScriptIndex) == muniScriptHash, "Script hash");
 }
 
 static void TestLayoutPropertiesKnownValues(void)
 {
+    CHECK(muniGetMirroringGlyph('(') == ')' && muniGetMirroringGlyph(')') == '(', "( and )");
+    CHECK(muniGetMirroringGlyph(0x00AB) == 0x00BB, "guillemets mirror");
+    CHECK(muniGetMirroringGlyph('a') == 'a', "a has no mirror");
+    CHECK(muniGetMirroringGlyph(0x2215) == 0x29F5, "division slash, a far mirror");
+    CHECK(muniGetBracketType('[') == muni_bracketOpen, "[ opens");
+    CHECK(muniGetBracketType(0x300B) == muni_bracketClose, "U+300B closes");
+    CHECK(muniGetBracketType('<') == muni_bracketNone, "< is no bracket");
+    CHECK(muniGetMirroringGlyph(0x110000) == 0x110000, "past U+10FFFF");
     CHECK(muniGetLineBreak(' ') == muni_lbSp, "space is SP");
     CHECK(muniGetLineBreak('\n') == muni_lbLf, "LF");
     CHECK(muniGetLineBreak(0x0E01) == muni_lbSa, "Thai U+0E01 is SA");

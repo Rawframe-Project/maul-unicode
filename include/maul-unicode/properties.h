@@ -283,6 +283,17 @@ extern "C"
         muni_bcPdi = 22, // Pop_Directional_Isolate
     };
 
+    // Bidi_Paired_Bracket_Type (UAX #9): whether a code point opens or
+    // closes a bracket pair the bidi algorithm matches.
+    typedef uint8_t muniBracketType;
+
+    enum
+    {
+        muni_bracketNone = 0,
+        muni_bracketOpen = 1,
+        muni_bracketClose = 2,
+    };
+
     // A script as its ISO 15924 tag: four ASCII letters, big-endian, so
     // MUNI_SCRIPT('L', 'a', 't', 'n') is Latin. The same encoding as
     // HarfBuzz's hb_script_t.
@@ -322,6 +333,25 @@ extern "C"
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_API muniBidiClass muniGetBidiClass(uint32_t codePoint);
+
+    /// Returns the Bidi_Mirroring_Glyph of a code point: the character
+    /// whose glyph is its mirror image, such as ')' for '(', which right-
+    /// to-left text displays in its place.
+    ///
+    /// @param codePoint  Any value.
+    /// @return The mirror, or codePoint itself when it has none.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API uint32_t muniGetMirroringGlyph(uint32_t codePoint);
+
+    /// Returns the Bidi_Paired_Bracket_Type of a code point. The bracket
+    /// it pairs with is its muniGetMirroringGlyph.
+    ///
+    /// @param codePoint  Any value.
+    /// @return One of the muni_bracket values.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API muniBracketType muniGetBracketType(uint32_t codePoint);
 
     /// Returns the Canonical_Combining_Class of a code point.
     ///
