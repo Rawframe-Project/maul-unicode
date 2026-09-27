@@ -90,7 +90,7 @@ jobs:
           LD_LIBRARY_PATH="$PWD/package/lib" ./build-package/package_test
 
   # Each fuzz target runs for one minute on every push; it looks for
-  # crashes and for answers that disagree with each other.
+  # crashes and for answers that disagree with each other or with ICU.
   fuzz:
     name: fuzz
     runs-on: ubuntu-24.04
@@ -99,11 +99,12 @@ jobs:
       - name: Install compilers
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q clang-20 ninja-build
+          sudo apt-get install -y -q clang-20 ninja-build libicu-dev pkg-config
       - name: Build
+        # fuzz_icu compares with ICU, a test-only oracle.
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang-20 -D${PREFIX}_FUZZ=ON \
-            -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
+            -D${PREFIX}_FUZZ_ICU=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
           cmake --build build
       - name: Run
         run: |

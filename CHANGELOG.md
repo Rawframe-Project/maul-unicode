@@ -127,3 +127,8 @@ format.
   given that file prints each speed's ratio to them.
 - CI's web job reports the static library's size in total, without any
   component, and each optional component's cost.
+- `fuzz_icu` (build option `MAUL_UNICODE_FUZZ_ICU`): compares UTF-8 to
+  UTF-16 conversion with replacement, the four normal forms and default
+  and Turkic case mapping with ICU, a test-only oracle, skipping what
+  changed since ICU's Unicode version. CI runs it with the other fuzz
+  targets.
