@@ -89,6 +89,19 @@ jobs:
           cmake --build build-minimal
           LD_LIBRARY_PATH="$PWD/package/lib" ./build-minimal/minimal
 
+  # The API reference is generated from the headers; it must match them,
+  # and the README must give its function count.
+  docs:
+    name: generated docs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: The API reference matches the headers
+        run: |
+          COUNT=$(python3 tools/gen_api.py | grep -oE '\([0-9]+ functions\)' | grep -oE '[0-9]+')
+          git diff --exit-code docs/api.md || { echo "docs/api.md is stale: run tools/gen_api.py"; exit 1; }
+          grep -q "$COUNT public functions" README.md || { echo "README says the wrong function count ($COUNT)"; exit 1; }
+
   # Each fuzz target runs for one minute on every push; it looks for
   # crashes and for answers that disagree with each other or with ICU.
   fuzz:

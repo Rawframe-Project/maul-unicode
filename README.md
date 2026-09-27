@@ -20,6 +20,10 @@ library allocates nothing: iterators live on the caller's stack and
 results go into caller buffers. Every function is safe from any thread,
 and results are identical on every platform.
 
+[The guide](docs/guide.md) walks through each part, and
+[the API reference](docs/api.md) lists all 74 public functions,
+generated from the headers.
+
 ## Status
 
 Early development. The algorithms arrive in this order, and all are
