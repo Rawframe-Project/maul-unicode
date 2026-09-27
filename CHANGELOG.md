@@ -102,6 +102,14 @@ format.
   (general category, combining class, mirroring, script, compose,
   decompose) from Maul Unicode. Tested against HarfBuzz's built-in data
   and through a buffer's script and direction guess; CI builds it.
+- Security mechanisms (UTS #39), build option `MAUL_UNICODE_SECURITY`
+  (on by default, needs normalization): `muniGetSkeleton`, the
+  confusable skeleton in display order for a paragraph direction;
+  `muniGetResolvedScripts`; `muniGetRestrictionLevel`;
+  `muniCheckMixedNumbers`; `muniIsIdentifierAllowed` and
+  `muniIsDefaultIgnorable`. 36,601 bytes of tables (muni-0014); a fuzz
+  target checks short output buffers, skeleton idempotence and the
+  agreement of levels with resolved scripts.
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
-  script run, normalization and case throughput, through iterators and
-  the array conveniences.
+  script run, normalization, case and security throughput, through
+  iterators and the array conveniences.

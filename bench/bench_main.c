@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // Throughput of validation, segmentation, line breaking, bidi, script
-// runs, normalization and case over a mixed text: English, Turkish,
+// runs, normalization, case and the security checks over a mixed text: English, Turkish,
 // Hindi, Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints
 // the best of five runs in MiB per second.
 
@@ -11,6 +11,7 @@
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
 #include "maul-unicode/script.h"
+#include "maul-unicode/security.h"
 #include "maul-unicode/segment.h"
 
 #include <stdio.h>
@@ -23,6 +24,7 @@ static char s_text[TEXT_BYTES];
 static uint8_t s_levels[TEXT_BYTES];
 static uint8_t s_workspace[TEXT_BYTES];
 static char s_normalized[TEXT_BYTES * 3];
+static uint8_t s_skeletonWorkspace[TEXT_BYTES * 2];
 
 static const char s_sample[] =
     "The quick brown fox can't jump 3.14 metres, etc. and so on. Next sentence! "
@@ -156,6 +158,24 @@ static size_t Fold(InitFn unused)
     return ConvertCase(muni_caseFold);
 }
 
+static size_t Skeleton(InitFn unused)
+{
+    (void)unused;
+    size_t needed = 0;
+    muniTextResult result =
+        muniGetSkeleton(s_text, TEXT_BYTES, muni_bidiLeftToRight, s_skeletonWorkspace, s_normalized,
+                        sizeof(s_normalized), &needed);
+    return result.status == muni_success ? needed : 0;
+}
+
+static size_t RestrictionLevel(InitFn unused)
+{
+    (void)unused;
+    muniRestrictionLevel level = 0;
+    (void)muniGetRestrictionLevel(s_text, TEXT_BYTES, &level);
+    return level;
+}
+
 static size_t Validate(InitFn unused)
 {
     (void)unused;
@@ -224,6 +244,8 @@ int main(void)
     Run("NFD", NormalizeNfd, nullptr);
     Run("lowercase", Lowercase, nullptr);
     Run("case fold", Fold, nullptr);
+    Run("skeleton", Skeleton, nullptr);
+    Run("restriction level", RestrictionLevel, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);
     RunFind("word boundaries, find", muniFindWordBreaks);
     RunFind("sentence boundaries, find", muniFindSentenceBreaks);

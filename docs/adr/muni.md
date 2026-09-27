@@ -18,3 +18,4 @@ are listed in [README.md](README.md).
 | [muni-0011](muni-0011-normalization-data.md) | Normalization data behind rank indexes | Accepted |
 | [muni-0012](muni-0012-case-data-and-language-rules.md) | Case data and language rules | Accepted |
 | [muni-0013](muni-0013-optional-components.md) | Normalization and case as optional components | Accepted |
+| [muni-0014](muni-0014-security-data-and-skeletons.md) | Security data and skeletons | Accepted |

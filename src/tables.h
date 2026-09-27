@@ -36,6 +36,7 @@ extern const uint64_t muniCombiningClassHash;
 uint8_t muniLookupScript(uint32_t codePoint);
 extern const uint64_t muniScriptHash;
 extern const uint32_t muniScriptTags[];
+extern const uint16_t muniScriptTagCount;
 // The ScriptExtensions table stores 0 when a code point's extensions are
 // its Script alone, or 1 plus the index of a set: set i holds the Script
 // indexes muniScriptSetMembers[muniScriptSetStarts[i]] up to
@@ -113,6 +114,31 @@ extern const uint32_t muniCaseSpecials[];
 extern const uint16_t muniCaseSpecialOffsets[];
 extern const uint16_t muniCaseSpecialPool[];
 extern const uint16_t muniCaseSpecialCount;
+
+// Security data (UTS #39). The Security table stores 1 for
+// Identifier_Status=Allowed and 2 for Default_Ignorable_Code_Point.
+// Confusable prototypes sit in a rank index whose blocks are found by
+// binary search over Starts. An entry below 0x8000 is a prototype of one
+// code point; above, it holds the prototype's length in bits 13 and 14
+// and its offset in the pool of UTF-16 units in the low 13, and a length
+// of 0 means the pool gives the length first. The zeros of the decimal
+// digit systems are sorted.
+uint8_t muniLookupSecurity(uint32_t codePoint);
+extern const uint64_t muniSecurityHash;
+extern const uint16_t muniConfusableStarts[];
+extern const uint64_t muniConfusableBits[];
+extern const uint16_t muniConfusableRanks[];
+extern const uint16_t muniConfusables[];
+extern const uint16_t muniConfusablePool[];
+extern const uint16_t muniConfusableBlockCount;
+extern const uint32_t muniDecimalZeros[];
+extern const uint16_t muniDecimalZeroCount;
+
+enum
+{
+    muni_securityAllowed = 1,
+    muni_securityIgnorable = 2,
+};
 
 enum
 {

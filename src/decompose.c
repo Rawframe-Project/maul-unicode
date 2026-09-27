@@ -29,24 +29,8 @@ enum
 #define MARK_COMPOSES  0x80000000u
 #define MARK_CODEPOINT 0x001FFFFFu
 
-// The position of codePoint in a rank index, or -1 when bits leave it out.
-static int32_t Rank(uint8_t block, uint32_t codePoint, const uint64_t* bits, const uint16_t* ranks)
-{
-    if (block == 0)
-    {
-        return -1;
-    }
-    uint64_t map = bits[block - 1];
-    unsigned bit = codePoint & 63;
-    if ((map >> bit & 1) == 0)
-    {
-        return -1;
-    }
-    uint64_t below = bit == 0 ? 0 : map & (((uint64_t)1 << bit) - 1);
-    return (int32_t)(ranks[block - 1] + muniCountOnes(below));
-}
-
-// The code point at position of the canonical pairs: the inverse of Rank.
+// The code point at position of the canonical pairs: the inverse of
+// muniRank.
 static uint32_t PairSource(uint32_t position)
 {
     uint32_t low = 0;
@@ -95,7 +79,8 @@ bool muniCanonicalMapping(uint32_t codePoint, uint32_t* firstOut, uint32_t* seco
         return true;
     }
     uint8_t block = muniLookupDecompositionBlock(codePoint);
-    int32_t pair = Rank(block, codePoint, muniDecompositionPairBits, muniDecompositionPairRanks);
+    int32_t pair =
+        muniRank(block, codePoint, muniDecompositionPairBits, muniDecompositionPairRanks);
     if (pair >= 0)
     {
         uint32_t entry = muniDecompositionPairs[pair];
@@ -104,7 +89,7 @@ bool muniCanonicalMapping(uint32_t codePoint, uint32_t* firstOut, uint32_t* seco
         return true;
     }
     int32_t single =
-        Rank(block, codePoint, muniDecompositionSingleBits, muniDecompositionSingleRanks);
+        muniRank(block, codePoint, muniDecompositionSingleBits, muniDecompositionSingleRanks);
     if (single >= 0)
     {
         bool planeTwo = (muniDecompositionPlaneTwo[single >> 3] >> (single & 7) & 1) != 0;
@@ -194,11 +179,12 @@ uint32_t muniComposeCanonical(uint32_t first, uint32_t second)
 bool muniIsCompositionExcluded(uint32_t codePoint)
 {
     uint8_t block = muniLookupDecompositionBlock(codePoint);
-    if (Rank(block, codePoint, muniDecompositionSingleBits, muniDecompositionSingleRanks) >= 0)
+    if (muniRank(block, codePoint, muniDecompositionSingleBits, muniDecompositionSingleRanks) >= 0)
     {
         return true;
     }
-    int32_t pair = Rank(block, codePoint, muniDecompositionPairBits, muniDecompositionPairRanks);
+    int32_t pair =
+        muniRank(block, codePoint, muniDecompositionPairBits, muniDecompositionPairRanks);
     return pair >= 0 && (muniDecompositionPairs[pair] & PAIR_EXCLUDED) != 0;
 }
 
@@ -241,7 +227,7 @@ bool muniCombinesBackward(uint32_t codePoint)
 static size_t CompatibilityMapping(uint32_t codePoint, uint32_t* out)
 {
     uint8_t block = muniLookupCompatibilityBlock(codePoint);
-    int32_t rank = Rank(block, codePoint, muniCompatibilityBits, muniCompatibilityRanks);
+    int32_t rank = muniRank(block, codePoint, muniCompatibilityBits, muniCompatibilityRanks);
     if (rank < 0)
     {
         return 0;

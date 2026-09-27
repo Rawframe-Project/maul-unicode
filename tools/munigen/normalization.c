@@ -34,7 +34,6 @@
 #define MAX_SINGLES  2048
 #define MAX_MARKS    127
 #define MAX_POOL     16384
-#define MAX_BLOCKS   254
 #define EXCLUDED     0x10000000u
 
 typedef struct Mapping
@@ -159,11 +158,6 @@ static int CompareCodePoints(const void* a, const void* b)
 }
 
 static const Normalization* s_sorting; // the data CompareOrder reads
-
-static int CompareStarts(const void* a, const void* b)
-{
-    return (int)*(const uint16_t*)a - (int)*(const uint16_t*)b;
-}
 
 static int CompareOrder(const void* a, const void* b)
 {
@@ -375,86 +369,6 @@ static uint32_t PoolUnits(const Normalization* data, int offset)
     return units;
 }
 
-// The 64-code-point blocks that hold any of the listed code points.
-typedef struct Blocks
-{
-    uint16_t starts[MAX_BLOCKS]; // each block's first code point >> 6
-    int count;
-} Blocks;
-
-static void AddBlocks(Blocks* blocks, const uint32_t* sources, int count)
-{
-    for (int i = 0; i < count; i++)
-    {
-        uint16_t start = (uint16_t)(sources[i] >> 6);
-        int k = 0;
-        while (k < blocks->count && blocks->starts[k] != start)
-        {
-            k++;
-        }
-        if (k == blocks->count)
-        {
-            if (blocks->count == MAX_BLOCKS)
-            {
-                Fail("more than %d blocks", MAX_BLOCKS);
-            }
-            blocks->starts[blocks->count++] = start;
-        }
-    }
-    qsort(blocks->starts, (size_t)blocks->count, sizeof(uint16_t), CompareStarts);
-}
-
-// Writes the block table: 0 outside the blocks, else 1 plus the block.
-static void WriteBlockTable(const Blocks* blocks, const char* fileName, const char* symbol,
-                            const char* description)
-{
-    uint8_t* values = Allocate(CODE_POINTS);
-    for (int k = 0; k < blocks->count; k++)
-    {
-        memset(values + ((uint32_t)blocks->starts[k] << 6), k + 1, 64);
-    }
-    WriteTable(values, fileName, symbol, description, "UnicodeData.txt");
-    free(values);
-}
-
-static void WriteStarts(FILE* file, const char* name, const Blocks* blocks)
-{
-    fprintf(file, "const uint16_t %s[%d] = {", name, blocks->count);
-    for (int k = 0; k < blocks->count; k++)
-    {
-        fprintf(file, "%s0x%04X,", k % 8 == 0 ? "\n    " : " ", blocks->starts[k]);
-    }
-    fprintf(file, "\n};\n\n");
-}
-
-// Writes a rank index over the sources, which are in code point order:
-// per block, the map of the sources in it and how many come before it.
-static void WriteRanks(FILE* file, const char* name, const Blocks* blocks, const uint32_t* sources,
-                       int count)
-{
-    fprintf(file, "const uint64_t %sBits[%d] = {", name, blocks->count);
-    for (int k = 0; k < blocks->count; k++)
-    {
-        uint64_t bits = 0;
-        for (int i = 0; i < count; i++)
-        {
-            bits |= sources[i] >> 6 == blocks->starts[k] ? (uint64_t)1 << (sources[i] & 63) : 0;
-        }
-        fprintf(file, "%s0x%016llXull,", k % 3 == 0 ? "\n    " : " ", (unsigned long long)bits);
-    }
-    fprintf(file, "\n};\n\nconst uint16_t %sRanks[%d] = {", name, blocks->count + 1);
-    int rank = 0;
-    for (int k = 0; k <= blocks->count; k++)
-    {
-        while (k < blocks->count && rank < count && sources[rank] >> 6 < blocks->starts[k])
-        {
-            rank++;
-        }
-        fprintf(file, "%s%d,", k % 12 == 0 ? "\n    " : " ", k == blocks->count ? count : rank);
-    }
-    fprintf(file, "\n};\n\n");
-}
-
 static FILE* CreateDataFile(const char* fileName, const char* what)
 {
     FILE* file = CreateOutput(fileName);
@@ -568,12 +482,12 @@ void WriteNormalization(void)
     AddBlocks(&canonical, data.pairSources, data.pairCount);
     AddBlocks(&canonical, data.singleSources, data.singleCount);
     WriteBlockTable(&canonical, "decomposition_blocks", "DecompositionBlock",
-                    "Canonical decomposition blocks");
+                    "Canonical decomposition blocks", "UnicodeData.txt");
     WriteCanonical(&data, &canonical);
     static Blocks compatibility;
     AddBlocks(&compatibility, data.compatibilitySources, data.compatibilityCount);
     WriteBlockTable(&compatibility, "compatibility_blocks", "CompatibilityBlock",
-                    "Compatibility decomposition blocks");
+                    "Compatibility decomposition blocks", "UnicodeData.txt");
     WriteCompatibility(&data, &compatibility);
     free(data.list);
     free(data.mappings);

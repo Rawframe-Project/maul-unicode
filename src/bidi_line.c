@@ -6,9 +6,13 @@
 // maximal stretch at or above that level; over runs, a line of n runs
 // and levels up to 126 costs at most 126 n steps and no memory.
 
+#include "bidi_line.h"
+
 #include "bidi_core.h"
 
 #include "maul-unicode/bidi.h"
+
+#include <string.h>
 
 // The runs being collected; count goes on past capacity.
 typedef struct Runs
@@ -108,6 +112,33 @@ static void CollectRuns(Runs* runs, const uint8_t* text, const uint8_t* levels, 
     if (trailing != SIZE_MAX)
     {
         Add(runs, trailing, length, paragraphLevel);
+    }
+}
+
+void muniBidiResetLineLevels(const uint8_t* line, uint8_t* levels, size_t length,
+                             uint8_t paragraphLevel)
+{
+    size_t trailing = SIZE_MAX;
+    size_t index = 0;
+    while (index < length)
+    {
+        size_t size;
+        uint8_t type = muniLookupBidiClass(muniBidiCodePoint(line, length, index, &size));
+        size_t start = trailing != SIZE_MAX ? trailing : index;
+        if (type == muni_bcS || type == muni_bcB)
+        {
+            memset(levels + start, paragraphLevel, index + size - start);
+            trailing = SIZE_MAX;
+        }
+        else
+        {
+            trailing = IsTrailing(type) ? start : SIZE_MAX;
+        }
+        index += size;
+    }
+    if (trailing != SIZE_MAX)
+    {
+        memset(levels + trailing, paragraphLevel, length - trailing);
     }
 }
 

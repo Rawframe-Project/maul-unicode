@@ -73,6 +73,36 @@ void WriteTable(const uint8_t* values, const char* fileName, const char* symbol,
 void WriteWideTable(const uint16_t* values, const char* fileName, const char* symbol,
                     const char* description, const char* inputs);
 
+// Rank indexes (table.c): code points found through the 64-code-point
+// blocks that hold any. A block table, or a binary search over the
+// blocks' starts, gives a block its number; per block, a 64-bit map
+// marks the code points listed, and the count of those before the block
+// is its rank.
+
+#define MAX_BLOCKS 1024
+
+typedef struct Blocks
+{
+    uint16_t starts[MAX_BLOCKS]; // each block's first code point >> 6, sorted
+    int count;
+} Blocks;
+
+// Adds the blocks of the listed code points.
+void AddBlocks(Blocks* blocks, const uint32_t* sources, int count);
+
+// Writes the block table: 1 plus the block's number in its code points,
+// 0 elsewhere.
+void WriteBlockTable(const Blocks* blocks, const char* fileName, const char* symbol,
+                     const char* description, const char* inputs);
+
+// Writes the blocks' starts as the array name.
+void WriteStarts(FILE* file, const char* name, const Blocks* blocks);
+
+// Writes the arrays <name>Bits and <name>Ranks over the sources, which
+// are in code point order.
+void WriteRanks(FILE* file, const char* name, const Blocks* blocks, const uint32_t* sources,
+                int count);
+
 // properties.c: every property table.
 void WriteProperties(void);
 
@@ -81,5 +111,8 @@ void WriteNormalization(void);
 
 // case.c: the case mappings and foldings.
 void WriteCase(void);
+
+// security.c: the data of UTS #39.
+void WriteSecurity(void);
 
 #endif // MUNIGEN_H

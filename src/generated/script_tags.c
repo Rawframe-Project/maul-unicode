@@ -189,3 +189,5 @@ const uint32_t muniScriptTags[179] = {
     0x5A797979u, // Zyyy
     0x5A7A7A7Au, // Zzzz
 };
+
+const uint16_t muniScriptTagCount = 179;

@@ -59,9 +59,15 @@ static void LoadCombiningClass(uint8_t* values)
 }
 
 // Writes the ISO 15924 tag of every script index into src/generated/,
-// big-endian ASCII in a uint32_t ('Latn' is 0x4C61746E).
+// big-endian ASCII in a uint32_t ('Latn' is 0x4C61746E). The indexes from
+// 252 up are left free: the security checks number the writing systems
+// Hanb, Hntl, Jpan and Kore there.
 static void WriteScriptTags(char names[][8], int count)
 {
+    if (count > 252)
+    {
+        Fail("%d scripts leave no room for the writing systems", count);
+    }
     FILE* file = CreateOutput("script_tags.c");
     fprintf(file, "// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Sirac Ozmen\n//\n");
     fprintf(file, "// The ISO 15924 tag of each Script value the Script table stores.\n");
@@ -81,7 +87,7 @@ static void WriteScriptTags(char names[][8], int count)
                        (uint32_t)(unsigned char)names[i][3];
         fprintf(file, "\n    0x%08Xu, // %s", tag, names[i]);
     }
-    fprintf(file, "\n};\n");
+    fprintf(file, "\n};\n\nconst uint16_t muniScriptTagCount = %d;\n", count);
     fclose(file);
 }
 

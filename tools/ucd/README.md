@@ -2,7 +2,9 @@
 
 The generator's inputs (docs/adr/muni-0004), exactly as published at
 `https://www.unicode.org/Public/18.0.0/ucd/` (with its `auxiliary/`,
-`extracted/` and `emoji/` subdirectories flattened here). They are
+`extracted/` and `emoji/` subdirectories flattened here), and
+`confusables.txt` and `IdentifierStatus.txt` from
+`https://www.unicode.org/Public/18.0.0/security/`. They are
 covered by the Unicode License v3,
 `https://www.unicode.org/license.txt`.
 
@@ -13,11 +15,13 @@ SHA-256 of each file:
 cd54810ebf52f0e61a730c8b9cb25975de6c85f6d788a559b416afd548923fd6  BidiMirroring.txt
 a004797658a457bec4dc11683e39f69249ea3b595b752dbea6721c4c9f587b0d  CaseFolding.txt
 c759b100e9ae8960ae6b50fc5765950a7581fd9f30d4ef95f68f25a6d97e818e  CompositionExclusions.txt
+6ed3ee967c9dfdf6677d563c9985182fbc50a2efb7d6059cd57b2e2ce18f5b92  confusables.txt
 d9e23222522551348ea1ccfbb4f62efbf98982afb95840f8959c08ed992c5607  DerivedBidiClass.txt
 09c928886a178fcafd93c29e4bd59073a058e5a100b716d425cb563ab50f68c9  DerivedCoreProperties.txt
 d6b151d2d40ee9b1876d26f417980f45ffae47b6055ccf7203cb31f07a030f94  DerivedGeneralCategory.txt
 98ac7f67d985fe781e317f6182e885e94cabb0c314769e6dd73e48b226931ccd  DerivedNormalizationProps.txt
 a0cf29eacd00cfcaec4381c6b7c281685f18dbb4e7ff82b4076ccb342ca839aa  EastAsianWidth.txt
+5863c7d99ca18f213c41c7318aa5528bebfb6d32ec0f1d5944e37192c119aebd  IdentifierStatus.txt
 80d00f8e616a0ef27fd6b8de3b758c06383b5d917e2977709578e68baf733bf1  emoji-data.txt
 0839dcb79e4ac639ecd538b1abf7c9d22e3f9dd265b7e182d33627aa4d75b45a  GraphemeBreakProperty.txt
 ae8cf1970c73f3f1a12d77852df96c4b2b1723ca8b388e36bb5739250c6849de  LineBreak.txt

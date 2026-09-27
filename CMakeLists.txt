@@ -27,6 +27,7 @@ option(MAUL_UNICODE_FUZZ "Build the libFuzzer targets (Clang only)" OFF)
 # Components a build may leave out, with their code and their tables.
 option(MAUL_UNICODE_NORMALIZATION "Include normalization (UAX #15)" ON)
 option(MAUL_UNICODE_CASE "Include case mapping and folding" ON)
+option(MAUL_UNICODE_SECURITY "Include confusable and mixed-script detection (UTS #39)" ON)
 option(MAUL_UNICODE_HARFBUZZ "Build maul-unicode-harfbuzz, Unicode functions for HarfBuzz" OFF)
 
 # Every executable (tests, benchmarks, tools) lands in the top of the
@@ -92,11 +93,22 @@ set(MUNI_CASE_SOURCES
     src/case.c
     src/generated/case.c
     src/generated/case_data.c)
+set(MUNI_SECURITY_SOURCES
+    src/security.c
+    src/skeleton.c
+    src/generated/security.c
+    src/generated/security_data.c)
+if(MAUL_UNICODE_SECURITY AND NOT MAUL_UNICODE_NORMALIZATION)
+    message(FATAL_ERROR "MAUL_UNICODE_SECURITY needs MAUL_UNICODE_NORMALIZATION")
+endif()
 if(MAUL_UNICODE_NORMALIZATION)
     list(APPEND MUNI_SOURCES ${MUNI_NORMALIZATION_SOURCES})
 endif()
 if(MAUL_UNICODE_CASE)
     list(APPEND MUNI_SOURCES ${MUNI_CASE_SOURCES})
+endif()
+if(MAUL_UNICODE_SECURITY)
+    list(APPEND MUNI_SOURCES ${MUNI_SECURITY_SOURCES})
 endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND} ${MUNI_SOURCES})
 maul_configure_library(maul-unicode)
@@ -136,6 +148,12 @@ if(MAUL_UNICODE_BUILD_TESTS)
     if(MAUL_UNICODE_CASE)
         maul_add_test(case WHITEBOX)
     endif()
+    if(MAUL_UNICODE_SECURITY)
+        # The security suite reads confusables.txt, one of the generator's inputs.
+        maul_add_test(security WHITEBOX)
+        target_compile_definitions(test_security PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
+        list(APPEND MUNI_DATA_SUITES security)
+    endif()
     if(MAUL_UNICODE_HARFBUZZ)
         maul_add_test(harfbuzz)
         target_link_libraries(test_harfbuzz PRIVATE maul-unicode-harfbuzz)
@@ -162,6 +180,9 @@ if(MAUL_UNICODE_FUZZ)
     if(MAUL_UNICODE_CASE)
         list(APPEND MUNI_FUZZ_AREAS case)
     endif()
+    if(MAUL_UNICODE_SECURITY)
+        list(APPEND MUNI_FUZZ_AREAS security)
+    endif()
     foreach(area ${MUNI_FUZZ_AREAS})
         add_executable(fuzz_${area} test/fuzz_${area}.c)
         target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
@@ -175,7 +196,8 @@ endif()
 #   munigen tools/ucd src/generated
 if(MAUL_UNICODE_BUILD_TOOLS)
     add_executable(munigen tools/munigen/case.c tools/munigen/main.c tools/munigen/normalization.c
-                           tools/munigen/properties.c tools/munigen/table.c tools/munigen/ucd.c)
+                           tools/munigen/properties.c tools/munigen/security.c
+                           tools/munigen/table.c tools/munigen/ucd.c)
     maul_apply_flags(munigen)
     # The generator uses standard fopen, which the Windows C runtime
     # reports as deprecated in favor of its own fopen_s.
@@ -186,6 +208,7 @@ endif()
 
 # The benchmarks measure every component, so they need them all.
 if(MAUL_UNICODE_BUILD_BENCH AND MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE AND
+   MAUL_UNICODE_SECURITY AND
    EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)
     add_subdirectory(bench)
 endif()

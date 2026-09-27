@@ -22,7 +22,9 @@ properties: tables
 script_runs: cursor tables
 segment: segmenter
 segmenter: cursor
+security: bits encoding tables
 sentence: segmenter tables
+skeleton: bidi_line bits decompose encoding tables writer
 tables:
 word: complex segmenter tables
 writer:

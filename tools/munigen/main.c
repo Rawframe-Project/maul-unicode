@@ -26,5 +26,6 @@ int main(int argc, char** argv)
     WriteProperties();
     WriteNormalization();
     WriteCase();
+    WriteSecurity();
     return 0;
 }

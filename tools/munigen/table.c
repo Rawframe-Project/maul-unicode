@@ -406,3 +406,84 @@ void WriteWideTable(const uint16_t* values, const char* fileName, const char* sy
                  description, inputs);
     free(bytes);
 }
+
+// Rank indexes.
+
+static int CompareStarts(const void* a, const void* b)
+{
+    return (int)*(const uint16_t*)a - (int)*(const uint16_t*)b;
+}
+
+void AddBlocks(Blocks* blocks, const uint32_t* sources, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        uint16_t start = (uint16_t)(sources[i] >> 6);
+        int k = 0;
+        while (k < blocks->count && blocks->starts[k] != start)
+        {
+            k++;
+        }
+        if (k == blocks->count)
+        {
+            if (blocks->count == MAX_BLOCKS)
+            {
+                Fail("more than %d blocks", MAX_BLOCKS);
+            }
+            blocks->starts[blocks->count++] = start;
+        }
+    }
+    qsort(blocks->starts, (size_t)blocks->count, sizeof(uint16_t), CompareStarts);
+}
+
+void WriteBlockTable(const Blocks* blocks, const char* fileName, const char* symbol,
+                     const char* description, const char* inputs)
+{
+    if (blocks->count > UINT8_MAX)
+    {
+        Fail("%s: more than %d blocks for an 8-bit table", symbol, UINT8_MAX);
+    }
+    uint8_t* values = Allocate(CODE_POINTS);
+    for (int k = 0; k < blocks->count; k++)
+    {
+        memset(values + ((uint32_t)blocks->starts[k] << 6), k + 1, 64);
+    }
+    WriteTable(values, fileName, symbol, description, inputs);
+    free(values);
+}
+
+void WriteStarts(FILE* file, const char* name, const Blocks* blocks)
+{
+    fprintf(file, "const uint16_t %s[%d] = {", name, blocks->count);
+    for (int k = 0; k < blocks->count; k++)
+    {
+        fprintf(file, "%s0x%04X,", k % 8 == 0 ? "\n    " : " ", blocks->starts[k]);
+    }
+    fprintf(file, "\n};\n\n");
+}
+
+void WriteRanks(FILE* file, const char* name, const Blocks* blocks, const uint32_t* sources,
+                int count)
+{
+    fprintf(file, "const uint64_t %sBits[%d] = {", name, blocks->count);
+    for (int k = 0; k < blocks->count; k++)
+    {
+        uint64_t bits = 0;
+        for (int i = 0; i < count; i++)
+        {
+            bits |= sources[i] >> 6 == blocks->starts[k] ? (uint64_t)1 << (sources[i] & 63) : 0;
+        }
+        fprintf(file, "%s0x%016llXull,", k % 3 == 0 ? "\n    " : " ", (unsigned long long)bits);
+    }
+    fprintf(file, "\n};\n\nconst uint16_t %sRanks[%d] = {", name, blocks->count + 1);
+    int rank = 0;
+    for (int k = 0; k <= blocks->count; k++)
+    {
+        while (k < blocks->count && rank < count && sources[rank] >> 6 < blocks->starts[k])
+        {
+            rank++;
+        }
+        fprintf(file, "%s%d,", k % 12 == 0 ? "\n    " : " ", k == blocks->count ? count : rank);
+    }
+    fprintf(file, "\n};\n\n");
+}
