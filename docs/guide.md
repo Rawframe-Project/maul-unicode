@@ -247,7 +247,8 @@ form, and usually is, which saves the copy.
 boundaries of UAX #29) and case folds, with the full mappings that
 change the length ("ß" uppercases to "SS") and the context rules of
 final sigma. `muni_caseTurkic` applies the Turkish and Azerbaijani
-rules for dotted and dotless i. The simple mappings of one code point
+rules for dotted and dotless i, and `muni_caseLithuanian` the
+Lithuanian rules that keep the dot of an i under other accents. The simple mappings of one code point
 are `muniToLower`, `muniToUpper`, `muniToTitle` and `muniFoldCase`.
 
 To compare strings without regard to case, fold both and compare the

@@ -244,6 +244,8 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
         {"Turkic lowercase", muni_caseLower, muni_caseTurkic, u_strToLower, "tr"},
         {"Turkic uppercase", muni_caseUpper, muni_caseTurkic, u_strToUpper, "tr"},
         {"Turkic fold", muni_caseFold, muni_caseTurkic, FoldTurkic, "tr"},
+        {"Lithuanian lowercase", muni_caseLower, muni_caseLithuanian, u_strToLower, "lt"},
+        {"Lithuanian uppercase", muni_caseUpper, muni_caseLithuanian, u_strToUpper, "lt"},
     };
     for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
     {

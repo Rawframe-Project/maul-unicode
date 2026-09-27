@@ -133,6 +133,10 @@ extern const uint32_t muniCaseSpecials[];
 extern const uint16_t muniCaseSpecialOffsets[];
 extern const uint16_t muniCaseSpecialPool[];
 extern const uint16_t muniCaseSpecialCount;
+// Soft_Dotted, as sorted ranges: the first code point in the low 21
+// bits, the number of code points after it above them.
+extern const uint32_t muniSoftDotted[];
+extern const uint16_t muniSoftDottedCount;
 
 // Security data (UTS #39). The Security table stores 1 for
 // Identifier_Status=Allowed.

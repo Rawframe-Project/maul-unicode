@@ -20,7 +20,7 @@ that stores the same data:
 | Sentence breaking data | 18,379 | ICU4X sentence break rules |
 | Grapheme breaking data | 12,422 | ICU4X grapheme rules |
 | Compatibility decomposition | 22,623 | Its first measured size (muni-0011) |
-| Case mapping and folding | 9,629 | Its first measured size (muni-0012) |
+| Case mapping and folding | 9,775 | Its first measured size (muni-0012) and Soft_Dotted (muni-0018) |
 | Security (UTS #39) | 36,601 | Its first measured size (muni-0014) |
 | Emoji properties, White_Space and decimal digits | 2,058 | Their first measured size (muni-0015) |
 | Default_Ignorable_Code_Point | 357 | Its first measured size (muni-0017) |

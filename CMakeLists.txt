@@ -98,7 +98,8 @@ set(MUNI_CASE_SOURCES
     src/case.c
     src/case_map.c
     src/generated/case.c
-    src/generated/case_data.c)
+    src/generated/case_data.c
+    src/generated/soft_dotted.c)
 set(MUNI_SECURITY_SOURCES
     src/security.c
     src/skeleton.c

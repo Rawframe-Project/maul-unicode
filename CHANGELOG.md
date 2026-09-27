@@ -17,6 +17,9 @@ format.
   point, and a new fuzz target and the ICU comparison check it over
   text. 143 MiB/s on the benchmark text. `samples/names.c` keys names
   with it.
+- `muni_caseLithuanian`: the Lithuanian rules of SpecialCasing.txt, the
+  last language rules missing (muni-0018), over a 146-byte Soft_Dotted
+  list; the case component takes 9,775 bytes.
 
 ### Changed
 

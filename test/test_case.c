@@ -4,7 +4,8 @@
 // Case mapping and folding: the table against the generator's hash over
 // every code point, the simple mappings, and the full mappings over text
 // with their contexts: special mappings that change the length, the
-// final sigma, titlecase by word, and the Turkic dotted and dotless i.
+// final sigma, titlecase by word, the Turkic dotted and dotless i, and
+// the Lithuanian dot above.
 // With normalization built, NFKC_Casefold of every code point against
 // DerivedNormalizationProps.txt, and over text.
 
@@ -106,6 +107,39 @@ static void TestTurkic(void)
     CHECK(Converts("I\xC4\xB0", muni_caseFold, muni_caseTurkic, "\xC4\xB1i"), "Turkic folding");
 }
 
+// Each Lithuanian rule of SpecialCasing.txt, with the context each
+// conditional one needs and lacks.
+static void TestLithuanian(void)
+{
+    CHECK(Converts("I\xCC\x80", muni_caseLower, muni_caseLithuanian, "i\xCC\x87\xCC\x80"),
+          "I with an accent above keeps a dot");
+    CHECK(Converts("J\xCC\x81", muni_caseLower, muni_caseLithuanian, "j\xCC\x87\xCC\x81"),
+          "so does J");
+    CHECK(Converts("\xC4\xAE\xCC\xA3\xCC\x83", muni_caseLower, muni_caseLithuanian,
+                   "\xC4\xAF\xCC\x87\xCC\xA3\xCC\x83"),
+          "I with an ogonek, past a mark below");
+    CHECK(Converts("I\xCC\xA3", muni_caseLower, muni_caseLithuanian, "i\xCC\xA3"),
+          "no accent above, no dot");
+    CHECK(Converts("\xC3\x8C\xC3\x8D\xC4\xA8", muni_caseLower, muni_caseLithuanian,
+                   "i\xCC\x87\xCC\x80i\xCC\x87\xCC\x81i\xCC\x87\xCC\x83"),
+          "precomposed I with grave, acute and tilde");
+    CHECK(Converts("i\xCC\x87\xCC\x80", muni_caseUpper, muni_caseLithuanian, "I\xCC\x80"),
+          "uppercasing drops the dot");
+    CHECK(Converts("i\xCC\xA8\xCC\x87", muni_caseUpper, muni_caseLithuanian, "I\xCC\xA8"),
+          "past a mark of another class");
+    CHECK(Converts("i\xCC\x80\xCC\x87", muni_caseUpper, muni_caseLithuanian, "I\xCC\x80\xCC\x87"),
+          "not past another accent above");
+    CHECK(Converts("a\xCC\x87", muni_caseUpper, muni_caseLithuanian, "A\xCC\x87"),
+          "an a is not soft dotted");
+    CHECK(Converts("\xF0\x9D\x90\xA2\xCC\x87", muni_caseUpper, muni_caseLithuanian,
+                   "\xF0\x9D\x90\xA2"),
+          "a mathematical i is soft dotted");
+    CHECK(Converts("I\xCC\x80", muni_caseLower, muni_caseDefault, "i\xCC\x80"),
+          "the default rules keep no dot");
+    CHECK(Converts("I\xCC\x80", muni_caseFold, muni_caseLithuanian, "i\xCC\x80"),
+          "folding has no Lithuanian rules");
+}
+
 static void TestErrors(void)
 {
     char output[4];
@@ -123,6 +157,10 @@ static void TestErrors(void)
     CHECK(muniConvertCase("a", 1, 9, muni_caseDefault, muni_convertStrict, output, 4, &needed)
                   .status == muni_errorInvalid,
           "an unknown operation");
+    CHECK(
+        muniConvertCase("a", 1, muni_caseLower, 3, muni_convertStrict, output, 4, &needed).status ==
+            muni_errorInvalid,
+        "an unknown language");
 }
 
 #ifdef MUNI_UCD_DATA
@@ -268,6 +306,7 @@ int main(void)
     TestSimple();
     TestFull();
     TestTurkic();
+    TestLithuanian();
     TestErrors();
 #ifdef MUNI_UCD_DATA
     TestCasefoldEverywhere();

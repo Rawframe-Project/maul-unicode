@@ -9,7 +9,8 @@
 // text, the full mappings may change the length ("ß" uppercases to
 // "SS"), a final sigma lowercases to "ς", and titlecasing starts each
 // word (UAX #29) with a capital. Turkish and Azerbaijani, which pair a
-// dotted and a dotless i, take muni_caseTurkic.
+// dotted and a dotless i, take muni_caseTurkic; Lithuanian, which keeps
+// the dot of an i under other accents, takes muni_caseLithuanian.
 
 #ifndef MAUL_UNICODE_CASE_H
 #define MAUL_UNICODE_CASE_H
@@ -45,6 +46,9 @@ extern "C"
         // Turkish and Azerbaijani: "i" uppercases to "İ" and "I"
         // lowercases to "ı".
         muni_caseTurkic = 1,
+        // Lithuanian: an i keeps its dot under other accents above, as
+        // "i̇̀"; lowercasing writes the dot out and uppercasing drops it.
+        muni_caseLithuanian = 2,
     };
 
     /// Returns the simple lowercase mapping of a code point.
@@ -97,7 +101,8 @@ extern "C"
     /// @param length      The number of bytes.
     /// @param operation   muni_caseLower, muni_caseUpper, muni_caseTitle or
     ///                    muni_caseFold.
-    /// @param language    muni_caseDefault or muni_caseTurkic.
+    /// @param language    muni_caseDefault, muni_caseTurkic or
+    ///                    muni_caseLithuanian.
     /// @param mode        What to do with ill-formed input.
     /// @param output      The output. May be NULL when capacity is 0.
     /// @param capacity    The number of bytes output can hold.

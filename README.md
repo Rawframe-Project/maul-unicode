@@ -65,7 +65,7 @@ uses only the installed package.
 
 Three components can be left out with their tables when a build does
 not need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables),
-`-DMAUL_UNICODE_CASE=OFF` (9.6 KB) and `-DMAUL_UNICODE_SECURITY=OFF`
+`-DMAUL_UNICODE_CASE=OFF` (9.8 KB) and `-DMAUL_UNICODE_SECURITY=OFF`
 (35.5 KB; confusables and mixed scripts, which need normalization).
 
 With `-DMAUL_UNICODE_HARFBUZZ=ON` the build adds the static library

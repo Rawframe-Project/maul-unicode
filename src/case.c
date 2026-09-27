@@ -4,9 +4,10 @@
 // Case mapping and folding (Unicode chapter 3.13). The simple mappings
 // come from each code point's record; the full ones from the special
 // table when the record flags one. Two kinds of rule need context and
-// live here: Final_Sigma, and the Turkic rules for I, İ and the dot above
-// (SpecialCasing.txt, tr and az). Titlecasing walks the text's word
-// boundaries (UAX #29).
+// live here: Final_Sigma, the Turkic rules for I, İ and the dot above
+// (SpecialCasing.txt, tr and az), and the Lithuanian rules that keep the
+// dot of an i under other accents (lt). Titlecasing walks the text's
+// word boundaries (UAX #29).
 
 #include "maul-unicode/case.h"
 
@@ -22,6 +23,14 @@
 #define CAPITAL_I_DOT     0x0130u
 #define SMALL_DOTLESS_I   0x0131u
 #define COMBINING_DOT     0x0307u
+#define CAPITAL_J         0x004Au
+#define CAPITAL_I_OGONEK  0x012Eu
+#define CAPITAL_I_GRAVE   0x00CCu
+#define CAPITAL_I_ACUTE   0x00CDu
+#define CAPITAL_I_TILDE   0x0128u
+#define COMBINING_GRAVE   0x0300u
+#define COMBINING_ACUTE   0x0301u
+#define COMBINING_TILDE   0x0303u
 #define CAPITAL_SIGMA     0x03A3u
 #define SMALL_SIGMA       0x03C3u
 #define SMALL_FINAL_SIGMA 0x03C2u
@@ -73,8 +82,10 @@ typedef struct Converter
     const uint8_t* text;
     size_t length;
     bool turkic;
+    bool lithuanian;
     bool casedBefore; // a cased letter, then only case-ignorables (Final_Sigma)
     bool afterI;      // an I, then nothing of class 0 or 230 (After_I)
+    bool afterSoft;   // a Soft_Dotted letter, then the same (After_Soft_Dotted)
     muniWriter writer;
 } Converter;
 
@@ -126,6 +137,72 @@ static bool BeforeDot(const Converter* converter, size_t offset)
     return false;
 }
 
+// More_Above: a mark of class 230 follows, past marks of other classes
+// but 0.
+static bool MoreAbove(const Converter* converter, size_t offset)
+{
+    while (offset < converter->length)
+    {
+        size_t size;
+        uint8_t markClass = muniLookupCombiningClass(Decode(converter, offset, &size));
+        if (markClass == 0 || markClass == 230)
+        {
+            return markClass == 230;
+        }
+        offset += size;
+    }
+    return false;
+}
+
+static bool IsSoftDotted(uint32_t codePoint)
+{
+    uint32_t low = 0;
+    uint32_t high = muniSoftDottedCount;
+    while (low < high)
+    {
+        uint32_t middle = (low + high) / 2;
+        uint32_t first = muniSoftDotted[middle] & 0x1FFFFF;
+        if (codePoint < first)
+        {
+            high = middle;
+        }
+        else if (codePoint > first + (muniSoftDotted[middle] >> 21))
+        {
+            low = middle + 1;
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Lithuanian lowercasing keeps the dot of an i or a j that other accents
+// above follow, writing it out; true when it applied.
+static bool PutLithuanianLower(Converter* converter, uint32_t codePoint, size_t next)
+{
+    uint32_t accent = codePoint == CAPITAL_I_GRAVE   ? COMBINING_GRAVE
+                      : codePoint == CAPITAL_I_ACUTE ? COMBINING_ACUTE
+                      : codePoint == CAPITAL_I_TILDE ? COMBINING_TILDE
+                                                     : 0;
+    if (accent != 0)
+    {
+        muniWriterPut(&converter->writer, SMALL_I);
+        muniWriterPut(&converter->writer, COMBINING_DOT);
+        muniWriterPut(&converter->writer, accent);
+        return true;
+    }
+    if ((codePoint == CAPITAL_I || codePoint == CAPITAL_J || codePoint == CAPITAL_I_OGONEK) &&
+        MoreAbove(converter, next))
+    {
+        muniWriterPut(&converter->writer, muniToLower(codePoint));
+        muniWriterPut(&converter->writer, COMBINING_DOT);
+        return true;
+    }
+    return false;
+}
+
 // Lowercases one code point at offset, whose encoding ends at next.
 static void PutLower(Converter* converter, uint32_t codePoint, size_t next)
 {
@@ -153,6 +230,10 @@ static void PutLower(Converter* converter, uint32_t codePoint, size_t next)
             return; // the dot of an I, which lowercasing made an i
         }
     }
+    if (converter->lithuanian && PutLithuanianLower(converter, codePoint, next))
+    {
+        return;
+    }
     PutMapping(&converter->writer, codePoint, muni_caseKindLower);
 }
 
@@ -163,6 +244,10 @@ static void PutUpper(Converter* converter, uint32_t codePoint, int kind)
     {
         muniWriterPut(&converter->writer, CAPITAL_I_DOT);
         return;
+    }
+    if (converter->lithuanian && codePoint == COMBINING_DOT && converter->afterSoft)
+    {
+        return; // the dot of an i, which the capital does not need
     }
     PutMapping(&converter->writer, codePoint, kind);
 }
@@ -177,7 +262,7 @@ static void PutFold(Converter* converter, uint32_t codePoint)
     PutMapping(&converter->writer, codePoint, muni_caseKindFold);
 }
 
-// Moves the context past a code point.
+// Moves the context past a code point. Folding needs none.
 static void Track(Converter* converter, uint32_t codePoint)
 {
     uint8_t flags = muniCaseRecord(codePoint)[4];
@@ -189,14 +274,15 @@ static void Track(Converter* converter, uint32_t codePoint)
     {
         converter->casedBefore = false;
     }
-    uint8_t markClass = codePoint < 0x300 ? 0 : muniLookupCombiningClass(codePoint);
-    if (codePoint == CAPITAL_I)
+    if (!converter->turkic && !converter->lithuanian)
     {
-        converter->afterI = true;
+        return; // only the language rules look back past marks
     }
-    else if (markClass == 0 || markClass == 230)
+    uint8_t markClass = codePoint < 0x300 ? 0 : muniLookupCombiningClass(codePoint);
+    if (markClass == 0 || markClass == 230)
     {
-        converter->afterI = false;
+        converter->afterI = codePoint == CAPITAL_I;
+        converter->afterSoft = converter->lithuanian && IsSoftDotted(codePoint);
     }
 }
 
@@ -236,7 +322,10 @@ static size_t Convert(Converter* converter, size_t start, size_t end, muniCaseOp
         {
             PutLower(converter, codePoint, offset + size);
         }
-        Track(converter, codePoint);
+        if (operation != muni_caseFold)
+        {
+            Track(converter, codePoint);
+        }
         offset += size;
     }
     return end;
@@ -247,7 +336,7 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
                                size_t capacity, size_t* neededOut)
 {
     if ((text == nullptr && length != 0) || (output == nullptr && capacity != 0) ||
-        neededOut == nullptr || operation > muni_caseFold || language > muni_caseTurkic ||
+        neededOut == nullptr || operation > muni_caseFold || language > muni_caseLithuanian ||
         (mode != muni_convertStrict && mode != muni_convertReplace))
     {
         return (muniTextResult){muni_errorInvalid, 0};
@@ -255,6 +344,8 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
     Converter converter = {(const uint8_t*)text,
                            length,
                            language == muni_caseTurkic,
+                           language == muni_caseLithuanian,
+                           false,
                            false,
                            false,
                            (muniWriter){output, capacity, 0}};

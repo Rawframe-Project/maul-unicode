@@ -48,7 +48,7 @@ Inverts a visual-to-logical map into a logical-to-visual one, or the other way r
 
 ## `case.h`
 
-Case mapping and case folding (Unicode chapter 3.13): lowercase, uppercase and titlecase, and folding for comparing text without regard to case. Per code point, the simple mappings give one code point for one. Over text, the full mappings may change the length ("ß" uppercases to "SS"), a final sigma lowercases to "ς", and titlecasing starts each word (UAX #29) with a capital. Turkish and Azerbaijani, which pair a dotted and a dotless i, take muni_caseTurkic.
+Case mapping and case folding (Unicode chapter 3.13): lowercase, uppercase and titlecase, and folding for comparing text without regard to case. Per code point, the simple mappings give one code point for one. Over text, the full mappings may change the length ("ß" uppercases to "SS"), a final sigma lowercases to "ς", and titlecasing starts each word (UAX #29) with a capital. Turkish and Azerbaijani, which pair a dotted and a dotless i, take muni_caseTurkic; Lithuanian, which keeps the dot of an i under other accents, takes muni_caseLithuanian.
 
 ```c
 uint32_t muniToLower(uint32_t codePoint);
@@ -78,7 +78,7 @@ Returns whether a code point is Cased (a letter with case, or one such as "ª" t
 ```c
 MUNI_NODISCARD MUNI_API muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperation operation, muniCaseLanguage language, muniConvertMode mode, char* output, size_t capacity, size_t* neededOut);
 ```
-Applies a full case operation to UTF-8 text.  @param text        The text. May be NULL when length is 0. @param length      The number of bytes. @param operation   muni_caseLower, muni_caseUpper, muni_caseTitle or muni_caseFold. @param language    muni_caseDefault or muni_caseTurkic. @param mode        What to do with ill-formed input. @param output      The output. May be NULL when capacity is 0. @param capacity    The number of bytes output can hold. @param neededOut   Receives the number of bytes the whole result needs, which may exceed capacity. On another error, the bytes before it. @return `muni_success` and the length; `muni_errorCapacity` when the result does not fit (the bytes that fit are written); in strict mode the first UTF-8 error and its offset; `muni_errorInvalid` for a NULL argument or an unknown operation, language or mode. @par Thread safety Safe from any thread.
+Applies a full case operation to UTF-8 text.  @param text        The text. May be NULL when length is 0. @param length      The number of bytes. @param operation   muni_caseLower, muni_caseUpper, muni_caseTitle or muni_caseFold. @param language    muni_caseDefault, muni_caseTurkic or muni_caseLithuanian. @param mode        What to do with ill-formed input. @param output      The output. May be NULL when capacity is 0. @param capacity    The number of bytes output can hold. @param neededOut   Receives the number of bytes the whole result needs, which may exceed capacity. On another error, the bytes before it. @return `muni_success` and the length; `muni_errorCapacity` when the result does not fit (the bytes that fit are written); in strict mode the first UTF-8 error and its offset; `muni_errorInvalid` for a NULL argument or an unknown operation, language or mode. @par Thread safety Safe from any thread.
 
 ```c
 MUNI_NODISCARD MUNI_API muniTextResult muniToNfkcCasefold(const char* text, size_t length, muniConvertMode mode, char* output, size_t capacity, size_t* neededOut);
