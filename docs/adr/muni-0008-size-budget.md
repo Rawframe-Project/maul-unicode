@@ -23,6 +23,7 @@ that stores the same data:
 | Case mapping and folding | 9,629 | Its first measured size (muni-0012) |
 | Security (UTS #39) | 36,601 | Its first measured size (muni-0014) |
 | Emoji properties, White_Space and decimal digits | 2,058 | Their first measured size (muni-0015) |
+| Default_Ignorable_Code_Point | 357 | Its first measured size (muni-0017) |
 
 Components without a measured reference get their ceiling here when
 their tables first exist. CI reports every component's size; the

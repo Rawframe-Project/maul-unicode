@@ -7,10 +7,9 @@
 //
 // - it must be at most moderately restrictive in how it mixes scripts
 //   (UTS #39), with digits of one decimal system;
-// - two names are the same account when their keys match: the name
-//   case-folded and put in NFKC again, so "Alice", "ALICE" and a
-//   full-width "ALICE" collide (UAX #31 defines NFKC_Casefold for this;
-//   these steps come close to it);
+// - two names are the same account when their NFKC_Casefold keys match,
+//   the comparison UAX #31 gives identifiers, so "Alice", "ALICE" and a
+//   full-width "ALICE" collide;
 // - a name is refused when its skeleton matches a taken one's, so a
 //   Cyrillic a cannot pass for a Latin one.
 //
@@ -34,19 +33,6 @@ typedef struct Name
     char skeleton[MAX_OUT];
     size_t skeletonLength;
 } Name;
-
-// The key of a name in NFKC: case folding, then NFKC again.
-static bool MakeKey(const char* name, size_t length, Name* out)
-{
-    char folded[MAX_OUT];
-    size_t foldedSize = 0;
-    return muniConvertCase(name, length, muni_caseFold, muni_caseDefault, muni_convertStrict,
-                           folded, MAX_OUT, &foldedSize)
-                   .status == muni_success &&
-           muniNormalize(folded, foldedSize, muni_nfkc, muni_convertStrict, out->key, MAX_OUT,
-                         &out->keyLength)
-                   .status == muni_success;
-}
 
 // Whether two byte strings are equal.
 static bool Equal(const char* a, size_t aLength, const char* b, size_t bLength)
@@ -79,7 +65,9 @@ static const char* Check(const char* input, Name* taken, size_t* takenCount)
     }
     Name candidate;
     static uint8_t workspace[2 * MAX_OUT];
-    if (!MakeKey(name, length, &candidate) ||
+    if (muniToNfkcCasefold(name, length, muni_convertStrict, candidate.key, MAX_OUT,
+                           &candidate.keyLength)
+                .status != muni_success ||
         muniGetSkeleton(name, length, muni_bidiLeftToRight, workspace, candidate.skeleton, MAX_OUT,
                         &candidate.skeletonLength)
                 .status != muni_success)

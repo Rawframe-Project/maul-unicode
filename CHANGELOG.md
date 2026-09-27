@@ -8,12 +8,23 @@ format.
 
 ## [Unreleased]
 
+### Added
+
+- `muniToNfkcCasefold`: NFKC_Casefold, the caseless comparison UAX #31
+  gives identifiers, from the decomposition, case folding and
+  Default_Ignorable data already present (muni-0017); built with both
+  normalization and case. It matches NFKC_CF of the UCD for every code
+  point, and a new fuzz target and the ICU comparison check it over
+  text. 143 MiB/s on the benchmark text. `samples/names.c` keys names
+  with it.
+
 ### Changed
 
 - `muniIsDefaultIgnorable` moved from `security.h` to `properties.h`
   and into the core, over a table of its own (357 bytes); `security.h`
   includes `properties.h`, so callers compile unchanged. The Security
-  table keeps only Identifier_Status (5,109 bytes, from 5,885).
+  table keeps only Identifier_Status (5,109 bytes, from 5,885), and the
+  security component takes 35,513 bytes.
 
 ## [0.1.0] - 2026-09-27
 

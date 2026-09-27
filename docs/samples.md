@@ -30,8 +30,8 @@ mirrored.
 
 [`samples/names.c`](https://github.com/Rawframe-Project/maul-unicode/blob/main/samples/names.c) accepts or refuses candidate
 user names: it puts each in NFKC, refuses mixed scripts and mixed
-digit systems, derives a key by case folding that makes "ALICE" the
-same account as "Alice", and compares skeletons so that a Cyrillic
+digit systems, keys each by NFKC_Casefold so that "ALICE" is the same
+account as "Alice", and compares skeletons so that a Cyrillic
 "а" cannot pass for a Latin "a".
 
 ## The installed package

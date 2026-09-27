@@ -20,6 +20,7 @@ identifier: encoding tables
 line: complex segmenter tables
 normalize: decompose encoding normalizer tables writer
 normalizer: decompose tables writer
+nfkc_casefold: case_map decompose encoding normalizer tables
 properties: tables
 script_runs: cursor tables
 segment: segmenter

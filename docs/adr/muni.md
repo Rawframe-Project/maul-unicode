@@ -21,3 +21,4 @@ are listed in [README.md](README.md).
 | [muni-0014](muni-0014-security-data-and-skeletons.md) | Security data and skeletons | Accepted |
 | [muni-0015](muni-0015-emoji-white-space-digits.md) | Emoji properties, White_Space and decimal digits | Accepted |
 | [muni-0016](muni-0016-utf8-validation-without-simd.md) | UTF-8 validation without SIMD | Accepted |
+| [muni-0017](muni-0017-nfkc-casefold.md) | NFKC_Casefold from the existing tables | Accepted |

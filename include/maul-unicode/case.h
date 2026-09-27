@@ -117,6 +117,34 @@ extern "C"
                                                            muniConvertMode mode, char* output,
                                                            size_t capacity, size_t* neededOut);
 
+    /// Maps UTF-8 text to NFKC_Casefold: compatibility forms to their
+    /// plain selves, every case to one, default ignorables removed, and
+    /// the result in NFC. Two strings match without regard to case or
+    /// compatibility forms when their NFKC_Casefold texts are equal;
+    /// UAX #31 uses it to compare identifiers. It needs both the case
+    /// and the normalization components.
+    ///
+    /// @param text        The text. May be NULL when length is 0.
+    /// @param length      The number of bytes.
+    /// @param mode        What to do with ill-formed input.
+    /// @param output      The output. May be NULL when capacity is 0.
+    /// @param capacity    The number of bytes output can hold.
+    /// @param neededOut   Receives the number of bytes the whole result
+    ///                    needs, which may exceed capacity. On another
+    ///                    error, the bytes before it.
+    /// @return `muni_success` and the length; `muni_errorCapacity` when
+    ///         the result does not fit (the bytes that fit are written); in
+    ///         strict mode the first UTF-8 error and its offset;
+    ///         `muni_errorLimit` and the offset of the code point that
+    ///         makes a run of combining marks too long, as in
+    ///         muniNormalize; `muni_errorInvalid` for a NULL argument or
+    ///         an unknown mode.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniTextResult muniToNfkcCasefold(const char* text, size_t length,
+                                                              muniConvertMode mode, char* output,
+                                                              size_t capacity, size_t* neededOut);
+
 #ifdef __cplusplus
 }
 #endif

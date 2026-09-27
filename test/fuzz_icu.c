@@ -161,6 +161,33 @@ static bool OutputKnown(const char* bytes, size_t length)
     return U_SUCCESS(error) && IcuKnows(units, count);
 }
 
+// NFKC_Casefold, where every code point of the result is one ICU's
+// version knows: a character folds or decomposes to a newer one only by
+// a change since then.
+static void CompareCasefold(const char* text, size_t length, const UChar* units, int32_t unitCount)
+{
+    static char ours[MAX_BYTES];
+    static char theirs[MAX_BYTES];
+    static UChar folded[MAX_UNITS];
+    size_t needed = 0;
+    muniTextResult result =
+        muniToNfkcCasefold(text, length, muni_convertStrict, ours, MAX_BYTES, &needed);
+    if (result.status == muni_errorLimit ||
+        (result.status == muni_success && !OutputKnown(ours, needed)))
+    {
+        return;
+    }
+    UErrorCode error = U_ZERO_ERROR;
+    const UNormalizer2* normalizer = unorm2_getNFKCCasefoldInstance(&error);
+    int32_t count = unorm2_normalize(normalizer, units, unitCount, folded, MAX_UNITS, &error);
+    int32_t theirLength = 0;
+    if (result.status != muni_success || U_FAILURE(error) ||
+        !IcuToUtf8(folded, count, theirs, &theirLength) || !Same(ours, needed, theirs, theirLength))
+    {
+        Differ("NFKC_Casefold", (const uint8_t*)text, length);
+    }
+}
+
 typedef int32_t IcuCaseFn(UChar* dest, int32_t capacity, const UChar* source, int32_t length,
                           const char* locale, UErrorCode* error);
 
@@ -627,6 +654,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         return 0;
     }
     CompareNormalization(text, size, units, unitCount);
+    CompareCasefold(text, size, units, unitCount);
     CompareCase(text, size, units, unitCount);
     if (size > 0)
     {

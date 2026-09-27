@@ -21,7 +21,7 @@ results go into caller buffers. Every function is safe from any thread,
 and results are identical on every platform.
 
 [The guide](docs/guide.md) walks through each part, and
-[the API reference](docs/api.md) lists all 74 public functions,
+[the API reference](docs/api.md) lists all 75 public functions,
 generated from the headers.
 
 ## Status
@@ -36,7 +36,7 @@ generated from the headers.
    Burmese.
 5. Bidirectional text (UAX #9).
 6. Script itemization, and Unicode functions for HarfBuzz.
-7. Normalization (UAX #15) and case mapping.
+7. Normalization (UAX #15), case mapping and NFKC_Casefold.
 8. Identifiers (UAX #31) and security mechanisms (UTS #39).
 
 Each passes the official Unicode conformance files completely. Until
@@ -59,14 +59,14 @@ Use the package from CMake with `find_package(maul-unicode)` and link
 `samples/` shows the library at work: `segments.c` splits text into
 grapheme clusters, words, sentences and line break opportunities;
 `bidi.c` lays out a line of mixed-direction text; `names.c` builds a
-user name policy from normalization, case folding, confusable skeletons
-and restriction levels. `samples/minimal` is a separate project that
+user name policy from NFKC_Casefold, confusable skeletons and
+restriction levels. `samples/minimal` is a separate project that
 uses only the installed package.
 
 Three components can be left out with their tables when a build does
 not need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables),
 `-DMAUL_UNICODE_CASE=OFF` (9.6 KB) and `-DMAUL_UNICODE_SECURITY=OFF`
-(36.6 KB; confusables and mixed scripts, which need normalization).
+(35.5 KB; confusables and mixed scripts, which need normalization).
 
 With `-DMAUL_UNICODE_HARFBUZZ=ON` the build adds the static library
 `maul-unicode-harfbuzz`, whose `muniCreateHarfBuzzFunctions` gives

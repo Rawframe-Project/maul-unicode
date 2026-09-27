@@ -161,6 +161,15 @@ static size_t Fold(InitFn unused)
     return ConvertCase(muni_caseFold);
 }
 
+static size_t NfkcCasefold(InitFn unused)
+{
+    (void)unused;
+    size_t needed = 0;
+    muniTextResult result = muniToNfkcCasefold(s_text, TEXT_BYTES, muni_convertReplace,
+                                               s_normalized, sizeof(s_normalized), &needed);
+    return result.status == muni_success ? needed : 0;
+}
+
 static size_t Skeleton(InitFn unused)
 {
     (void)unused;
@@ -314,6 +323,7 @@ int main(int argc, char** argv)
     Run("NFD", NormalizeNfd, nullptr);
     Run("lowercase", Lowercase, nullptr);
     Run("case fold", Fold, nullptr);
+    Run("NFKC_Casefold", NfkcCasefold, nullptr);
     Run("skeleton", Skeleton, nullptr);
     Run("restriction level", RestrictionLevel, nullptr);
     RunFind("grapheme boundaries, find", muniFindGraphemeBreaks);

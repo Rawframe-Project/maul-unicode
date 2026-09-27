@@ -80,6 +80,11 @@ MUNI_NODISCARD MUNI_API muniTextResult muniConvertCase(const char* text, size_t 
 ```
 Applies a full case operation to UTF-8 text.  @param text        The text. May be NULL when length is 0. @param length      The number of bytes. @param operation   muni_caseLower, muni_caseUpper, muni_caseTitle or muni_caseFold. @param language    muni_caseDefault or muni_caseTurkic. @param mode        What to do with ill-formed input. @param output      The output. May be NULL when capacity is 0. @param capacity    The number of bytes output can hold. @param neededOut   Receives the number of bytes the whole result needs, which may exceed capacity. On another error, the bytes before it. @return `muni_success` and the length; `muni_errorCapacity` when the result does not fit (the bytes that fit are written); in strict mode the first UTF-8 error and its offset; `muni_errorInvalid` for a NULL argument or an unknown operation, language or mode. @par Thread safety Safe from any thread.
 
+```c
+MUNI_NODISCARD MUNI_API muniTextResult muniToNfkcCasefold(const char* text, size_t length, muniConvertMode mode, char* output, size_t capacity, size_t* neededOut);
+```
+Maps UTF-8 text to NFKC_Casefold: compatibility forms to their plain selves, every case to one, default ignorables removed, and the result in NFC. Two strings match without regard to case or compatibility forms when their NFKC_Casefold texts are equal; UAX #31 uses it to compare identifiers. It needs both the case and the normalization components.  @param text        The text. May be NULL when length is 0. @param length      The number of bytes. @param mode        What to do with ill-formed input. @param output      The output. May be NULL when capacity is 0. @param capacity    The number of bytes output can hold. @param neededOut   Receives the number of bytes the whole result needs, which may exceed capacity. On another error, the bytes before it. @return `muni_success` and the length; `muni_errorCapacity` when the result does not fit (the bytes that fit are written); in strict mode the first UTF-8 error and its offset; `muni_errorLimit` and the offset of the code point that makes a run of combining marks too long, as in muniNormalize; `muni_errorInvalid` for a NULL argument or an unknown mode. @par Thread safety Safe from any thread.
+
 ## `encoding.h`
 
 UTF-8, UTF-16 and UTF-32: validation of hostile input, decoding and encoding of single code points, and conversion between the three. A sequence is well formed exactly when the Unicode Standard's table of well-formed UTF-8 byte sequences (chapter 3) says so: no overlong forms, no surrogates, nothing past U+10FFFF.
@@ -419,4 +424,4 @@ Writes the line break opportunities of a whole UTF-8 text into caller arrays: ev
 
 ---
 
-74 functions across 11 headers.
+75 functions across 11 headers.

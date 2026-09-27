@@ -251,11 +251,18 @@ rules for dotted and dotless i. The simple mappings of one code point
 are `muniToLower`, `muniToUpper`, `muniToTitle` and `muniFoldCase`.
 
 To compare strings without regard to case, fold both and compare the
-results; to compare them as users see them, normalize both first:
+results. To compare them as users see them, use `muniToNfkcCasefold`,
+the key UAX #31 gives identifiers: it folds case, turns compatibility
+forms into their plain selves, drops default ignorables such as a soft
+hyphen or a zero width space, and puts the result in NFC. It needs both
+components.
 
 ```c
-// key = NFKC(fold(NFKC(name))): "Alice", "ALICE" and a full-width
-// "ALICE" all get the same key.
+size_t keyLength = 0;
+muniTextResult result = muniToNfkcCasefold(name, length, muni_convertStrict, key,
+                                           sizeof(key), &keyLength);
+// "Alice", "ALICE", a full-width "ALICE" and "Al" + soft hyphen + "ice"
+// all get the key "alice".
 ```
 
 ## 10. Identifiers and security
@@ -290,7 +297,8 @@ names in chat:
 
 Three components can be left out of a build with their tables:
 `-DMAUL_UNICODE_NORMALIZATION=OFF`, `-DMAUL_UNICODE_CASE=OFF` and
-`-DMAUL_UNICODE_SECURITY=OFF` (security needs normalization). Their
+`-DMAUL_UNICODE_SECURITY=OFF` (security needs normalization;
+`muniToNfkcCasefold` needs normalization and case). Their
 headers stay, so a call into a missing component fails to link rather
 than at run time. CI's web build reports what each costs in a static
 library.
@@ -300,6 +308,8 @@ library.
 Every algorithm with an official Unicode test file passes all of it:
 the grapheme, word, sentence and line break tests, both bidi tests, and
 the normalization test with its part 1 check of every code point.
+NFKC_Casefold is checked against the UCD's NFKC_CF for every code
+point.
 Fuzz targets check that the answers of each area agree with each other,
 and one compares with ICU where the two Unicode versions agree. The
 generator's tables are verified against the UCD for every code point
