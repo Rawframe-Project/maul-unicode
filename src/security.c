@@ -206,8 +206,7 @@ static muniTextResult Examine(const char* text, size_t length, Survey* surveyOut
         }
         offset += size;
         surveyOut->ascii = surveyOut->ascii && codePoint < 0x80;
-        surveyOut->allowed =
-            surveyOut->allowed && (muniLookupSecurity(codePoint) & muni_securityAllowed) != 0;
+        surveyOut->allowed = surveyOut->allowed && muniLookupSecurity(codePoint) != 0;
         Scripts scripts;
         if (!Augmented(codePoint, &indexes, &scripts))
         {
@@ -356,10 +355,5 @@ muniTextResult muniCheckMixedNumbers(const char* text, size_t length, bool* mixe
 
 bool muniIsIdentifierAllowed(uint32_t codePoint)
 {
-    return (muniLookupSecurity(codePoint) & muni_securityAllowed) != 0;
-}
-
-bool muniIsDefaultIgnorable(uint32_t codePoint)
-{
-    return (muniLookupSecurity(codePoint) & muni_securityIgnorable) != 0;
+    return muniLookupSecurity(codePoint) != 0;
 }

@@ -88,6 +88,11 @@ static uint8_t WhiteSpace(uint32_t codePoint)
     return muniIsWhiteSpace(codePoint) ? 1 : 0;
 }
 
+static uint8_t DefaultIgnorable(uint32_t codePoint)
+{
+    return muniIsDefaultIgnorable(codePoint) ? 1 : 0;
+}
+
 static void TestBreakPropertiesMatchTheUcdEverywhere(void)
 {
     CHECK(HashAll(GraphemeBreak) == muniGraphemeClusterBreakHash, "Grapheme_Cluster_Break hash");
@@ -96,6 +101,8 @@ static void TestBreakPropertiesMatchTheUcdEverywhere(void)
     CHECK(HashAll(IndicConjunctBreak) == muniIndicConjunctBreakHash, "Indic_Conjunct_Break hash");
     CHECK(HashAll(Emoji) == muniEmojiHash, "emoji properties hash");
     CHECK(HashAll(WhiteSpace) == muniWhiteSpaceHash, "White_Space hash");
+    CHECK(HashAll(DefaultIgnorable) == muniDefaultIgnorableHash,
+          "Default_Ignorable_Code_Point hash");
 }
 
 static void TestBreakPropertiesKnownValues(void)
@@ -126,6 +133,10 @@ static void TestBreakPropertiesKnownValues(void)
     CHECK(muniIsWhiteSpace(' ') && muniIsWhiteSpace(0x3000) && muniIsWhiteSpace(0x2029) &&
               !muniIsWhiteSpace(0x200B) && !muniIsWhiteSpace(0x110000),
           "White_Space");
+    CHECK(muniIsDefaultIgnorable(0x200D) && muniIsDefaultIgnorable(0x00AD) &&
+              muniIsDefaultIgnorable(0xE0FFF) && !muniIsDefaultIgnorable('a') &&
+              !muniIsDefaultIgnorable(0x110000),
+          "Default_Ignorable_Code_Point");
     CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
 }
 

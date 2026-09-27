@@ -59,16 +59,6 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsIdentifierAllowed(uint32_t codePoint);
 
-    /// Tells whether a code point is Default_Ignorable_Code_Point: a
-    /// character that shows nothing when a font lacks it, such as a
-    /// zero width joiner or a variation selector.
-    ///
-    /// @param codePoint  Any value.
-    /// @return true for a default ignorable code point.
-    /// @par Thread safety
-    /// Safe from any thread.
-    MUNI_API bool muniIsDefaultIgnorable(uint32_t codePoint);
-
     /// Computes the skeleton of UTF-8 text as displayed in a paragraph of
     /// a direction: bidiSkeleton of UTS #39 section 4. The skeleton of
     /// muni_bidiLeftToRight is the one UTS #39 calls skeleton;

@@ -238,6 +238,16 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsWhiteSpace(uint32_t codePoint);
 
+    /// Tells whether a code point is Default_Ignorable_Code_Point: a
+    /// character that shows nothing when a font lacks it, such as a
+    /// zero width joiner or a variation selector.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true for a default ignorable code point.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsDefaultIgnorable(uint32_t codePoint);
+
     /// Returns the value of a decimal digit: a code point of General
     /// Category Nd (Numeric_Type Decimal), such as '7' or the Devanagari
     /// seven, which parse as numbers. Superscripts, fractions and Roman

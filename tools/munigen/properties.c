@@ -433,6 +433,9 @@ void WriteProperties(void)
     WriteEmoji(values);
     LoadBinary("PropList.txt", "White_Space", values);
     WriteTable(values, "white_space", "WhiteSpace", "White_Space", "PropList.txt");
+    LoadBinary("DerivedCoreProperties.txt", "Default_Ignorable_Code_Point", values);
+    WriteTable(values, "default_ignorable", "DefaultIgnorable", "Default_Ignorable_Code_Point",
+               "DerivedCoreProperties.txt");
     WriteDecimalZeros();
     LoadEnumerated("LineBreak.txt", "lb", nullptr, s_lineBreakNames, COUNT_OF(s_lineBreakNames),
                    values);

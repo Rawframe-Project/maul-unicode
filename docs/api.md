@@ -251,6 +251,11 @@ bool muniIsWhiteSpace(uint32_t codePoint);
 Tells whether a code point has the White_Space property: spaces, tabs and line and paragraph separators, 25 code points in all.  @param codePoint  Any value; one above U+10FFFF has it not. @return true when the code point is White_Space. @par Thread safety Safe from any thread.
 
 ```c
+bool muniIsDefaultIgnorable(uint32_t codePoint);
+```
+Tells whether a code point is Default_Ignorable_Code_Point: a character that shows nothing when a font lacks it, such as a zero width joiner or a variation selector.  @param codePoint  Any value; one above U+10FFFF has it not. @return true for a default ignorable code point. @par Thread safety Safe from any thread.
+
+```c
 int32_t muniGetDecimalDigitValue(uint32_t codePoint);
 ```
 Returns the value of a decimal digit: a code point of General Category Nd (Numeric_Type Decimal), such as '7' or the Devanagari seven, which parse as numbers. Superscripts, fractions and Roman numerals have numeric values but are not decimal digits.  @param codePoint  Any value. @return The digit's value, 0 to 9, or -1 when the code point is not a decimal digit. @par Thread safety Safe from any thread.
@@ -327,11 +332,6 @@ Security mechanisms (UTS #39) for names people read, such as user names and iden
 bool muniIsIdentifierAllowed(uint32_t codePoint);
 ```
 Tells whether a code point has Identifier_Status Allowed, the General Security Profile for identifiers.  @param codePoint  Any value. @return true when the profile allows the code point. @par Thread safety Safe from any thread.
-
-```c
-bool muniIsDefaultIgnorable(uint32_t codePoint);
-```
-Tells whether a code point is Default_Ignorable_Code_Point: a character that shows nothing when a font lacks it, such as a zero width joiner or a variation selector.  @param codePoint  Any value. @return true for a default ignorable code point. @par Thread safety Safe from any thread.
 
 ```c
 MUNI_NODISCARD MUNI_API muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirection direction, uint8_t* workspace, char* output, size_t capacity, size_t* neededOut);

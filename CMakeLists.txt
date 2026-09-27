@@ -77,6 +77,7 @@ set(MUNI_SOURCES
     src/generated/script_tags.c
     src/generated/sentence_break.c
     src/generated/white_space.c
+    src/generated/default_ignorable.c
     src/generated/word_break.c
     src/grapheme.c
     src/identifier.c

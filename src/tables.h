@@ -26,6 +26,8 @@ uint8_t muniLookupEmoji(uint32_t codePoint);
 extern const uint64_t muniEmojiHash;
 uint8_t muniLookupWhiteSpace(uint32_t codePoint);
 extern const uint64_t muniWhiteSpaceHash;
+uint8_t muniLookupDefaultIgnorable(uint32_t codePoint);
+extern const uint64_t muniDefaultIgnorableHash;
 // The zeros of the decimal digit systems, sorted: a digit's value is its
 // distance from the greatest zero at or below it.
 extern const uint32_t muniDecimalZeros[];
@@ -133,7 +135,7 @@ extern const uint16_t muniCaseSpecialPool[];
 extern const uint16_t muniCaseSpecialCount;
 
 // Security data (UTS #39). The Security table stores 1 for
-// Identifier_Status=Allowed and 2 for Default_Ignorable_Code_Point.
+// Identifier_Status=Allowed.
 // Confusable prototypes sit in a rank index whose blocks are found by
 // binary search over Starts. An entry below 0x8000 is a prototype of one
 // code point; above, it holds the prototype's length in bits 13 and 14
@@ -147,12 +149,6 @@ extern const uint16_t muniConfusableRanks[];
 extern const uint16_t muniConfusables[];
 extern const uint16_t muniConfusablePool[];
 extern const uint16_t muniConfusableBlockCount;
-
-enum
-{
-    muni_securityAllowed = 1,
-    muni_securityIgnorable = 2,
-};
 
 enum
 {

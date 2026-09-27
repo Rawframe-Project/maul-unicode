@@ -67,6 +67,11 @@ bool muniIsWhiteSpace(uint32_t codePoint)
     return muniLookupWhiteSpace(codePoint) != 0;
 }
 
+bool muniIsDefaultIgnorable(uint32_t codePoint)
+{
+    return muniLookupDefaultIgnorable(codePoint) != 0;
+}
+
 int32_t muniGetDecimalDigitValue(uint32_t codePoint)
 {
     if (codePoint - '0' < 10)

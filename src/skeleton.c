@@ -165,7 +165,7 @@ static void FlushDecomposed(Skeleton* skeleton)
     for (size_t i = 0; i < skeleton->decomposed.count; i++)
     {
         uint32_t codePoint = skeleton->decomposed.codePoints[i];
-        if (codePoint < 0x80 || (muniLookupSecurity(codePoint) & muni_securityIgnorable) == 0)
+        if (codePoint < 0x80 || muniLookupDefaultIgnorable(codePoint) == 0)
         {
             AddPrototype(skeleton, codePoint);
         }

@@ -276,10 +276,6 @@ static void TestLevels(void)
               muniIsIdentifierAllowed(0x0430) && !muniIsIdentifierAllowed(0x00AD) &&
               !muniIsIdentifierAllowed(0x110000),
           "Identifier_Status");
-    CHECK(muniIsDefaultIgnorable(0x200D) && muniIsDefaultIgnorable(0x00AD) &&
-              muniIsDefaultIgnorable(0xE0FFF) && !muniIsDefaultIgnorable('a') &&
-              !muniIsDefaultIgnorable(0x110000),
-          "Default_Ignorable_Code_Point");
 }
 
 static bool Mixed(const char* text)

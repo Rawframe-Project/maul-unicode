@@ -17,8 +17,7 @@
 // prototype's first unit in the pool is then its length. Prototypes
 // that recur are stored once.
 //
-// A table gives each code point two bits: Identifier_Status=Allowed and
-// Default_Ignorable_Code_Point.
+// A table gives each code point Identifier_Status=Allowed.
 
 #include "munigen.h"
 
@@ -187,18 +186,12 @@ static void CollectEntries(Security* data)
            dropped);
 }
 
-// Identifier_Status=Allowed in bit 0, Default_Ignorable_Code_Point in
-// bit 1.
-static void WriteSecurityTable(const Security* data)
+// Identifier_Status=Allowed, the General Security Profile.
+static void WriteSecurityTable(void)
 {
     uint8_t* values = Allocate(CODE_POINTS);
     LoadBinary("IdentifierStatus.txt", "Allowed", values);
-    for (uint32_t c = 0; c < CODE_POINTS; c++)
-    {
-        values[c] = (uint8_t)(values[c] | (data->ignorable[c] ? 2 : 0));
-    }
-    WriteTable(values, "security", "Security", "Identifier_Status and Default_Ignorable_Code_Point",
-               "IdentifierStatus.txt and DerivedCoreProperties.txt");
+    WriteTable(values, "security", "Security", "Identifier_Status=Allowed", "IdentifierStatus.txt");
     free(values);
 }
 
@@ -239,7 +232,7 @@ void WriteSecurity(void)
     LoadBinary("DerivedCoreProperties.txt", "Default_Ignorable_Code_Point", data.ignorable);
     LoadConfusables(&data);
     CollectEntries(&data);
-    WriteSecurityTable(&data);
+    WriteSecurityTable();
     static Blocks blocks;
     AddBlocks(&blocks, data.sources, data.count);
     WriteData(&data, &blocks);

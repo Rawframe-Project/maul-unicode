@@ -8,6 +8,13 @@ format.
 
 ## [Unreleased]
 
+### Changed
+
+- `muniIsDefaultIgnorable` moved from `security.h` to `properties.h`
+  and into the core, over a table of its own (357 bytes); `security.h`
+  includes `properties.h`, so callers compile unchanged. The Security
+  table keeps only Identifier_Status (5,109 bytes, from 5,885).
+
 ## [0.1.0] - 2026-09-27
 
 The first release: every algorithm and property the requirements ask
