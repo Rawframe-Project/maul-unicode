@@ -96,6 +96,9 @@ extern "C"
         muni_errorLimit = -10,
         // The text is not an identifier (UAX #31).
         muni_errorIdentifier = -11,
+        // UTF-32: a value that is no Unicode scalar value, a surrogate or
+        // one past U+10FFFF.
+        muni_errorUtf32Value = -12,
     };
 
     // A library or Unicode version: major, minor and patch.

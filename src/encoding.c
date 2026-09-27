@@ -365,3 +365,34 @@ muniTextResult muniConvertUtf8ToUtf32(const char* bytes, size_t length, uint32_t
     }
     return Finish(needed, capacity, length, neededOut);
 }
+
+muniTextResult muniConvertUtf32ToUtf8(const uint32_t* codePoints, size_t length, char* bytes,
+                                      size_t capacity, muniConvertMode mode, size_t* neededOut)
+{
+    if (BadArguments(codePoints, length, bytes, capacity, mode, neededOut))
+    {
+        return (muniTextResult){muni_errorInvalid, 0};
+    }
+    size_t needed = 0;
+    for (size_t offset = 0; offset < length; offset++)
+    {
+        uint32_t codePoint = codePoints[offset];
+        if (codePoint > 0x10FFFF || IsHighSurrogate(codePoint) || IsLowSurrogate(codePoint))
+        {
+            if (mode == muni_convertStrict)
+            {
+                *neededOut = needed;
+                return (muniTextResult){muni_errorUtf32Value, offset};
+            }
+            codePoint = MUNI_REPLACEMENT_CHARACTER;
+        }
+        uint8_t encoded[4];
+        size_t encodedSize = EncodeUtf8Unchecked(codePoint, encoded);
+        if (needed + encodedSize <= capacity)
+        {
+            memcpy(bytes + needed, encoded, encodedSize);
+        }
+        needed += encodedSize;
+    }
+    return Finish(needed, capacity, length, neededOut);
+}

@@ -232,6 +232,40 @@ static void TestConversionsRoundTrip(void)
         muniConvertUtf16ToUtf8(units, unitCount, back, 32, muni_convertStrict, &byteCount);
     CHECK(toUtf8.status == muni_success && byteCount == sizeof(text) - 1, "same length back");
     CHECK(memcmp(back, text, byteCount) == 0, "same bytes back");
+    uint32_t codePoints[8];
+    size_t codePointCount = 0;
+    CHECK(muniConvertUtf8ToUtf32(text, sizeof(text) - 1, codePoints, 8, muni_convertStrict,
+                                 &codePointCount)
+                      .status == muni_success &&
+              codePointCount == 5 && codePoints[3] == 0x1F600,
+          "five code points");
+    CHECK(
+        muniConvertUtf32ToUtf8(codePoints, codePointCount, back, 32, muni_convertStrict, &byteCount)
+                    .status == muni_success &&
+            byteCount == sizeof(text) - 1 && memcmp(back, text, byteCount) == 0,
+        "UTF-32 back to the same bytes");
+}
+
+static void TestUtf32Values(void)
+{
+    const uint32_t values[] = {'a', 0xD800, 0x110000, 'b'};
+    char bytes[16];
+    size_t needed = 0;
+    muniTextResult result =
+        muniConvertUtf32ToUtf8(values, 4, bytes, 16, muni_convertStrict, &needed);
+    CHECK(result.status == muni_errorUtf32Value && result.offset == 1 && needed == 1,
+          "a surrogate is no scalar value");
+    result = muniConvertUtf32ToUtf8(values, 4, bytes, 16, muni_convertReplace, &needed);
+    CHECK(result.status == muni_success && needed == 8 &&
+              memcmp(bytes,
+                     "a\xEF\xBF\xBD\xEF\xBF\xBD"
+                     "b",
+                     8) == 0,
+          "each bad value becomes U+FFFD");
+    result = muniConvertUtf32ToUtf8(values, 1, nullptr, 4, muni_convertStrict, &needed);
+    CHECK(result.status == muni_errorInvalid, "no output buffer with a capacity");
+    result = muniConvertUtf32ToUtf8(values + 3, 1, nullptr, 0, muni_convertStrict, &needed);
+    CHECK(result.status == muni_errorCapacity && needed == 1, "measuring");
 }
 
 static void TestCapacityReportsTheTotal(void)
@@ -320,6 +354,7 @@ int main(void)
     TestErrorKinds();
     TestReplacementFollowsTheStandard();
     TestConversionsRoundTrip();
+    TestUtf32Values();
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
     TestEncode();

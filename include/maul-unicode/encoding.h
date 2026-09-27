@@ -160,6 +160,29 @@ extern "C"
                                                                   muniConvertMode mode,
                                                                   size_t* neededOut);
 
+    /// Converts UTF-32 to UTF-8.
+    ///
+    /// @param codePoints   The text. May be NULL when length is 0.
+    /// @param length       The number of code points.
+    /// @param bytes        The output. May be NULL when capacity is 0.
+    /// @param capacity     The number of bytes bytes can hold.
+    /// @param mode         What to do with values that are no scalar
+    ///                     value: surrogates and those past U+10FFFF.
+    /// @param neededOut    Receives the number of bytes the whole
+    ///                     conversion needs, which may exceed capacity. In
+    ///                     strict mode, on an error, the bytes before it.
+    /// @return `muni_success`; `muni_errorCapacity` when the output does
+    ///         not fit (the bytes that fit are written); in strict mode
+    ///         `muni_errorUtf32Value` and its offset; `muni_errorInvalid`
+    ///         for a NULL pointer with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniTextResult muniConvertUtf32ToUtf8(const uint32_t* codePoints,
+                                                                  size_t length, char* bytes,
+                                                                  size_t capacity,
+                                                                  muniConvertMode mode,
+                                                                  size_t* neededOut);
+
 #ifdef __cplusplus
 }
 #endif

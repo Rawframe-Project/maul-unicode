@@ -31,6 +31,8 @@ static void TestResultNames(void)
     CHECK(strcmp(muniResultName(muni_errorLimit), "muni_errorLimit") == 0, "limit name");
     CHECK(strcmp(muniResultName(muni_errorIdentifier), "muni_errorIdentifier") == 0,
           "identifier name");
+    CHECK(strcmp(muniResultName(muni_errorUtf32Value), "muni_errorUtf32Value") == 0,
+          "UTF-32 value name");
     CHECK(strcmp(muniResultName(muni_needMoreText), "muni_needMoreText") == 0, "more text name");
     CHECK(strcmp(muniResultName(12345), "unknown result") == 0, "unknown name");
 }

@@ -48,6 +48,8 @@ const char* muniResultName(muniResult result)
         return "muni_errorLimit";
     case muni_errorIdentifier:
         return "muni_errorIdentifier";
+    case muni_errorUtf32Value:
+        return "muni_errorUtf32Value";
     default:
         return "unknown result";
     }

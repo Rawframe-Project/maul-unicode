@@ -3,9 +3,9 @@
 //
 // libFuzzer target for the encoding functions. Every input must give
 // answers that agree with each other: validation and strict conversion
-// report the same error at the same offset; valid text survives a round
-// trip through UTF-16 byte for byte; replacement never fails; decoding
-// step by step reaches the offset validation reports.
+// report the same error at the same offset; valid text survives round
+// trips through UTF-16 and UTF-32 byte for byte; replacement never
+// fails; decoding step by step reaches the offset validation reports.
 
 #include "maul-unicode/encoding.h"
 
@@ -73,6 +73,16 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     {
         Require(codePoints[i] <= 0x10FFFF && (codePoints[i] < 0xD800 || codePoints[i] > 0xDFFF));
     }
+    // The replaced code points back in UTF-8 are the text itself when it
+    // is valid, and at most three bytes per input byte otherwise.
+    char* again = malloc(3 * size + 1);
+    size_t againCount = 0;
+    muniTextResult back = muniConvertUtf32ToUtf8(codePoints, codePointCount, again, 3 * size,
+                                                 muni_convertStrict, &againCount);
+    Require(back.status == muni_success && againCount <= 3 * size);
+    Require(validation.status != muni_success ||
+            (againCount == size && (size == 0 || memcmp(again, text, size) == 0)));
+    free(again);
     free(codePoints);
     free(units);
     return 0;

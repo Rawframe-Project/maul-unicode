@@ -116,6 +116,9 @@ format.
   `muniIsDefaultIgnorable`. 36,601 bytes of tables (muni-0014); a fuzz
   target checks short output buffers, skeleton idempotence and the
   agreement of levels with resolved scripts.
+- `muniConvertUtf32ToUtf8`, completing the conversions between the three
+  encoding forms, with the new `muni_errorUtf32Value` for surrogates and
+  values past U+10FFFF (U+FFFD in replace mode).
 - `muniIsEmoji`, `muniIsEmojiPresentation`, `muniIsEmojiModifier`,
   `muniIsEmojiModifierBase` and `muniIsEmojiComponent` (UTS #51), which
   share one 1,653-byte table with Extended_Pictographic;
