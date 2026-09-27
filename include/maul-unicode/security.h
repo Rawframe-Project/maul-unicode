@@ -82,7 +82,8 @@ extern "C"
     ///         `muni_errorInvalid` for a NULL argument or an unknown
     ///         direction.
     /// @par Thread safety
-    /// Safe from any thread on memory no other thread uses.
+    /// Safe from any thread; the workspace and output are used by one thread
+    /// at a time.
     MUNI_NODISCARD MUNI_API muniTextResult muniGetSkeleton(const char* text, size_t length,
                                                            muniBidiDirection direction,
                                                            uint8_t* workspace, char* output,

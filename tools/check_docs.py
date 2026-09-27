@@ -10,7 +10,8 @@
 # - @param for each named parameter, and none for a parameter that does
 #   not exist;
 # - @return, unless the function returns void;
-# - a "@par Thread safety" paragraph.
+# - a "@par Thread safety" paragraph that opens with one of the
+#   statements of section 10 (THREAD_SAFETY below).
 #
 # usage: check_docs.py
 
@@ -19,6 +20,16 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# The openings a thread safety paragraph may have (section 10).
+THREAD_SAFETY = [
+    re.compile(r"Safe from any thread\.(\s|$)"),
+    re.compile(r"Safe from any thread; [^.;]+ (is|are) used by one thread at a time[.,;]"),
+    re.compile(r"Main thread only\.(\s|$)"),
+    re.compile(r"Safe from any thread; it runs on the main thread, waiting at most the marshal "
+               r"deadline\.(\s|$)"),
+    re.compile(r"Real-time safe: no allocation, lock or wait\.(\s|$)"),
+]
 
 
 def cmake_setting(name):
@@ -105,8 +116,19 @@ def check(rel, number, doc, text, macro, errors):
         errors.append(f"{where}: no @return")
     if returns_void and has_return:
         errors.append(f"{where}: @return on a void function")
-    if not any(line.startswith("@par Thread safety") for line in doc):
+    starts = [i for i, line in enumerate(doc) if line.startswith("@par Thread safety")]
+    if not starts:
         errors.append(f"{where}: no '@par Thread safety' paragraph")
+        return
+    paragraph = []
+    for line in doc[starts[0] + 1:]:
+        if not line or line.startswith("@"):
+            break
+        paragraph.append(line)
+    text = " ".join(paragraph)
+    if not any(pattern.match(text) for pattern in THREAD_SAFETY):
+        errors.append(f"{where}: the thread safety paragraph opens with no statement of "
+                      "section 10")
 
 
 def main():

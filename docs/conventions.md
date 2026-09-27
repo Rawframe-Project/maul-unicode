@@ -272,14 +272,28 @@ tests with a counting allocator (hot paths); review.
 
 ## 10. Threads
 
-- A library starts no threads of its own unless its profile declares
-  the exception. Parallel work runs on the host's task system through
-  the library's task hooks.
-- Every public function documents its thread safety.
+- A library starts no thread unless a platform leaves no other way to
+  meet a requirement. Such a thread is declared in the library profile
+  with its purpose and bound, started by the root's create, joined by
+  its destroy, and never runs application code (record 0017).
+- On a thread the platform owns (an audio callback, a platform
+  callback), a library only publishes into bounded queues or reads what
+  was already published: no allocation, lock or wait, and no
+  application code except a callback the profile declares real-time.
+- Parallel work runs on the host's task system through the library's
+  task hooks.
+- The `@par Thread safety` paragraph of every public function opens
+  with one of these statements; further sentences may follow:
+  - `Safe from any thread.`
+  - `Safe from any thread; <an object> is used by one thread at a time.`
+  - `Main thread only.` (the thread the platform requires)
+  - `Safe from any thread; it runs on the main thread, waiting at most
+    the marshal deadline.`
+  - `Real-time safe: no allocation, lock or wait.`
 - Scheduling never changes results.
 
-Checked by: `tools/check_docs.py` (documented thread safety);
-ThreadSanitizer in CI; review.
+Checked by: `tools/check_docs.py` (a thread safety paragraph opening
+with a listed statement); ThreadSanitizer in CI; review.
 
 ## 11. Floating point and determinism
 
@@ -305,8 +319,19 @@ profile bans); the library's determinism tests.
   take out-parameters unless they return more than one value.
 - Strings cross the API as UTF-8 with an explicit byte length, never
   as NUL-terminated text alone.
+- A library's root object is a typed opaque pointer. Every object a
+  root owns is named by a typed value id, `{ uint32_t index1; uint32_t
+  generation; }` with 0 as null, one struct per kind; a stale id is
+  refused with a typed result (record 0016). Platform handles are never
+  identities.
+- An operation that finishes later is a request: it returns its status
+  at once and, accepted, a typed request id that exactly one completion
+  record answers, in the owner's notification queue, with a typed
+  outcome (record 0018). No library calls application code to deliver
+  a completion.
 
-Checked by: review; tests for every refusal.
+Checked by: review; tests for every refusal and for request and
+completion pairing.
 
 ## 13. Tests
 

@@ -31,6 +31,9 @@ stays, marked superseded.
 | [0013](0013-performance-discipline.md) | Performance discipline | Accepted |
 | [0014](0014-out-parameters-strings-assertions.md) | Out-parameters, strings and assertions | Accepted |
 | [0015](0015-record-naming.md) | Family and library records | Accepted |
+| [0016](0016-handles.md) | Roots are pointers, what they own are generation-checked ids | Accepted |
+| [0017](0017-threads.md) | No threads of the library's own, platform threads by contract, typed thread safety | Accepted |
+| [0018](0018-asynchronous-requests.md) | Asynchronous requests: an id now, exactly one completion later | Accepted |
 
 ## Template
 

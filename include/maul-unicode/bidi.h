@@ -66,7 +66,8 @@ extern "C"
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
     ///         an unknown direction.
     /// @par Thread safety
-    /// Safe from any thread on memory no other thread uses.
+    /// Safe from any thread; the levels and workspace are used by one thread
+    /// at a time.
     MUNI_NODISCARD MUNI_API muniResult muniResolveBidi(const char* text, size_t length,
                                                        muniBidiDirection direction, uint8_t* levels,
                                                        uint8_t* workspace,

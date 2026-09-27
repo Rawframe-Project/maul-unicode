@@ -30,7 +30,7 @@ extern "C"
     ///         returns HarfBuzz's empty functions when HarfBuzz cannot
     ///         allocate, never NULL.
     /// @par Thread safety
-    /// Safe from any thread; the functions it returns are immutable and may
+    /// Safe from any thread. The functions it returns are immutable and may
     /// be shared between threads.
     extern hb_unicode_funcs_t* muniCreateHarfBuzzFunctions(void);
 
