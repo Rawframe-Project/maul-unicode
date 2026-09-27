@@ -10,20 +10,12 @@
 
 #include "maul-unicode/case.h"
 
+#include "case_map.h"
 #include "encoding.h"
 #include "tables.h"
 #include "writer.h"
 
 #include "maul-unicode/segment.h"
-
-// The order of the mappings in a record and in the special table.
-enum
-{
-    KindUpper = 0,
-    KindLower = 1,
-    KindTitle = 2,
-    KindFold = 3,
-};
 
 #define CAPITAL_I         0x0049u
 #define SMALL_I           0x0069u
@@ -34,89 +26,45 @@ enum
 #define SMALL_SIGMA       0x03C3u
 #define SMALL_FINAL_SIGMA 0x03C2u
 
-static const uint8_t* Record(uint32_t codePoint)
-{
-    return muniCaseRecords[muniLookupCase(codePoint)];
-}
-
 static uint32_t Simple(uint32_t codePoint, int kind)
 {
-    return (uint32_t)((int32_t)codePoint + muniCaseDeltas[Record(codePoint)[kind]]);
+    return (uint32_t)((int32_t)codePoint + muniCaseDeltas[muniCaseRecord(codePoint)[kind]]);
 }
 
 uint32_t muniToLower(uint32_t codePoint)
 {
-    return Simple(codePoint, KindLower);
+    return Simple(codePoint, muni_caseKindLower);
 }
 
 uint32_t muniToUpper(uint32_t codePoint)
 {
-    return Simple(codePoint, KindUpper);
+    return Simple(codePoint, muni_caseKindUpper);
 }
 
 uint32_t muniToTitle(uint32_t codePoint)
 {
-    return Simple(codePoint, KindTitle);
+    return Simple(codePoint, muni_caseKindTitle);
 }
 
 uint32_t muniFoldCase(uint32_t codePoint)
 {
-    return Simple(codePoint, KindFold);
+    return Simple(codePoint, muni_caseKindFold);
 }
 
 bool muniIsCased(uint32_t codePoint)
 {
-    return (Record(codePoint)[4] & muni_caseFlagCased) != 0;
-}
-
-// Writes the full mapping of a special code point, from its entry in the
-// special table.
-static void PutSpecial(muniWriter* writer, uint32_t codePoint, int kind)
-{
-    uint32_t low = 0;
-    uint32_t high = muniCaseSpecialCount;
-    while (high - low > 1)
-    {
-        uint32_t middle = (low + high) / 2;
-        if (muniCaseSpecials[middle] >> 8 <= codePoint)
-        {
-            low = middle;
-        }
-        else
-        {
-            high = middle;
-        }
-    }
-    uint32_t entry = muniCaseSpecials[low];
-    size_t unit = muniCaseSpecialOffsets[low];
-    for (int k = 0; k <= kind; k++)
-    {
-        uint32_t count = entry >> (2 * k) & 3;
-        for (uint32_t i = 0; i < count; i++)
-        {
-            uint32_t value = muniCaseSpecialPool[unit++];
-            if (value - 0xD800 < 0x400)
-            {
-                value = 0x10000 + ((value - 0xD800) << 10) + (muniCaseSpecialPool[unit++] - 0xDC00);
-            }
-            if (k == kind)
-            {
-                muniWriterPut(writer, value);
-            }
-        }
-    }
+    return (muniCaseRecord(codePoint)[4] & muni_caseFlagCased) != 0;
 }
 
 // Writes the full mapping of a code point that needs no context.
 static void PutMapping(muniWriter* writer, uint32_t codePoint, int kind)
 {
-    const uint8_t* record = Record(codePoint);
-    if ((record[4] & muni_caseFlagSpecial) != 0)
+    uint32_t mapping[MUNI_MAX_CASE_MAPPING];
+    size_t count = muniMapCaseFully(codePoint, kind, mapping);
+    for (size_t i = 0; i < count; i++)
     {
-        PutSpecial(writer, codePoint, kind);
-        return;
+        muniWriterPut(writer, mapping[i]);
     }
-    muniWriterPut(writer, (uint32_t)((int32_t)codePoint + muniCaseDeltas[record[kind]]));
 }
 
 // The text being converted and the context the conditional rules track.
@@ -143,7 +91,7 @@ static bool EndsWord(const Converter* converter, size_t offset)
     while (offset < converter->length)
     {
         size_t size;
-        uint8_t flags = Record(Decode(converter, offset, &size))[4];
+        uint8_t flags = muniCaseRecord(Decode(converter, offset, &size))[4];
         if ((flags & muni_caseFlagCased) != 0)
         {
             return false;
@@ -205,7 +153,7 @@ static void PutLower(Converter* converter, uint32_t codePoint, size_t next)
             return; // the dot of an I, which lowercasing made an i
         }
     }
-    PutMapping(&converter->writer, codePoint, KindLower);
+    PutMapping(&converter->writer, codePoint, muni_caseKindLower);
 }
 
 // Uppercases or titlecases one code point.
@@ -226,13 +174,13 @@ static void PutFold(Converter* converter, uint32_t codePoint)
         muniWriterPut(&converter->writer, codePoint == CAPITAL_I ? SMALL_DOTLESS_I : SMALL_I);
         return;
     }
-    PutMapping(&converter->writer, codePoint, KindFold);
+    PutMapping(&converter->writer, codePoint, muni_caseKindFold);
 }
 
 // Moves the context past a code point.
 static void Track(Converter* converter, uint32_t codePoint)
 {
-    uint8_t flags = Record(codePoint)[4];
+    uint8_t flags = muniCaseRecord(codePoint)[4];
     if ((flags & muni_caseFlagCased) != 0)
     {
         converter->casedBefore = true;
@@ -273,7 +221,7 @@ static size_t Convert(Converter* converter, size_t start, size_t end, muniCaseOp
         }
         if (operation == muni_caseUpper)
         {
-            PutUpper(converter, codePoint, KindUpper);
+            PutUpper(converter, codePoint, muni_caseKindUpper);
         }
         else if (operation == muni_caseFold)
         {
@@ -281,7 +229,7 @@ static size_t Convert(Converter* converter, size_t start, size_t end, muniCaseOp
         }
         else if (operation == muni_caseTitle && !titleDone && muniIsCased(codePoint))
         {
-            PutUpper(converter, codePoint, KindTitle);
+            PutUpper(converter, codePoint, muni_caseKindTitle);
             titleDone = true;
         }
         else

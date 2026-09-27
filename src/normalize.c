@@ -1,120 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Normalization in one pass. Each code point is decomposed fully and its
-// parts go into a segment: a starter (combining class 0) and the marks
-// after it, which insertion keeps in canonical order. A new starter ends
-// the segment; in the composing forms the segment is composed first, and
-// when it composed into a lone starter, that starter may compose with
-// the new one too, as Hangul LV + T and U+0B47 + U+0B3E do. Then the
-// segment is written out and the new starter begins the next.
+// Normalization of text (UAX #15): each code point is decomposed fully
+// and fed to the normalizer (src/normalizer.h), which orders and
+// composes; and the quick check of section 9.
 
 #include "maul-unicode/normalize.h"
 
 #include "decompose.h"
 #include "encoding.h"
+#include "normalizer.h"
 #include "tables.h"
-#include "writer.h"
-
-#define MAX_SEGMENT 32
-
-typedef struct Normalizer
-{
-    uint32_t segment[MAX_SEGMENT];
-    uint8_t classes[MAX_SEGMENT];
-    size_t count;
-    bool compose;
-    bool compatibility;
-    muniWriter writer;
-} Normalizer;
-
-// Canonical composition of the segment (UAX #15 D117): each mark that no
-// uncomposed mark before it blocks tries to compose with the starter.
-static void ComposeSegment(Normalizer* normalizer)
-{
-    if (normalizer->count < 2 || normalizer->classes[0] != 0)
-    {
-        return;
-    }
-    uint32_t starter = normalizer->segment[0];
-    size_t kept = 1;
-    uint8_t lastKept = 0; // the class of the last uncomposed mark, 0 for none
-    for (size_t i = 1; i < normalizer->count; i++)
-    {
-        uint32_t mark = normalizer->segment[i];
-        uint8_t markClass = normalizer->classes[i];
-        bool blocked = lastKept != 0 && lastKept >= markClass;
-        uint32_t composite = blocked ? 0 : muniComposeCanonical(starter, mark);
-        if (composite != 0)
-        {
-            starter = composite;
-            continue;
-        }
-        normalizer->segment[kept] = mark;
-        normalizer->classes[kept] = markClass;
-        kept += 1;
-        lastKept = markClass;
-    }
-    normalizer->segment[0] = starter;
-    normalizer->count = kept;
-}
-
-static void Flush(Normalizer* normalizer)
-{
-    if (normalizer->compose)
-    {
-        ComposeSegment(normalizer);
-    }
-    for (size_t i = 0; i < normalizer->count; i++)
-    {
-        muniWriterPut(&normalizer->writer, normalizer->segment[i]);
-    }
-    normalizer->count = 0;
-}
-
-// Adds one code point of a full decomposition; false when the segment
-// would outgrow MAX_SEGMENT.
-static bool Add(Normalizer* normalizer, uint32_t codePoint)
-{
-    uint8_t markClass = codePoint < 0x300 ? 0 : muniLookupCombiningClass(codePoint);
-    if (markClass == 0)
-    {
-        // Nothing below U+0300 composes with what precedes it.
-        if (normalizer->compose && normalizer->count > 0 && codePoint >= 0x300)
-        {
-            ComposeSegment(normalizer);
-            uint32_t composite = normalizer->count == 1 && normalizer->classes[0] == 0
-                                     ? muniComposeCanonical(normalizer->segment[0], codePoint)
-                                     : 0;
-            if (composite != 0)
-            {
-                normalizer->segment[0] = composite;
-                return true;
-            }
-        }
-        Flush(normalizer);
-        normalizer->segment[0] = codePoint;
-        normalizer->classes[0] = 0;
-        normalizer->count = 1;
-        return true;
-    }
-    if (normalizer->count == MAX_SEGMENT)
-    {
-        return false;
-    }
-    // Canonical ordering: after every mark of the same or a lower class.
-    size_t at = normalizer->count;
-    while (at > 0 && normalizer->classes[at - 1] > markClass)
-    {
-        normalizer->segment[at] = normalizer->segment[at - 1];
-        normalizer->classes[at] = normalizer->classes[at - 1];
-        at -= 1;
-    }
-    normalizer->segment[at] = codePoint;
-    normalizer->classes[at] = markClass;
-    normalizer->count += 1;
-    return true;
-}
 
 static bool IsForm(muniNormalForm form)
 {
@@ -130,11 +26,9 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
     {
         return (muniTextResult){muni_errorInvalid, 0};
     }
-    Normalizer normalizer;
-    normalizer.count = 0;
-    normalizer.compose = form == muni_nfc || form == muni_nfkc;
-    normalizer.compatibility = form == muni_nfkc || form == muni_nfkd;
-    normalizer.writer = (muniWriter){output, capacity, 0};
+    muniNormalizer normalizer;
+    muniNormalizerInit(&normalizer, form == muni_nfc || form == muni_nfkc, output, capacity);
+    bool compatibility = form == muni_nfkc || form == muni_nfkd;
     const uint8_t* bytes = (const uint8_t*)text;
     size_t offset = 0;
     while (offset < length)
@@ -144,7 +38,7 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
         muniResult status = muniStepUtf8(bytes + offset, length - offset, &codePoint, &size);
         if (status != muni_success && mode == muni_convertStrict)
         {
-            Flush(&normalizer);
+            muniNormalizerFlush(&normalizer);
             *neededOut = normalizer.writer.needed;
             return (muniTextResult){status, offset};
         }
@@ -153,11 +47,11 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
         parts[0] = codePoint;
         if (codePoint >= 0xA0) // nothing below U+00A0 decomposes
         {
-            count = muniDecomposeFully(codePoint, normalizer.compatibility, parts);
+            count = muniDecomposeFully(codePoint, compatibility, parts);
         }
         for (size_t i = 0; i < count; i++)
         {
-            if (!Add(&normalizer, parts[i]))
+            if (!muniNormalizerAdd(&normalizer, parts[i]))
             {
                 *neededOut = normalizer.writer.needed;
                 return (muniTextResult){muni_errorLimit, offset};
@@ -165,7 +59,7 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
         }
         offset += size;
     }
-    Flush(&normalizer);
+    muniNormalizerFlush(&normalizer);
     *neededOut = normalizer.writer.needed;
     return (muniTextResult){normalizer.writer.needed > capacity ? muni_errorCapacity : muni_success,
                             length};

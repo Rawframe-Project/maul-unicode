@@ -96,6 +96,7 @@ set(MUNI_NORMALIZATION_SOURCES
     src/generated/decomposition_data.c)
 set(MUNI_CASE_SOURCES
     src/case.c
+    src/case_map.c
     src/generated/case.c
     src/generated/case_data.c)
 set(MUNI_SECURITY_SOURCES

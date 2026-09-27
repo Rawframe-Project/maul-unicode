@@ -8,7 +8,8 @@ bidi_explicit: bidi_core
 bidi_implicit: bidi_brackets bidi_core
 bidi_line: bidi_core
 bits:
-case: encoding tables writer
+case: case_map encoding tables writer
+case_map: tables
 complex: encoding segmenter tables
 cursor: encoding
 decompose: bits tables
@@ -17,7 +18,8 @@ grapheme: segmenter tables
 harfbuzz:
 identifier: encoding tables
 line: complex segmenter tables
-normalize: decompose encoding tables writer
+normalize: decompose encoding normalizer tables writer
+normalizer: decompose tables writer
 properties: tables
 script_runs: cursor tables
 segment: segmenter
