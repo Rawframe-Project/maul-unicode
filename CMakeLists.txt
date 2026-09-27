@@ -170,6 +170,11 @@ endif()
 
 # The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.
 if(MAUL_UNICODE_FUZZ)
+    # The library is instrumented too: its coverage guides libFuzzer, and
+    # the sanitizers watch its code, not only the targets'. Whatever links
+    # it (samples, benchmarks, tools) links the sanitizer runtimes.
+    target_compile_options(maul-unicode PRIVATE -fsanitize=fuzzer-no-link,address,undefined)
+    target_link_options(maul-unicode PUBLIC -fsanitize=address,undefined)
     set(MUNI_FUZZ_AREAS encoding segment bidi script)
     if(MAUL_UNICODE_NORMALIZATION)
         list(APPEND MUNI_FUZZ_AREAS normalize)
