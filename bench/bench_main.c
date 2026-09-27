@@ -4,7 +4,9 @@
 // Throughput of validation, segmentation, line breaking, bidi, script
 // runs, normalization, case and the security checks over a mixed text: English, Turkish,
 // Hindi, Japanese, emoji, Hebrew and Arabic, repeated to 4 MiB. Prints
-// the best of five runs in MiB per second.
+// the best of five runs in MiB per second. Given a baseline file, such
+// as bench/baseline.txt, it prints each speed's ratio to the recorded
+// one as well.
 
 #include "maul-unicode/bidi.h"
 #include "maul-unicode/case.h"
@@ -15,6 +17,7 @@
 #include "maul-unicode/segment.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -182,16 +185,79 @@ static size_t Validate(InitFn unused)
     return muniValidateUtf8(s_text, TEXT_BYTES).offset;
 }
 
+#define NAME_WIDTH   26
+#define MAX_BASELINE 32
+
+typedef struct Recorded
+{
+    char name[NAME_WIDTH + 1];
+    double speed;
+} Recorded;
+
+static Recorded s_baseline[MAX_BASELINE];
+static int s_baselineCount = 0;
+
+// Reads a baseline: lines of this program's own output; lines that start
+// with # are notes on where the numbers come from.
+static void LoadBaseline(const char* path)
+{
+    FILE* file = fopen(path, "r");
+    if (file == nullptr)
+    {
+        fprintf(stderr, "cannot read %s\n", path);
+        return;
+    }
+    char line[256];
+    while (fgets(line, sizeof(line), file) != nullptr && s_baselineCount < MAX_BASELINE)
+    {
+        if (line[0] == '#' || strlen(line) <= NAME_WIDTH)
+        {
+            continue;
+        }
+        Recorded* recorded = &s_baseline[s_baselineCount];
+        memcpy(recorded->name, line, NAME_WIDTH);
+        size_t end = NAME_WIDTH;
+        while (end > 0 && recorded->name[end - 1] == ' ')
+        {
+            end -= 1;
+        }
+        recorded->name[end] = '\0';
+        recorded->speed = strtod(line + NAME_WIDTH, nullptr);
+        s_baselineCount += recorded->speed > 0 ? 1 : 0;
+    }
+    fclose(file);
+}
+
+static double BaselineOf(const char* name)
+{
+    for (int i = 0; i < s_baselineCount; i++)
+    {
+        if (strcmp(s_baseline[i].name, name) == 0)
+        {
+            return s_baseline[i].speed;
+        }
+    }
+    return 0;
+}
+
 static void Report(const char* name, double best, size_t result)
 {
-    double mib = (double)TEXT_BYTES / (1024.0 * 1024.0);
-    printf("%-26s %9.1f MiB/s  (%zu)\n", name, mib / best, result);
+    double speed = (double)TEXT_BYTES / (1024.0 * 1024.0) / best;
+    double recorded = BaselineOf(name);
+    if (recorded > 0)
+    {
+        printf("%-26s %9.1f MiB/s  %5.2fx  (%zu)\n", name, speed, speed / recorded, result);
+    }
+    else
+    {
+        printf("%-26s %9.1f MiB/s  (%zu)\n", name, speed, result);
+    }
 }
 
 static void RunFind(const char* name, FindFn find)
 {
     double best = 1e30;
-    size_t result = 0;
+    size_t result = CountFound(find); // untimed, to warm up
     for (int run = 0; run < 5; run++)
     {
         double start = Seconds();
@@ -211,7 +277,7 @@ static muniResult FindLines(const char* text, size_t length, size_t* offsets, si
 static void Run(const char* name, size_t (*work)(InitFn), InitFn init)
 {
     double best = 1e30;
-    size_t result = 0;
+    size_t result = work(init); // untimed, to warm up
     for (int run = 0; run < 5; run++)
     {
         double start = Seconds();
@@ -222,8 +288,12 @@ static void Run(const char* name, size_t (*work)(InitFn), InitFn init)
     Report(name, best, result);
 }
 
-int main(void)
+int main(int argc, char** argv)
 {
+    if (argc > 1)
+    {
+        LoadBaseline(argv[1]);
+    }
     size_t sampleLength = sizeof(s_sample) - 1;
     size_t filled = 0;
     while (filled + sampleLength <= TEXT_BYTES)

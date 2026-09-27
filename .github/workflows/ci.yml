@@ -145,4 +145,23 @@ jobs:
         run: |
           for t in build/test_*.js; do node "$t" || exit 1; done
       - name: Size
-        run: ls -l build/libmaul-unicode.a
+        # The static library in total, and each optional component's cost:
+        # the library with it less the library without it. Security needs
+        # normalization, so normalization is measured with security off.
+        run: |
+          measure() {
+            emcmake cmake -B "build-$1" -DCMAKE_BUILD_TYPE=Release -D${PREFIX}_BUILD_TESTS=OFF \
+              -D${PREFIX}_BUILD_BENCH=OFF -D${PREFIX}_BUILD_TOOLS=OFF "${@:2}" >/dev/null
+            cmake --build "build-$1" -j 4 >/dev/null
+            stat -c %s "build-$1/libmaul-unicode.a"
+          }
+          all=$(stat -c %s build/libmaul-unicode.a)
+          noSecurity=$(measure no-security -D${PREFIX}_SECURITY=OFF)
+          noCase=$(measure no-case -D${PREFIX}_CASE=OFF)
+          core=$(measure core -D${PREFIX}_SECURITY=OFF -D${PREFIX}_NORMALIZATION=OFF -D${PREFIX}_CASE=OFF)
+          noNormalization=$(measure no-normalization -D${PREFIX}_SECURITY=OFF -D${PREFIX}_NORMALIZATION=OFF)
+          echo "library, every component  $all bytes"
+          echo "core, no component        $core bytes"
+          echo "security                  $((all - noSecurity)) bytes"
+          echo "case                      $((all - noCase)) bytes"
+          echo "normalization             $((noSecurity - noNormalization)) bytes"

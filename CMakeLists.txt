@@ -206,6 +206,11 @@ if(MAUL_UNICODE_BUILD_BENCH AND MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE
    MAUL_UNICODE_SECURITY AND
    EXISTS ${PROJECT_SOURCE_DIR}/bench/bench_main.c)
     add_subdirectory(bench)
+    # The benchmark reads its baseline with standard fopen, which the
+    # Windows C runtime reports as deprecated in favor of fopen_s.
+    if(WIN32)
+        target_compile_definitions(${PROJECT_NAME}_bench PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
 endif()
 
 if(MAUL_UNICODE_INSTALL)

@@ -1,0 +1,23 @@
+# The reference speeds for bench/bench_main.c, written by the benchmark
+# itself: GCC 14, Release, AMD Ryzen 9 5900X pinned to one core
+# (taskset -c 0), Linux 6.8, 2026-09-27. Other cores of this shared
+# machine measured validation up to 40 percent slower; compare runs on
+# one core. Compare with: maul-unicode_bench bench/baseline.txt
+validate UTF-8                3257.1 MiB/s  (4194304)
+grapheme boundaries             88.1 MiB/s  (2642992)
+word boundaries                126.4 MiB/s  (1225729)
+sentence boundaries            206.4 MiB/s  (114913)
+line breaks                    100.6 MiB/s  (555409)
+bidi, resolve and order         54.5 MiB/s  (95761)
+script runs, find              135.7 MiB/s  (153216)
+NFC quick check                292.6 MiB/s  (0)
+NFC                            185.4 MiB/s  (4194304)
+NFD                            266.0 MiB/s  (4251760)
+lowercase                      170.1 MiB/s  (4213456)
+case fold                      173.7 MiB/s  (4213456)
+skeleton                        35.9 MiB/s  (4117696)
+restriction level              138.8 MiB/s  (6)
+grapheme boundaries, find      138.9 MiB/s  (2642992)
+word boundaries, find          169.8 MiB/s  (1225729)
+sentence boundaries, find      213.7 MiB/s  (114913)
+line breaks, find              107.2 MiB/s  (555409)

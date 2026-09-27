@@ -123,3 +123,7 @@ format.
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
   script run, normalization, case and security throughput, through
   iterators and the array conveniences.
+  `bench/baseline.txt` records reference speeds, and the benchmark
+  given that file prints each speed's ratio to them.
+- CI's web job reports the static library's size in total, without any
+  component, and each optional component's cost.
