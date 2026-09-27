@@ -61,8 +61,10 @@ not need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables),
 With `-DMAUL_UNICODE_HARFBUZZ=ON` the build adds the static library
 `maul-unicode-harfbuzz`, whose `muniCreateHarfBuzzFunctions` gives
 HarfBuzz its Unicode data from Maul Unicode (see
-`include/maul-unicode/harfbuzz.h`). It is built from the source tree,
-through `add_subdirectory` or FetchContent; it is not installed.
+`include/maul-unicode/harfbuzz.h`). Installed, it is a package of its
+own: `find_package(maul-unicode-harfbuzz)` with the target
+`maul-unicode::maul-unicode-harfbuzz`, or pkg-config's
+`maul-unicode-harfbuzz`, which bring in HarfBuzz as well.
 
 ## The Maul family
 

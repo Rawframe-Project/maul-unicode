@@ -115,22 +115,12 @@ endif()
 add_library(maul-unicode ${MAUL_LIBRARY_KIND} ${MUNI_SOURCES})
 maul_configure_library(maul-unicode)
 
-# The HarfBuzz functions: a small static library of their own, so only
-# those who shape with HarfBuzz depend on it.
+# The HarfBuzz functions (cmake/HarfBuzz.cmake).
 if(MAUL_UNICODE_HARFBUZZ)
     if(NOT MAUL_UNICODE_NORMALIZATION)
         message(FATAL_ERROR "MAUL_UNICODE_HARFBUZZ needs MAUL_UNICODE_NORMALIZATION")
     endif()
-    find_package(harfbuzz CONFIG QUIET)
-    if(NOT TARGET harfbuzz::harfbuzz)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(MUNI_HARFBUZZ REQUIRED IMPORTED_TARGET GLOBAL harfbuzz)
-        add_library(harfbuzz::harfbuzz ALIAS PkgConfig::MUNI_HARFBUZZ)
-    endif()
-    add_library(maul-unicode-harfbuzz STATIC src/harfbuzz.c)
-    add_library(maul-unicode::maul-unicode-harfbuzz ALIAS maul-unicode-harfbuzz)
-    target_link_libraries(maul-unicode-harfbuzz PUBLIC maul-unicode harfbuzz::harfbuzz)
-    maul_apply_flags(maul-unicode-harfbuzz)
+    include(cmake/HarfBuzz.cmake)
 endif()
 
 if(MAUL_UNICODE_BUILD_TESTS)

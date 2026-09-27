@@ -80,6 +80,14 @@ jobs:
         run: cmake --build build -j 4
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Package
+        if: matrix.name == 'linux-harfbuzz' || matrix.name == 'linux-shared'
+        run: |
+          cmake --install build --prefix "$PWD/package"
+          cmake -S test/package -B build-package -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+            -DCMAKE_PREFIX_PATH="$PWD/package"
+          cmake --build build-package
+          LD_LIBRARY_PATH="$PWD/package/lib" ./build-package/package_test
 
   # Each fuzz target runs for one minute on every push; it looks for
   # crashes and for answers that disagree with each other.

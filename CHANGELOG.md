@@ -104,6 +104,9 @@ format.
   (general category, combining class, mirroring, script, compose,
   decompose) from Maul Unicode. Tested against HarfBuzz's built-in data
   and through a buffer's script and direction guess; CI builds it.
+  Installed as the package `maul-unicode-harfbuzz` (CMake and
+  pkg-config), which finds HarfBuzz the way the build did; CI installs
+  it, and the shared library, and builds `test/package` against them.
 - Security mechanisms (UTS #39), build option `MAUL_UNICODE_SECURITY`
   (on by default, needs normalization): `muniGetSkeleton`, the
   confusable skeleton in display order for a paragraph direction;
