@@ -274,9 +274,47 @@ static void TestEncode(void)
     CHECK(muniEncodeUtf8(0x110000, bytes, &size) == muni_errorInvalid, "past U+10FFFF");
 }
 
+// Prefixes of mixed text cut at every length, including inside a code
+// point, then three bytes of edge values: errors and truncations land on
+// either side of the validator's chunk and ASCII-run boundaries.
+static void TestValidationAgreesAfterLongPrefixes(void)
+{
+    static const uint8_t edges[] = {0x00, 0x7F, 0x80, 0x9F, 0xA0, 0xBF, 0xC1, 0xC2,
+                                    0xDF, 0xE0, 0xED, 0xEF, 0xF0, 0xF4, 0xF5, 0xFF};
+    static const char unit[] = "a\xC3\xA9\xE2\x82\xAC\xF0\x9F\x98\x80"; // a, e acute, euro, emoji
+    uint8_t bytes[80];
+    size_t prefix = 0;
+    while (prefix + sizeof(unit) - 1 <= 72)
+    {
+        memcpy(bytes + prefix, unit, sizeof(unit) - 1);
+        prefix += sizeof(unit) - 1;
+    }
+    int before = s_mismatches;
+    uint8_t tail[80 + 3];
+    for (size_t length = 0; length <= prefix; length++)
+    {
+        memcpy(tail, bytes, length);
+        for (size_t a = 0; a < sizeof(edges); a++)
+        {
+            for (size_t b = 0; b < sizeof(edges); b++)
+            {
+                for (size_t c = 0; c < sizeof(edges); c++)
+                {
+                    tail[length] = edges[a];
+                    tail[length + 1] = edges[b];
+                    tail[length + 2] = edges[c];
+                    Compare(tail, length + 3);
+                }
+            }
+        }
+    }
+    CHECK(s_mismatches == before, "errors after prefixes of every length");
+}
+
 int main(void)
 {
     TestValidationAgreesOnEveryShortString();
+    TestValidationAgreesAfterLongPrefixes();
     TestValidationAgreesOnFourByteStrings();
     TestMaximalSubpartsMatchTheReference();
     TestErrorKinds();

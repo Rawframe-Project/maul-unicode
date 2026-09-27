@@ -36,7 +36,9 @@ format.
   with U+FFFD for each maximal ill-formed subpart, as the Unicode
   Standard recommends. Validation agrees with an independent reference
   on every string of up to three bytes; a fuzz target checks that every
-  answer agrees with every other.
+  answer agrees with every other. Outside ASCII, validation runs a
+  shift-based DFA (muni-0016): 2.3 to 3.5 GB/s where the decoder alone
+  gave 0.9 to 2.4.
 - Grapheme cluster, word and sentence boundaries (UAX #29):
   `muniFindGraphemeBreaks`, `muniFindWordBreaks` and
   `muniFindSentenceBreaks` into a caller array, and

@@ -43,21 +43,75 @@ static size_t AsciiPrefix(const uint8_t* bytes, size_t length)
     return offset;
 }
 
-muniTextResult muniValidateUtf8(const char* bytes, size_t length)
+// Validation runs a shift-based DFA over byte classes: a class's row
+// holds, at the bit offset of each state, the offset of the next state,
+// so each byte costs one shift, with no branch. Only a run that ends in
+// an error goes through the exact decoder, which names the error.
+enum
 {
-    if (bytes == nullptr && length != 0)
-    {
-        return (muniTextResult){muni_errorInvalid, 0};
-    }
-    const uint8_t* text = (const uint8_t*)bytes;
-    size_t offset = 0;
+    Accept = 0,
+    Reject = 6,
+    Need1 = 12, // one continuation byte, 80 to BF, is missing
+    Need2 = 18,
+    Need3 = 24,
+    AfterE0 = 30, // a continuation from A0 to BF, then one more
+    AfterEd = 36, // 80 to 9F, then one more
+    AfterF0 = 42, // 90 to BF, then two more
+    AfterF4 = 48, // 80 to 8F, then two more
+};
+
+#define ROW(accept, need1, need2, need3, afterE0, afterEd, afterF0, afterF4)                       \
+    ((uint64_t)(accept) << Accept | (uint64_t)Reject << Reject | (uint64_t)(need1) << Need1 |      \
+     (uint64_t)(need2) << Need2 | (uint64_t)(need3) << Need3 | (uint64_t)(afterE0) << AfterE0 |    \
+     (uint64_t)(afterEd) << AfterEd | (uint64_t)(afterF0) << AfterF0 |                             \
+     (uint64_t)(afterF4) << AfterF4)
+#define LEAD(next) ROW(next, Reject, Reject, Reject, Reject, Reject, Reject, Reject)
+
+static const uint64_t s_rows[12] = {
+    LEAD(Accept),                                                    // 00 to 7F
+    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Reject, Need2), // 80 to 8F
+    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Need2, Reject), // 90 to 9F
+    ROW(Reject, Accept, Need1, Need2, Need1, Reject, Need2, Reject), // A0 to BF
+    LEAD(Need1),                                                     // C2 to DF
+    LEAD(AfterE0),                                                   // E0
+    LEAD(Need2),                                                     // E1 to EC, EE, EF
+    LEAD(AfterEd),                                                   // ED
+    LEAD(AfterF0),                                                   // F0
+    LEAD(Need3),                                                     // F1 to F3
+    LEAD(AfterF4),                                                   // F4
+    LEAD(Reject),                                                    // C0, C1, F5 to FF
+};
+
+// The class of each byte: its row in s_rows.
+static const uint8_t s_classes[256] = {
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 00
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 10
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 20
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 30
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 40
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 50
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 60
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 70
+    1,  1,  1, 1, 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  // 80
+    2,  2,  2, 2, 2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  // 90
+    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // A0
+    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // B0
+    11, 11, 4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // C0
+    4,  4,  4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // D0
+    5,  6,  6, 6, 6,  6,  6,  6,  6,  6,  6,  6,  6,  7,  6,  6,  // E0
+    8,  9,  9, 9, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, // F0
+};
+
+// The bytes the DFA takes between checks for an error.
+#define CHUNK 32
+
+// The first error at or after start, a code point boundary, by the exact
+// decoder.
+static muniTextResult FindError(const uint8_t* text, size_t length, size_t start)
+{
+    size_t offset = start;
     while (offset < length)
     {
-        offset += AsciiPrefix(text + offset, length - offset);
-        if (offset == length)
-        {
-            break;
-        }
         uint32_t codePoint;
         size_t size;
         muniResult status = muniStepUtf8(text + offset, length - offset, &codePoint, &size);
@@ -66,6 +120,42 @@ muniTextResult muniValidateUtf8(const char* bytes, size_t length)
             return (muniTextResult){status, offset};
         }
         offset += size;
+    }
+    return (muniTextResult){muni_success, length};
+}
+
+muniTextResult muniValidateUtf8(const char* bytes, size_t length)
+{
+    if (bytes == nullptr && length != 0)
+    {
+        return (muniTextResult){muni_errorInvalid, 0};
+    }
+    const uint8_t* text = (const uint8_t*)bytes;
+    uint64_t state = Accept;
+    size_t boundary = 0; // where the DFA last stood between code points
+    size_t offset = 0;
+    while (offset < length)
+    {
+        if ((state & 63) == Accept)
+        {
+            boundary = offset;
+            offset += AsciiPrefix(text + offset, length - offset);
+        }
+        size_t end = length - offset > CHUNK ? offset + CHUNK : length;
+        for (; offset < end; offset++)
+        {
+            // Only the low six bits of the shift count matter, which the
+            // shift instructions of x86 and ARM take for free.
+            state = s_rows[s_classes[text[offset]]] >> (state & 63);
+        }
+        if ((state & 63) == Reject)
+        {
+            return FindError(text, length, boundary);
+        }
+    }
+    if ((state & 63) != Accept)
+    {
+        return FindError(text, length, boundary);
     }
     return (muniTextResult){muni_success, length};
 }
