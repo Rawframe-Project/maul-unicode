@@ -135,7 +135,10 @@ format.
   line and a user name policy; `samples/minimal` consumes the installed
   packages, and CI builds it after installing.
 - `fuzz_icu` (build option `MAUL_UNICODE_FUZZ_ICU`): compares UTF-8 to
-  UTF-16 conversion with replacement, the four normal forms and default
-  and Turkic case mapping with ICU, a test-only oracle, skipping what
-  changed since ICU's Unicode version. CI runs it with the other fuzz
-  targets.
+  UTF-16 conversion with replacement, the four normal forms, default
+  and Turkic case mapping, grapheme, word, sentence and line
+  boundaries, and bidi as it displays with ICU, a test-only oracle.
+  It skips what changed since ICU's Unicode version, learned from the
+  properties themselves, and what ICU tailors or shortcuts; the
+  comments in `test/fuzz_icu.c` list each. CI runs it with the other
+  fuzz targets.

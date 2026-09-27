@@ -220,6 +220,16 @@ static void TestGraphemeEdges(void)
     CHECK(muniFindGraphemeBreaks(family, 18, offsets, 4, &count) == muni_success && count == 1 &&
               offsets[0] == 18,
           "a ZWJ family is one cluster");
+    // GB9c as Unicode 18 has it: a linker joins the next consonant, with
+    // or without a consonant before it in the cluster; Unicode 15.1, as
+    // ICU 74 implements it, wanted one.
+    const char conjunct[] = "\xE0\xA4\x95\xE0\xA5\x8D\xE0\xA4\xB7";
+    CHECK(muniFindGraphemeBreaks(conjunct, 9, offsets, 4, &count) == muni_success && count == 1,
+          "ka virama ssa is one cluster");
+    const char cut[] = "\xE0\xA4\x95\n\xE0\xA5\x8D\xE0\xA4\xB7";
+    CHECK(muniFindGraphemeBreaks(cut, 10, offsets, 4, &count) == muni_success && count == 3 &&
+              offsets[1] == 4 && offsets[2] == 10,
+          "a virama after a line feed still joins the next consonant");
     // Ill-formed bytes count as U+FFFD each, one cluster each.
     CHECK(muniFindGraphemeBreaks("a\xFF\xFE", 3, offsets, 4, &count) == muni_success && count == 3,
           "ill-formed bytes");
