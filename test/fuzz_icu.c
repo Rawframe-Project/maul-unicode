@@ -8,7 +8,8 @@
 // ICU's Unicode version assigns is also normalized to the four forms,
 // which the normalization stability policy keeps the same across
 // versions, and lowercased, uppercased and folded, by default and
-// Turkic rules, unless a mapping reaches a character added since.
+// Turkic rules, unless a mapping reaches a character added since or
+// Final_Sigma meets a character both cased and case-ignorable.
 //
 // Such input is also segmented into grapheme clusters, words, sentences
 // and lines, and laid out by bidi, when no character in it has a
@@ -177,8 +178,28 @@ static int32_t FoldTurkic(UChar* dest, int32_t capacity, const UChar* source, in
     return u_strFoldCase(dest, capacity, source, length, U_FOLD_CASE_EXCLUDE_SPECIAL_I, error);
 }
 
+// Whether a text has a capital sigma and a character both cased and
+// case-ignorable, such as U+02E3. Final_Sigma asks whether the sigma
+// is followed by case-ignorables and then a cased letter, which such a
+// character is on its own; ICU skips it as case-ignorable first.
+static bool AmbiguousSigma(const UChar* units, int32_t count)
+{
+    bool sigma = false;
+    bool both = false;
+    for (int32_t i = 0; i < count;)
+    {
+        UChar32 c;
+        U16_NEXT(units, i, count, c);
+        sigma = sigma || c == 0x03A3;
+        both = both || (u_hasBinaryProperty(c, UCHAR_CASED) &&
+                        u_hasBinaryProperty(c, UCHAR_CASE_IGNORABLE));
+    }
+    return sigma && both;
+}
+
 static void CompareCase(const char* text, size_t length, const UChar* units, int32_t unitCount)
 {
+    bool ambiguousSigma = AmbiguousSigma(units, unitCount);
     static char ours[MAX_BYTES];
     static char theirs[MAX_BYTES];
     static UChar mapped[MAX_UNITS];
@@ -207,9 +228,10 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
         int32_t count =
             s_cases[i].icu(mapped, MAX_UNITS, units, unitCount, s_cases[i].locale, &error);
         int32_t theirLength = 0;
-        if (result.status == muni_success && !OutputKnown(ours, needed))
+        if ((result.status == muni_success && !OutputKnown(ours, needed)) ||
+            (ambiguousSigma && s_cases[i].operation == muni_caseLower))
         {
-            continue; // a mapping added since ICU's version
+            continue; // a mapping added since ICU's version, or Final_Sigma
         }
         if (result.status != muni_success || U_FAILURE(error) ||
             !IcuToUtf8(mapped, count, theirs, &theirLength) ||
