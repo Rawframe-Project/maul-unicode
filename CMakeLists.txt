@@ -61,8 +61,9 @@ set(MUNI_SOURCES
     src/generated/bidi_mirror.c
     src/generated/bidi_mirror_deltas.c
     src/generated/canonical_combining_class.c
+    src/generated/decimal_zeros.c
     src/generated/east_asian_width.c
-    src/generated/extended_pictographic.c
+    src/generated/emoji.c
     src/generated/general_category.c
     src/generated/grapheme_cluster_break.c
     src/generated/identifier.c
@@ -73,6 +74,7 @@ set(MUNI_SOURCES
     src/generated/script_sets.c
     src/generated/script_tags.c
     src/generated/sentence_break.c
+    src/generated/white_space.c
     src/generated/word_break.c
     src/grapheme.c
     src/identifier.c

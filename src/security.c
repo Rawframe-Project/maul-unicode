@@ -321,27 +321,6 @@ muniTextResult muniGetRestrictionLevel(const char* text, size_t length,
     return result;
 }
 
-// The zero of the decimal system of a digit: the greatest zero at or
-// below it.
-static uint32_t ZeroOf(uint32_t digit)
-{
-    uint32_t low = 0;
-    uint32_t high = muniDecimalZeroCount;
-    while (high - low > 1)
-    {
-        uint32_t middle = (low + high) / 2;
-        if (muniDecimalZeros[middle] <= digit)
-        {
-            low = middle;
-        }
-        else
-        {
-            high = middle;
-        }
-    }
-    return muniDecimalZeros[low];
-}
-
 muniTextResult muniCheckMixedNumbers(const char* text, size_t length, bool* mixedOut)
 {
     if ((text == nullptr && length != 0) || mixedOut == nullptr)
@@ -362,12 +341,12 @@ muniTextResult muniCheckMixedNumbers(const char* text, size_t length, bool* mixe
             return (muniTextResult){status, offset};
         }
         offset += size;
-        bool ascii = codePoint - '0' < 10;
-        if (!ascii && (codePoint < 0x80 || muniLookupGeneralCategory(codePoint) != muni_gcNd))
+        int32_t value = muniGetDecimalDigitValue(codePoint);
+        if (value < 0)
         {
             continue;
         }
-        uint32_t zero = ascii ? '0' : ZeroOf(codePoint);
+        uint32_t zero = codePoint - (uint32_t)value;
         mixed = mixed || (system != UINT32_MAX && zero != system);
         system = zero;
     }

@@ -22,6 +22,7 @@ that stores the same data:
 | Compatibility decomposition | 22,623 | Its first measured size (muni-0011) |
 | Case mapping and folding | 9,629 | Its first measured size (muni-0012) |
 | Security (UTS #39) | 36,601 | Its first measured size (muni-0014) |
+| Emoji properties, White_Space and decimal digits | 2,058 | Their first measured size (muni-0015) |
 
 Components without a measured reference get their ceiling here when
 their tables first exist. CI reports every component's size; the

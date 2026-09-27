@@ -47,7 +47,8 @@ static muniDecision DecideAdjacent(const muniWordRules* state, uint8_t value, ui
     {
         return muni_decideBreak; // WB3a, WB3b
     }
-    if (state->actual == muni_wbZwj && muniLookupExtendedPictographic(codePoint) != 0)
+    if (state->actual == muni_wbZwj &&
+        (muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0)
     {
         return muni_decideJoin; // WB3c
     }

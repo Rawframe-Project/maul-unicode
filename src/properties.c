@@ -34,7 +34,65 @@ muniIndicConjunctBreak muniGetIndicConjunctBreak(uint32_t codePoint)
 
 bool muniIsExtendedPictographic(uint32_t codePoint)
 {
-    return muniLookupExtendedPictographic(codePoint) != 0;
+    return (muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0;
+}
+
+bool muniIsEmoji(uint32_t codePoint)
+{
+    return (muniLookupEmoji(codePoint) & muni_emojiEmoji) != 0;
+}
+
+bool muniIsEmojiPresentation(uint32_t codePoint)
+{
+    return (muniLookupEmoji(codePoint) & muni_emojiPresentation) != 0;
+}
+
+bool muniIsEmojiModifier(uint32_t codePoint)
+{
+    return (muniLookupEmoji(codePoint) & muni_emojiModifier) != 0;
+}
+
+bool muniIsEmojiModifierBase(uint32_t codePoint)
+{
+    return (muniLookupEmoji(codePoint) & muni_emojiModifierBase) != 0;
+}
+
+bool muniIsEmojiComponent(uint32_t codePoint)
+{
+    return (muniLookupEmoji(codePoint) & muni_emojiComponent) != 0;
+}
+
+bool muniIsWhiteSpace(uint32_t codePoint)
+{
+    return muniLookupWhiteSpace(codePoint) != 0;
+}
+
+int32_t muniGetDecimalDigitValue(uint32_t codePoint)
+{
+    if (codePoint - '0' < 10)
+    {
+        return (int32_t)(codePoint - '0');
+    }
+    if (codePoint < 0x80 || muniLookupGeneralCategory(codePoint) != muni_gcNd)
+    {
+        return -1;
+    }
+    // The greatest zero at or below the digit.
+    uint32_t low = 0;
+    uint32_t high = muniDecimalZeroCount;
+    while (high - low > 1)
+    {
+        uint32_t middle = (low + high) / 2;
+        if (muniDecimalZeros[middle] <= codePoint)
+        {
+            low = middle;
+        }
+        else
+        {
+            high = middle;
+        }
+    }
+    return (int32_t)(codePoint - muniDecimalZeros[low]);
 }
 
 muniLineBreak muniGetLineBreak(uint32_t codePoint)

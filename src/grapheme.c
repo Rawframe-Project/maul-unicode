@@ -71,7 +71,7 @@ static bool IsBoundary(const muniGraphemeRules* state, uint8_t after, uint32_t c
         return false; // GB9c
     }
     if (state->emoji == EmojiJoined && before == muni_gcbZwj &&
-        muniLookupExtendedPictographic(codePoint) != 0)
+        (muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0)
     {
         return false; // GB11
     }
@@ -105,7 +105,7 @@ static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
     {
         state->linker = false;
     }
-    if (muniLookupExtendedPictographic(codePoint) != 0)
+    if ((muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0)
     {
         state->emoji = EmojiPictographic;
     }

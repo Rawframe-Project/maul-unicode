@@ -67,9 +67,25 @@ static uint8_t IndicConjunctBreak(uint32_t codePoint)
     return muniGetIndicConjunctBreak(codePoint);
 }
 
-static uint8_t ExtendedPictographic(uint32_t codePoint)
+// The emoji bits in the table's order, through the public API.
+static uint8_t Emoji(uint32_t codePoint)
 {
-    return muniIsExtendedPictographic(codePoint) ? 1 : 0;
+    bool (*const tests[6])(uint32_t) = {
+        muniIsExtendedPictographic, muniIsEmoji,
+        muniIsEmojiPresentation,    muniIsEmojiModifier,
+        muniIsEmojiModifierBase,    muniIsEmojiComponent,
+    };
+    uint8_t bits = 0;
+    for (int bit = 0; bit < 6; bit++)
+    {
+        bits |= (uint8_t)(tests[bit](codePoint) ? 1u << bit : 0u);
+    }
+    return bits;
+}
+
+static uint8_t WhiteSpace(uint32_t codePoint)
+{
+    return muniIsWhiteSpace(codePoint) ? 1 : 0;
 }
 
 static void TestBreakPropertiesMatchTheUcdEverywhere(void)
@@ -78,8 +94,8 @@ static void TestBreakPropertiesMatchTheUcdEverywhere(void)
     CHECK(HashAll(WordBreak) == muniWordBreakHash, "Word_Break hash");
     CHECK(HashAll(SentenceBreak) == muniSentenceBreakHash, "Sentence_Break hash");
     CHECK(HashAll(IndicConjunctBreak) == muniIndicConjunctBreakHash, "Indic_Conjunct_Break hash");
-    CHECK(HashAll(ExtendedPictographic) == muniExtendedPictographicHash,
-          "Extended_Pictographic hash");
+    CHECK(HashAll(Emoji) == muniEmojiHash, "emoji properties hash");
+    CHECK(HashAll(WhiteSpace) == muniWhiteSpaceHash, "White_Space hash");
 }
 
 static void TestBreakPropertiesKnownValues(void)
@@ -101,6 +117,15 @@ static void TestBreakPropertiesKnownValues(void)
     CHECK(muniGetIndicConjunctBreak(0x0915) == muni_incbConsonant, "U+0915 is a consonant");
     CHECK(muniIsExtendedPictographic(0x1F600), "U+1F600 is Extended_Pictographic");
     CHECK(!muniIsExtendedPictographic('a'), "a is not Extended_Pictographic");
+    CHECK(muniIsEmoji('#') && !muniIsEmojiPresentation('#') && muniIsEmojiComponent('#'),
+          "# can start a keycap");
+    CHECK(muniIsEmojiPresentation(0x1F600) && !muniIsEmojiComponent(0x1F600),
+          "U+1F600 shows as an emoji");
+    CHECK(muniIsEmojiModifier(0x1F3FB) && muniIsEmojiModifierBase(0x1F44D),
+          "a skin tone and a thumbs up");
+    CHECK(muniIsWhiteSpace(' ') && muniIsWhiteSpace(0x3000) && muniIsWhiteSpace(0x2029) &&
+              !muniIsWhiteSpace(0x200B) && !muniIsWhiteSpace(0x110000),
+          "White_Space");
     CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
 }
 
@@ -202,6 +227,30 @@ static void TestLayoutPropertiesKnownValues(void)
     CHECK(muniGetScript(0x110000) == MUNI_SCRIPT_UNKNOWN, "past U+10FFFF is Unknown");
 }
 
+// Every decimal digit has a value from 0 to 9 and its system's zero
+// before it; nothing else has one.
+static void TestDecimalDigits(void)
+{
+    int failures = 0;
+    for (uint32_t c = 0; c < 0x110000u; c++)
+    {
+        int32_t value = muniGetDecimalDigitValue(c);
+        bool digit = muniGetGeneralCategory(c) == muni_gcNd;
+        bool valid =
+            digit ? value >= 0 && value <= 9 && muniGetDecimalDigitValue(c - (uint32_t)value) == 0
+                  : value == -1;
+        failures += valid ? 0 : 1;
+    }
+    CHECK(failures == 0, "decimal digit values over every code point");
+    CHECK(muniGetDecimalDigitValue('7') == 7 && muniGetDecimalDigitValue(0x0667) == 7,
+          "ASCII and Arabic-Indic seven");
+    CHECK(muniGetDecimalDigitValue(0x1D7D8) == 0 && muniGetDecimalDigitValue(0x1D7E1) == 9,
+          "double-struck math digits");
+    CHECK(muniGetDecimalDigitValue(0x00B2) == -1 && muniGetDecimalDigitValue(0x2167) == -1 &&
+              muniGetDecimalDigitValue('a') == -1 && muniGetDecimalDigitValue(0x110000) == -1,
+          "superscripts, Roman numerals and letters are no decimal digits");
+}
+
 int main(void)
 {
     TestLayoutPropertiesMatchTheUcdEverywhere();
@@ -210,5 +259,6 @@ int main(void)
     TestGeneralCategoryKnownValues();
     TestBreakPropertiesMatchTheUcdEverywhere();
     TestBreakPropertiesKnownValues();
+    TestDecimalDigits();
     return s_failures == 0 ? 0 : 1;
 }

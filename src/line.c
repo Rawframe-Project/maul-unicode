@@ -331,8 +331,9 @@ static muniDecision DecideRest(const muniLineRules* state, uint8_t value, uint32
         return muni_decideJoin; // LB30a
     }
     if (value == muni_lbEm &&
-        (previous == muni_lbEb || (Category(state->previousCodePoint) == muni_gcCn &&
-                                   muniLookupExtendedPictographic(state->previousCodePoint) != 0)))
+        (previous == muni_lbEb ||
+         (Category(state->previousCodePoint) == muni_gcCn &&
+          (muniLookupEmoji(state->previousCodePoint) & muni_emojiExtendedPictographic) != 0)))
     {
         return muni_decideJoin; // LB30b
     }

@@ -21,8 +21,25 @@ uint8_t muniLookupSentenceBreak(uint32_t codePoint);
 extern const uint64_t muniSentenceBreakHash;
 uint8_t muniLookupIndicConjunctBreak(uint32_t codePoint);
 extern const uint64_t muniIndicConjunctBreakHash;
-uint8_t muniLookupExtendedPictographic(uint32_t codePoint);
-extern const uint64_t muniExtendedPictographicHash;
+// The emoji properties of UTS #51 as the muni_emoji bits below.
+uint8_t muniLookupEmoji(uint32_t codePoint);
+extern const uint64_t muniEmojiHash;
+uint8_t muniLookupWhiteSpace(uint32_t codePoint);
+extern const uint64_t muniWhiteSpaceHash;
+// The zeros of the decimal digit systems, sorted: a digit's value is its
+// distance from the greatest zero at or below it.
+extern const uint32_t muniDecimalZeros[];
+extern const uint16_t muniDecimalZeroCount;
+
+enum
+{
+    muni_emojiExtendedPictographic = 1,
+    muni_emojiEmoji = 2,
+    muni_emojiPresentation = 4,
+    muni_emojiModifier = 8,
+    muni_emojiModifierBase = 16,
+    muni_emojiComponent = 32,
+};
 
 uint8_t muniLookupLineBreak(uint32_t codePoint);
 extern const uint64_t muniLineBreakHash;
@@ -121,8 +138,7 @@ extern const uint16_t muniCaseSpecialCount;
 // binary search over Starts. An entry below 0x8000 is a prototype of one
 // code point; above, it holds the prototype's length in bits 13 and 14
 // and its offset in the pool of UTF-16 units in the low 13, and a length
-// of 0 means the pool gives the length first. The zeros of the decimal
-// digit systems are sorted.
+// of 0 means the pool gives the length first.
 uint8_t muniLookupSecurity(uint32_t codePoint);
 extern const uint64_t muniSecurityHash;
 extern const uint16_t muniConfusableStarts[];
@@ -131,8 +147,6 @@ extern const uint16_t muniConfusableRanks[];
 extern const uint16_t muniConfusables[];
 extern const uint16_t muniConfusablePool[];
 extern const uint16_t muniConfusableBlockCount;
-extern const uint32_t muniDecimalZeros[];
-extern const uint16_t muniDecimalZeroCount;
 
 enum
 {

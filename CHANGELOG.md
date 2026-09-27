@@ -110,6 +110,11 @@ format.
   `muniIsDefaultIgnorable`. 36,601 bytes of tables (muni-0014); a fuzz
   target checks short output buffers, skeleton idempotence and the
   agreement of levels with resolved scripts.
+- `muniIsEmoji`, `muniIsEmojiPresentation`, `muniIsEmojiModifier`,
+  `muniIsEmojiModifierBase` and `muniIsEmojiComponent` (UTS #51), which
+  share one 1,653-byte table with Extended_Pictographic;
+  `muniIsWhiteSpace` (95 bytes); `muniGetDecimalDigitValue` from the
+  zeros of the 77 decimal digit systems (310 bytes, muni-0015).
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
   script run, normalization, case and security throughput, through
   iterators and the array conveniences.

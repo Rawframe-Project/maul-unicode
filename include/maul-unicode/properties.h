@@ -182,6 +182,74 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsExtendedPictographic(uint32_t codePoint);
 
+    /// Tells whether a code point has the Emoji property (UTS #51): it
+    /// can show as an emoji, which digits and '#' can too.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Emoji.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsEmoji(uint32_t codePoint);
+
+    /// Tells whether a code point has the Emoji_Presentation property
+    /// (UTS #51): it shows as an emoji unless a variation selector asks
+    /// for text.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Emoji_Presentation.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsEmojiPresentation(uint32_t codePoint);
+
+    /// Tells whether a code point has the Emoji_Modifier property (UTS
+    /// #51): a skin tone modifier.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Emoji_Modifier.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsEmojiModifier(uint32_t codePoint);
+
+    /// Tells whether a code point has the Emoji_Modifier_Base property
+    /// (UTS #51): a skin tone modifier after it applies to it.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Emoji_Modifier_Base.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsEmojiModifierBase(uint32_t codePoint);
+
+    /// Tells whether a code point has the Emoji_Component property (UTS
+    /// #51): it can be part of an emoji sequence, as regional indicators,
+    /// keycap parts, tags and the zero width joiner are.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Emoji_Component.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsEmojiComponent(uint32_t codePoint);
+
+    /// Tells whether a code point has the White_Space property: spaces,
+    /// tabs and line and paragraph separators, 25 code points in all.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is White_Space.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsWhiteSpace(uint32_t codePoint);
+
+    /// Returns the value of a decimal digit: a code point of General
+    /// Category Nd (Numeric_Type Decimal), such as '7' or the Devanagari
+    /// seven, which parse as numbers. Superscripts, fractions and Roman
+    /// numerals have numeric values but are not decimal digits.
+    ///
+    /// @param codePoint  Any value.
+    /// @return The digit's value, 0 to 9, or -1 when the code point is
+    ///         not a decimal digit.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API int32_t muniGetDecimalDigitValue(uint32_t codePoint);
+
     // Line_Break (UAX #14), in the library's numbering; the comments give
     // the long names.
     typedef uint8_t muniLineBreak;
