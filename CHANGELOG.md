@@ -8,6 +8,11 @@ format.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-27
+
+The first release: every algorithm and property the requirements ask
+for, from Unicode 18.0.0, passing every official conformance file.
+
 ### Added
 
 - The library skeleton: the build, the family rules and tools, the

@@ -26,22 +26,21 @@ generated from the headers.
 
 ## Status
 
-Early development. The algorithms arrive in this order, and all are
-done:
+0.1.0 is the first release. It covers, from Unicode 18.0.0:
 
-1. The table generator and character properties.
-2. UTF-8 validation and conversion.
+1. Character properties, from tables the generator checks against the
+   UCD for every code point.
+2. UTF-8, UTF-16 and UTF-32 validation and conversion.
 3. Grapheme, word and sentence segmentation (UAX #29).
 4. Line breaking (UAX #14), with a hook for Thai, Lao, Khmer and
    Burmese.
 5. Bidirectional text (UAX #9).
-6. Script itemization, and Unicode callbacks for HarfBuzz.
+6. Script itemization, and Unicode functions for HarfBuzz.
 7. Normalization (UAX #15) and case mapping.
-8. Identifiers (UAX #31) and confusable detection (UTS #39).
+8. Identifiers (UAX #31) and security mechanisms (UTS #39).
 
-Each one is accepted when it passes the official Unicode conformance
-files completely. Nothing is released before 0.1.0, and until 1.0.0 any
-minor release may change the API.
+Each passes the official Unicode conformance files completely. Until
+1.0.0 any minor release may change the API.
 
 ## Building
 
