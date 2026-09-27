@@ -26,7 +26,7 @@ jobs:
       - name: clang-format
         run: |
           clang-format --version
-          clang-format --dry-run -Werror $(find include src test tools bench -name '*.[ch]' 2>/dev/null)
+          clang-format --dry-run -Werror $(find include src test tools bench samples -name '*.[ch]' 2>/dev/null)
       - name: Family checks
         run: |
           python3 tools/check_source.py
@@ -84,10 +84,10 @@ jobs:
         if: matrix.name == 'linux-harfbuzz' || matrix.name == 'linux-shared'
         run: |
           cmake --install build --prefix "$PWD/package"
-          cmake -S test/package -B build-package -DCMAKE_C_COMPILER=${{ matrix.cc }} \
+          cmake -S samples/minimal -B build-minimal -DCMAKE_C_COMPILER=${{ matrix.cc }} \
             -DCMAKE_PREFIX_PATH="$PWD/package"
-          cmake --build build-package
-          LD_LIBRARY_PATH="$PWD/package/lib" ./build-package/package_test
+          cmake --build build-minimal
+          LD_LIBRARY_PATH="$PWD/package/lib" ./build-minimal/minimal
 
   # Each fuzz target runs for one minute on every push; it looks for
   # crashes and for answers that disagree with each other or with ICU.

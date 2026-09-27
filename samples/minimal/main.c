@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// Uses the installed library as a consumer would, in C17: the version,
-// one property and, when installed, the HarfBuzz functions guessing the
-// direction of Arabic text.
+// Uses the installed library as a consumer would, in C17: it asserts
+// that the linked library has the Unicode version it was compiled
+// against, reads one property and, when installed, has HarfBuzz guess
+// the direction of Arabic text through the library's functions.
 
 #include "maul-unicode/properties.h"
 
-#ifdef PACKAGE_HARFBUZZ
+#ifdef MINIMAL_HARFBUZZ
 #include "maul-unicode/harfbuzz.h"
 
 #include <hb.h>
@@ -18,12 +19,19 @@
 int main(void)
 {
     int failures = 0;
+    muniVersion unicode = muniGetUnicodeVersion();
+    if (unicode.major != MUNI_UNICODE_VERSION_MAJOR || unicode.minor != MUNI_UNICODE_VERSION_MINOR)
+    {
+        printf("FAIL: linked Unicode %u.%u, compiled against %d.%d\n", unicode.major, unicode.minor,
+               MUNI_UNICODE_VERSION_MAJOR, MUNI_UNICODE_VERSION_MINOR);
+        failures += 1;
+    }
     if (muniGetGeneralCategory('A') != muni_gcLu)
     {
         printf("FAIL: the general category of A\n");
         failures += 1;
     }
-#ifdef PACKAGE_HARFBUZZ
+#ifdef MINIMAL_HARFBUZZ
     hb_unicode_funcs_t* functions = muniCreateHarfBuzzFunctions();
     hb_buffer_t* buffer = hb_buffer_create();
     hb_buffer_set_unicode_funcs(buffer, functions);
@@ -37,6 +45,6 @@ int main(void)
     hb_buffer_destroy(buffer);
     hb_unicode_funcs_destroy(functions);
 #endif
-    printf("package test: %d failures\n", failures);
+    printf("minimal: %d failures\n", failures);
     return failures == 0 ? 0 : 1;
 }

@@ -16,6 +16,7 @@ project(maul-unicode
 
 option(MAUL_UNICODE_BUILD_TESTS "Build the test suites" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_BUILD_BENCH "Build the benchmarks" ${PROJECT_IS_TOP_LEVEL})
+option(MAUL_UNICODE_BUILD_SAMPLES "Build the samples" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_BUILD_TOOLS "Build the table generator" ${PROJECT_IS_TOP_LEVEL})
 option(MAUL_UNICODE_BUILD_SHARED "Build a shared library instead of a static one" OFF)
 option(MAUL_UNICODE_INSTALL "Generate install rules" ${PROJECT_IS_TOP_LEVEL})
@@ -31,7 +32,7 @@ option(MAUL_UNICODE_CASE "Include case mapping and folding" ON)
 option(MAUL_UNICODE_SECURITY "Include confusable and mixed-script detection (UTS #39)" ON)
 option(MAUL_UNICODE_HARFBUZZ "Build maul-unicode-harfbuzz, Unicode functions for HarfBuzz" OFF)
 
-# Every executable (tests, benchmarks, tools) lands in the top of the
+# Every executable (tests, samples, benchmarks, tools) lands in the top of the
 # build tree, so scripts and CI find them in one place.
 if(PROJECT_IS_TOP_LEVEL)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
@@ -209,6 +210,10 @@ if(MAUL_UNICODE_BUILD_TOOLS)
     if(WIN32)
         target_compile_definitions(munigen PRIVATE _CRT_SECURE_NO_WARNINGS)
     endif()
+endif()
+
+if(MAUL_UNICODE_BUILD_SAMPLES)
+    add_subdirectory(samples)
 endif()
 
 # The benchmarks measure every component, so they need them all.

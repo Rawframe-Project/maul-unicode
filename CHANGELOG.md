@@ -106,7 +106,8 @@ format.
   and through a buffer's script and direction guess; CI builds it.
   Installed as the package `maul-unicode-harfbuzz` (CMake and
   pkg-config), which finds HarfBuzz the way the build did; CI installs
-  it, and the shared library, and builds `test/package` against them.
+  it, and the shared library, and builds `samples/minimal` against
+  them.
 - Security mechanisms (UTS #39), build option `MAUL_UNICODE_SECURITY`
   (on by default, needs normalization): `muniGetSkeleton`, the
   confusable skeleton in display order for a paragraph direction;
@@ -127,6 +128,9 @@ format.
   given that file prints each speed's ratio to them.
 - CI's web job reports the static library's size in total, without any
   component, and each optional component's cost.
+- Samples (build option `MAUL_UNICODE_BUILD_SAMPLES`): segments, a bidi
+  line and a user name policy; `samples/minimal` consumes the installed
+  packages, and CI builds it after installing.
 - `fuzz_icu` (build option `MAUL_UNICODE_FUZZ_ICU`): compares UTF-8 to
   UTF-16 conversion with replacement, the four normal forms and default
   and Turkic case mapping with ICU, a test-only oracle, skipping what

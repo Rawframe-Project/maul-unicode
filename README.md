@@ -53,6 +53,13 @@ ctest --test-dir build
 Use the package from CMake with `find_package(maul-unicode)` and link
 `maul-unicode::maul-unicode`, or through pkg-config.
 
+`samples/` shows the library at work: `segments.c` splits text into
+grapheme clusters, words, sentences and line break opportunities;
+`bidi.c` lays out a line of mixed-direction text; `names.c` builds a
+user name policy from normalization, case folding, confusable skeletons
+and restriction levels. `samples/minimal` is a separate project that
+uses only the installed package.
+
 Three components can be left out with their tables when a build does
 not need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables),
 `-DMAUL_UNICODE_CASE=OFF` (9.6 KB) and `-DMAUL_UNICODE_SECURITY=OFF`
