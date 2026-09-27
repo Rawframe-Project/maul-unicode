@@ -151,10 +151,13 @@ if(MAUL_UNICODE_BUILD_TESTS)
         maul_add_test(case WHITEBOX)
     endif()
     if(MAUL_UNICODE_SECURITY)
-        # The security suite reads confusables.txt, one of the generator's inputs.
+        # The security suite reads confusables.txt, one of the generator's
+        # inputs; as a white-box suite, it is skipped in shared builds.
         maul_add_test(security WHITEBOX)
-        target_compile_definitions(test_security PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
-        list(APPEND MUNI_DATA_SUITES security)
+        if(TARGET test_security)
+            target_compile_definitions(test_security PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
+            list(APPEND MUNI_DATA_SUITES security)
+        endif()
     endif()
     if(MAUL_UNICODE_HARFBUZZ)
         maul_add_test(harfbuzz)

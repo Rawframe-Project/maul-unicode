@@ -51,13 +51,13 @@ enum
 {
     Accept = 0,
     Reject = 6,
-    Need1 = 12, // one continuation byte, 80 to BF, is missing
+    Need1 = 12, // one continuation byte, 0x80 to 0xBF, is missing
     Need2 = 18,
     Need3 = 24,
-    AfterE0 = 30, // a continuation from A0 to BF, then one more
-    AfterEd = 36, // 80 to 9F, then one more
-    AfterF0 = 42, // 90 to BF, then two more
-    AfterF4 = 48, // 80 to 8F, then two more
+    AfterE0 = 30, // a continuation from 0xA0 to 0xBF, then one more
+    AfterEd = 36, // 0x80 to 0x9F, then one more
+    AfterF0 = 42, // 0x90 to 0xBF, then two more
+    AfterF4 = 48, // 0x80 to 0x8F, then two more
 };
 
 #define ROW(accept, need1, need2, need3, afterE0, afterEd, afterF0, afterF4)                       \
@@ -68,38 +68,38 @@ enum
 #define LEAD(next) ROW(next, Reject, Reject, Reject, Reject, Reject, Reject, Reject)
 
 static const uint64_t s_rows[12] = {
-    LEAD(Accept),                                                    // 00 to 7F
-    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Reject, Need2), // 80 to 8F
-    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Need2, Reject), // 90 to 9F
-    ROW(Reject, Accept, Need1, Need2, Need1, Reject, Need2, Reject), // A0 to BF
-    LEAD(Need1),                                                     // C2 to DF
-    LEAD(AfterE0),                                                   // E0
-    LEAD(Need2),                                                     // E1 to EC, EE, EF
-    LEAD(AfterEd),                                                   // ED
-    LEAD(AfterF0),                                                   // F0
-    LEAD(Need3),                                                     // F1 to F3
-    LEAD(AfterF4),                                                   // F4
-    LEAD(Reject),                                                    // C0, C1, F5 to FF
+    LEAD(Accept),                                                    // 0x00 to 0x7F
+    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Reject, Need2), // 0x80 to 0x8F
+    ROW(Reject, Accept, Need1, Need2, Reject, Need1, Need2, Reject), // 0x90 to 0x9F
+    ROW(Reject, Accept, Need1, Need2, Need1, Reject, Need2, Reject), // 0xA0 to 0xBF
+    LEAD(Need1),                                                     // 0xC2 to 0xDF
+    LEAD(AfterE0),                                                   // 0xE0
+    LEAD(Need2),                                                     // 0xE1 to 0xEC, 0xEE, 0xEF
+    LEAD(AfterEd),                                                   // 0xED
+    LEAD(AfterF0),                                                   // 0xF0
+    LEAD(Need3),                                                     // 0xF1 to 0xF3
+    LEAD(AfterF4),                                                   // 0xF4
+    LEAD(Reject),                                                    // 0xC0, 0xC1, 0xF5 to 0xFF
 };
 
 // The class of each byte: its row in s_rows.
 static const uint8_t s_classes[256] = {
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 00
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 10
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 20
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 30
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 40
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 50
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 60
-    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 70
-    1,  1,  1, 1, 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  // 80
-    2,  2,  2, 2, 2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  // 90
-    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // A0
-    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // B0
-    11, 11, 4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // C0
-    4,  4,  4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // D0
-    5,  6,  6, 6, 6,  6,  6,  6,  6,  6,  6,  6,  6,  7,  6,  6,  // E0
-    8,  9,  9, 9, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, // F0
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x00
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x10
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x20
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x30
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x40
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x50
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x60
+    0,  0,  0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  // 0x70
+    1,  1,  1, 1, 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  // 0x80
+    2,  2,  2, 2, 2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  // 0x90
+    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // 0xA0
+    3,  3,  3, 3, 3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  // 0xB0
+    11, 11, 4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // 0xC0
+    4,  4,  4, 4, 4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  // 0xD0
+    5,  6,  6, 6, 6,  6,  6,  6,  6,  6,  6,  6,  6,  7,  6,  6,  // 0xE0
+    8,  9,  9, 9, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, // 0xF0
 };
 
 // The bytes the DFA takes between checks for an error.
