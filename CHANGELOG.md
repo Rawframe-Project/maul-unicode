@@ -8,6 +8,11 @@ format.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-27
+
+NFKC_Casefold and the Lithuanian case rules; `muniIsDefaultIgnorable`
+moves into the core.
+
 ### Added
 
 - `muniToNfkcCasefold`: NFKC_Casefold, the caseless comparison UAX #31
@@ -28,6 +33,12 @@ format.
   includes `properties.h`, so callers compile unchanged. The Security
   table keeps only Identifier_Status (5,109 bytes, from 5,885), and the
   security component takes 35,513 bytes.
+- Case folding runs 1.52 times as fast, and lowercasing and
+  uppercasing slightly faster, by tracking context only where a
+  language rule reads it.
+- The family rules for handles, threads and asynchronous requests
+  (records 0016 to 0018); thread safety paragraphs open with a statement
+  from a closed list.
 
 ## [0.1.0] - 2026-09-27
 

@@ -19,7 +19,7 @@ extern "C"
 
 // The library version. CMake reads it from here.
 #define MUNI_VERSION_MAJOR 0
-#define MUNI_VERSION_MINOR 1
+#define MUNI_VERSION_MINOR 2
 #define MUNI_VERSION_PATCH 0
 
 // The one Unicode version every table in the library comes from.
