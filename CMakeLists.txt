@@ -166,6 +166,13 @@ if(MAUL_UNICODE_BUILD_TESTS)
     if(MAUL_UNICODE_HARFBUZZ)
         maul_add_test(harfbuzz)
         target_link_libraries(test_harfbuzz PRIVATE maul-unicode-harfbuzz)
+        maul_add_test(guide_harfbuzz)
+        target_link_libraries(test_guide_harfbuzz PRIVATE maul-unicode-harfbuzz)
+    endif()
+    # The guide's snippets as written (family record 0019); they use
+    # normalization and case.
+    if(MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE)
+        maul_add_test(guide)
     endif()
     # Conformance suites read the Unicode test files in test/data/.
     foreach(suite ${MUNI_DATA_SUITES})

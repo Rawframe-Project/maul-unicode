@@ -43,8 +43,8 @@ needed size. A NULL buffer with capacity 0 measures.
 
 ```c
 size_t needed = 0;
-muniTextResult result = muniNormalize(text, length, muni_nfc, muni_convertStrict,
-                                      nullptr, 0, &needed);
+muniTextResult result =
+    muniNormalize(text, length, muni_nfc, muni_convertStrict, nullptr, 0, &needed);
 // result.status is muni_errorCapacity (or muni_success for empty output);
 // allocate needed bytes and call again.
 ```
@@ -99,7 +99,8 @@ selection and word-by-word movement; sentence boundaries serve
 sentence selection and text-to-speech.
 
 An iterator reports each boundary after the start of the text, ending
-with the end of the text:
+with the end of the text; here each cluster goes to the program's
+`UseCluster`:
 
 ```c
 muniSegmentIterator iterator;
@@ -109,7 +110,7 @@ if (muniInitGraphemeIterator(&iterator, text, length, false) == muni_success)
     size_t end = 0;
     while (muniNextSegmentBreak(&iterator, &end) == muni_success)
     {
-        // text[start, end) is one grapheme cluster
+        UseCluster(text + start, end - start);
         start = end;
     }
 }
@@ -137,12 +138,14 @@ like, and at the end of the text):
 
 ```c
 muniSegmentIterator lines;
-(void)muniInitLineIterator(&lines, text, length, false);
-size_t end = 0;
-bool mandatory = false;
-while (muniNextLineBreak(&lines, &end, &mandatory) == muni_success)
+if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 {
-    // a line may end at end; it must when mandatory is true
+    size_t end = 0;
+    bool mandatory = false;
+    while (muniNextLineBreak(&lines, &end, &mandatory) == muni_success)
+    {
+        // a line may end at end; it must when mandatory is true
+    }
 }
 ```
 
@@ -155,16 +158,25 @@ Thai, Lao, Khmer and Burmese write words without spaces (line breaking
 class SA), so finding breaks inside them needs a dictionary, which the
 library does not carry. By default, as rule LB1 of UAX #14 allows, a
 run of SA text has no break inside it. A program with a word segmenter
-hands it to the iterator:
+hands it to the iterator. The segmenter answers with the byte offset
+of the first word break in the run after `from`, or the run's length
+when there is none:
 
 ```c
 static size_t BreakThai(void* context, const char* run, size_t length, size_t from)
 {
-    // Return the byte offset of the first word break in run after from,
-    // or length when there is none.
+    const ThaiDictionary* dictionary = context;
+    return FindWordBreak(dictionary, run, length, from);
 }
+```
 
-(void)muniSetComplexBreaker(&lines, BreakThai, dictionary);
+and is set on a line or word iterator before its first break:
+
+```c
+if (muniSetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
+{
+    // lines is not a line or word iterator, or has already started
+}
 ```
 
 The iterator then asks the segmenter about each maximal run of SA text
@@ -211,11 +223,13 @@ run around them and keeping brackets in the script of their contents:
 
 ```c
 muniScriptIterator scripts;
-(void)muniInitScriptIterator(&scripts, text, length, false);
-muniScriptRun run;
-while (muniNextScriptRun(&scripts, &run) == muni_success)
+if (muniInitScriptIterator(&scripts, text, length, false) == muni_success)
 {
-    // the text up to run.end has script run.script
+    muniScriptRun run;
+    while (muniNextScriptRun(&scripts, &run) == muni_success)
+    {
+        // the text up to run.end has script run.script
+    }
 }
 ```
 
@@ -260,8 +274,8 @@ components.
 
 ```c
 size_t keyLength = 0;
-muniTextResult result = muniToNfkcCasefold(name, length, muni_convertStrict, key,
-                                           sizeof(key), &keyLength);
+muniTextResult result =
+    muniToNfkcCasefold(name, length, muni_convertStrict, key, sizeof(key), &keyLength);
 // "Alice", "ALICE", a full-width "ALICE" and "Al" + soft hyphen + "ice"
 // all get the key "alice".
 ```
