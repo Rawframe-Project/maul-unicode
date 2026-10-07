@@ -340,6 +340,93 @@ static void TestComplexBreaker(void)
           "no breaker after the first break");
 }
 
+// The run length the breaker was last given.
+static size_t s_runLength;
+
+static size_t RecordingBreaker(void* context, const char* run, size_t length, size_t from)
+{
+    s_runLength = length;
+    return ToyBreaker(context, run, length, from);
+}
+
+// Every break the breaker gives inside one run, asked again at each; the
+// run ends where SA text does.
+static void TestComplexBreakerRuns(void)
+{
+    // 12 is the very next code point after 9.
+    static const size_t threeBreaks[] = {9, 12, 18, 0};
+    size_t offsets[16];
+    muniSegmentIterator iterator;
+    CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)threeBreaks) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 4 && offsets[0] == 9 && offsets[1] == 12 &&
+              offsets[2] == 18 && offsets[3] == 30,
+          "breaks inside one run, the next one asked for at each");
+    char text[40];
+    memcpy(text, s_thai, 30);
+    memcpy(text + 30, " abc", 4);
+    static const size_t none[] = {0};
+    CHECK(muniInitLineIterator(&iterator, text, 34, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, RecordingBreaker, (void*)none) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 2 && s_runLength == 30,
+          "the run ends with the Thai text");
+    // A piece cut inside the Thai text, alone in its allocation so that
+    // AddressSanitizer sees a read past it: the run ends with the piece.
+    char* piece = malloc(15);
+    size_t offset = 0;
+    bool mandatory = false;
+    s_runLength = 0;
+    CHECK(piece != nullptr, "a piece");
+    if (piece != nullptr)
+    {
+        memcpy(piece, s_thai, 15);
+        CHECK(muniInitLineIterator(&iterator, piece, 15, true) == muni_success &&
+                  muniSetComplexBreaker(&iterator, RecordingBreaker, (void*)none) == muni_success &&
+                  muniNextLineBreak(&iterator, &offset, &mandatory) == muni_needMoreText &&
+                  s_runLength == 15,
+              "the run ends with the piece");
+        free(piece);
+    }
+}
+
+// A line iterator fed a byte at a time finds what it finds in the whole
+// text; the whole-text form fills an output that fits exactly.
+static void TestLinesInPieces(void)
+{
+    const char* text = "one two\nthree";
+    size_t length = strlen(text);
+    size_t whole[8];
+    bool mandatory[8];
+    size_t count = 0;
+    CHECK(muniFindLineBreaks(text, length, whole, mandatory, 3, &count) == muni_success &&
+              count == 3 && whole[0] == 4 && whole[1] == 8 && mandatory[1] && whole[2] == length,
+          "three breaks into three");
+    muniSegmentIterator iterator;
+    size_t fed = 1;
+    size_t found = 0;
+    bool same = muniInitLineIterator(&iterator, text, 1, true) == muni_success;
+    while (same)
+    {
+        size_t offset = 0;
+        bool must = false;
+        muniResult status = muniNextLineBreak(&iterator, &offset, &must);
+        if (status == muni_needMoreText)
+        {
+            same =
+                muniFeedSegmentIterator(&iterator, text + fed, 1, fed + 1 < length) == muni_success;
+            fed += 1;
+            continue;
+        }
+        if (status != muni_success)
+        {
+            break;
+        }
+        same = found < count && offset == whole[found] && must == mandatory[found];
+        found += 1;
+    }
+    CHECK(same && found == count, "fed a byte at a time");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -364,6 +451,8 @@ int main(void)
     TestWordAndSentence();
     TestLineBreaks();
     TestComplexBreaker();
+    TestComplexBreakerRuns();
+    TestLinesInPieces();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }
