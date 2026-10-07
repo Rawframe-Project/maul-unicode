@@ -201,6 +201,15 @@ static void TestSkeletons(void)
     CHECK(Skeleton("\xD7\x90\xD7\x91\t\xD7\x92\xD7\x93", 9, muni_bidiLeftToRight, skeleton) &&
               strcmp(skeleton, "\xD7\x91\xD7\x90\t\xD7\x93\xD7\x92") == 0,
           "a tab goes back to the paragraph level");
+    // Marks in either canonical order: a dot below (class 220) goes before
+    // an acute or a grave (230) however they come.
+    CHECK(SameSkeleton("a\xCC\x81\xCC\xA3", "a\xCC\xA3\xCC\x81", muni_bidiLeftToRight),
+          "marks put in canonical order");
+    CHECK(SameSkeleton("a\xCC\x80\xCC\xA3", "a\xCC\xA3\xCC\x80", muni_bidiLeftToRight),
+          "a grave, U+0300, is a mark of class 230 too");
+    // A right-to-left run that opens with a mark, a hiriq before an alef.
+    CHECK(Skeleton("\xD6\xB4\xD7\x90", 4, muni_bidiRightToLeft, skeleton),
+          "a right-to-left run may open with a mark");
 }
 
 static bool Resolves(const char* text, const muniScript* expected, size_t expectedCount)
@@ -284,10 +293,21 @@ static void TestLevels(void)
           "Identifier_Status");
 }
 
+// Checks text held alone in a heap allocation of its length, so that
+// AddressSanitizer sees a read past its end.
 static bool Mixed(const char* text)
 {
+    size_t length = strlen(text);
+    char* copy = malloc(length > 0 ? length : 1);
+    if (copy == nullptr)
+    {
+        return false;
+    }
+    memcpy(copy, text, length);
     bool mixed = false;
-    return muniCheckMixedNumbers(text, strlen(text), &mixed).status == muni_success && mixed;
+    bool ok = muniCheckMixedNumbers(copy, length, &mixed).status == muni_success;
+    free(copy);
+    return ok && mixed;
 }
 
 static void TestNumbers(void)

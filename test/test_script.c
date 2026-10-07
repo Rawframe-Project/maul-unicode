@@ -115,6 +115,31 @@ static void TestBrackets(void)
           "angle brackets pair too");
 }
 
+// Script_Extensions as a list: measured with no room, written into room
+// that fits exactly, nothing written past the count.
+static void TestScriptExtensionsList(void)
+{
+    size_t count = 0;
+    CHECK(muniGetScriptExtensions('a', nullptr, 0, &count) == muni_errorCapacity && count == 1,
+          "measuring a code point without extensions");
+    muniScript scripts[32];
+    // The danda U+0964 lists many scripts.
+    CHECK(muniGetScriptExtensions(0x0964, nullptr, 0, &count) == muni_errorCapacity && count > 1 &&
+              count < 31,
+          "measuring the danda's list");
+    for (size_t i = 0; i < 32; i++)
+    {
+        scripts[i] = 0;
+    }
+    size_t written = 0;
+    CHECK(muniGetScriptExtensions(0x0964, scripts, count, &written) == muni_success &&
+              written == count && scripts[0] != 0 && scripts[count - 1] != 0 && scripts[count] == 0,
+          "written into room that fits exactly");
+    CHECK(muniGetScriptExtensions(0x0964, scripts, 32, &written) == muni_success &&
+              scripts[count] == 0,
+          "nothing past the count");
+}
+
 static void TestCapacityAndArguments(void)
 {
     muniScriptRun runs[1];
@@ -132,6 +157,7 @@ int main(void)
 {
     TestRuns();
     TestBrackets();
+    TestScriptExtensionsList();
     TestCapacityAndArguments();
     return s_failures == 0 ? 0 : 1;
 }
