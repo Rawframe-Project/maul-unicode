@@ -9,6 +9,7 @@
 
 #include "test_harness.h"
 
+#include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
 
 #include <stdlib.h>
@@ -196,9 +197,107 @@ static void TestLimitsAndErrors(void)
     CHECK(muniComposePair(0x0915, 0x093C) == 0, "U+0958 is excluded from composition");
 }
 
+// More of the limits: an output that fits exactly, the quick check of
+// ill-formed text, and the trailing consonants a Hangul LV syllable
+// takes, U+11A8 to U+11C2 and no further.
+static void TestEdges(void)
+{
+    char output[4];
+    size_t needed = 0;
+    muniTextResult result =
+        muniNormalize("e\xCC\x81", 3, muni_nfc, muni_convertStrict, output, 2, &needed);
+    CHECK(result.status == muni_success && needed == 2 && memcmp(output, "\xC3\xA9", 2) == 0,
+          "two bytes into two");
+    muniQuickCheck answer = muni_quickCheckYes;
+    result = muniCheckNormalization("a\xFF", 2, muni_nfc, &answer);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 1, "the check finds the fault");
+    CHECK(muniComposePair(0xAC00, 0x11C2) == 0xAC1B, "the last trailing consonant composes");
+    CHECK(muniComposePair(0xAC00, 0x11C3) == 0, "the next code point does not");
+}
+
+#ifdef MUNI_UCD_DATA
+// The quick check property of each form, from DerivedNormalizationProps.txt:
+// Yes unless listed.
+static uint8_t s_quickCheck[4][0x110000];
+
+static bool LoadQuickChecks(void)
+{
+    FILE* file = fopen(MUNI_UCD_DATA "/DerivedNormalizationProps.txt", "r");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    static const struct
+    {
+        const char* name;
+        muniNormalForm form;
+    } properties[] = {{"; NFC_QC; ", muni_nfc},
+                      {"; NFD_QC; ", muni_nfd},
+                      {"; NFKC_QC; ", muni_nfkc},
+                      {"; NFKD_QC; ", muni_nfkd}};
+    static char line[1024];
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        for (size_t p = 0; p < 4; p++)
+        {
+            const char* at = strstr(line, properties[p].name);
+            if (line[0] == '#' || at == nullptr)
+            {
+                continue;
+            }
+            char value = at[strlen(properties[p].name)];
+            char* end = nullptr;
+            uint32_t first = (uint32_t)strtoul(line, &end, 16);
+            uint32_t last = end[0] == '.' ? (uint32_t)strtoul(end + 2, &end, 16) : first;
+            for (uint32_t codePoint = first; codePoint <= last; codePoint++)
+            {
+                s_quickCheck[properties[p].form][codePoint] =
+                    value == 'N' ? muni_quickCheckNo : muni_quickCheckMaybe;
+            }
+        }
+    }
+    fclose(file);
+    return true;
+}
+
+// Each code point alone gets its quick check property in every form.
+static void TestQuickCheckEverywhere(void)
+{
+    CHECK(LoadQuickChecks(), "DerivedNormalizationProps.txt opens");
+    int failures = 0;
+    for (uint32_t codePoint = 0; codePoint < 0x110000; codePoint++)
+    {
+        char text[4];
+        size_t size = 0;
+        if (muniEncodeUtf8(codePoint, text, &size) != muni_success)
+        {
+            continue;
+        }
+        for (muniNormalForm form = 0; form < 4; form++)
+        {
+            muniQuickCheck answer = muni_quickCheckYes;
+            muniTextResult result = muniCheckNormalization(text, size, form, &answer);
+            if (result.status != muni_success || answer != s_quickCheck[form][codePoint])
+            {
+                if (failures++ < 5)
+                {
+                    printf("U+%04X form %d: %d, not %d\n", (unsigned)codePoint, (int)form,
+                           (int)answer, (int)s_quickCheck[form][codePoint]);
+                }
+            }
+        }
+    }
+    CHECK(failures == 0, "the quick check of every code point");
+}
+#endif
+
 int main(void)
 {
     TestConformance();
     TestLimitsAndErrors();
+    TestEdges();
+#ifdef MUNI_UCD_DATA
+    TestQuickCheckEverywhere();
+#endif
     return s_failures == 0 ? 0 : 1;
 }

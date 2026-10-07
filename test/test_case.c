@@ -43,13 +43,23 @@ static void TestSimple(void)
     CHECK(muniToLower(0x110000) == 0x110000, "past U+10FFFF");
 }
 
+// Converts text held alone in a heap allocation of its length, so that
+// AddressSanitizer sees a context rule reading past its end.
 static bool Converts(const char* text, muniCaseOperation operation, muniCaseLanguage language,
                      const char* expected)
 {
+    size_t length = strlen(text);
+    char* copy = malloc(length > 0 ? length : 1);
+    if (copy == nullptr)
+    {
+        return false;
+    }
+    memcpy(copy, text, length);
     char output[128];
     size_t needed = 0;
-    muniTextResult result = muniConvertCase(text, strlen(text), operation, language,
-                                            muni_convertStrict, output, sizeof(output), &needed);
+    muniTextResult result = muniConvertCase(copy, length, operation, language, muni_convertStrict,
+                                            output, sizeof(output), &needed);
+    free(copy);
     return result.status == muni_success && needed == strlen(expected) &&
            memcmp(output, expected, needed) == 0;
 }
@@ -105,6 +115,40 @@ static void TestTurkic(void)
     CHECK(Converts("izmir", muni_caseTitle, muni_caseTurkic, "\xC4\xB0zmir"),
           "titlecase with dotted I");
     CHECK(Converts("I\xC4\xB0", muni_caseFold, muni_caseTurkic, "\xC4\xB1i"), "Turkic folding");
+    CHECK(Converts("XI", muni_caseLower, muni_caseTurkic, "x\xC4\xB1"),
+          "I at the end, no dot after it, lowercases to dotless i");
+}
+
+// Final_Sigma: a sigma ends a word when no cased letter follows past
+// case-ignorables; a space is not one.
+static void TestFinalSigma(void)
+{
+    CHECK(Converts("\xCE\x91\xCE\xA3", muni_caseLower, muni_caseDefault, "\xCE\xB1\xCF\x82"),
+          "a sigma at the end is final");
+    CHECK(Converts("\xCE\x91\xCE\xA3 \xCE\x91", muni_caseLower, muni_caseDefault,
+                   "\xCE\xB1\xCF\x82 \xCE\xB1"),
+          "a sigma before a space and a word is final");
+    CHECK(Converts("\xCE\x91\xCE\xA3\xCE\x91", muni_caseLower, muni_caseDefault,
+                   "\xCE\xB1\xCF\x83\xCE\xB1"),
+          "a sigma inside a word is not");
+}
+
+// NFKC_Casefold of more combining marks than a normalizer segment holds
+// is refused, as normalization refuses it.
+static void TestNfkcCasefoldLimit(void)
+{
+    char marks[1 + 40 * 2];
+    marks[0] = 'a';
+    for (int i = 0; i < 40; i++)
+    {
+        marks[1 + 2 * i] = (char)0xCC;
+        marks[2 + 2 * i] = (char)0x81;
+    }
+    char output[256];
+    size_t needed = 0;
+    muniTextResult result =
+        muniToNfkcCasefold(marks, sizeof(marks), muni_convertStrict, output, 256, &needed);
+    CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks is refused");
 }
 
 // Each Lithuanian rule of SpecialCasing.txt, with the context each
@@ -306,6 +350,8 @@ int main(void)
     TestSimple();
     TestFull();
     TestTurkic();
+    TestFinalSigma();
+    TestNfkcCasefoldLimit();
     TestLithuanian();
     TestErrors();
 #ifdef MUNI_UCD_DATA
