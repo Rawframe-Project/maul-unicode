@@ -195,6 +195,12 @@ static void TestSkeletons(void)
                                                                     "ab",
                                                                     "xba", muni_bidiLeftToRight),
           "an override reverses");
+    // Alef bet, a tab, gimel dalet: rule L1 puts the tab, a segment
+    // separator, back at the paragraph's level, so each word is reversed
+    // on its own.
+    CHECK(Skeleton("\xD7\x90\xD7\x91\t\xD7\x92\xD7\x93", 9, muni_bidiLeftToRight, skeleton) &&
+              strcmp(skeleton, "\xD7\x91\xD7\x90\t\xD7\x93\xD7\x92") == 0,
+          "a tab goes back to the paragraph level");
 }
 
 static bool Resolves(const char* text, const muniScript* expected, size_t expectedCount)

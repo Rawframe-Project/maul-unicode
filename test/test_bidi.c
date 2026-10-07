@@ -89,16 +89,16 @@ static void ParseOrder(const char* text, Case* c)
     }
 }
 
-// Resolves the case and compares levels and order.
-static bool Check(const Case* c, muniBidiDirection direction, int expectedParagraphLevel)
+static uint8_t s_lineLevels[MAX_CODE_POINTS * 4];
+
+// Resolves the case into the buffers given and compares levels and order.
+static bool Resolved(const Case* c, const char* text, uint8_t* levels, uint8_t* workspace,
+                     muniBidiRun** runsOut, muniBidiDirection direction, int expectedParagraphLevel)
 {
-    static uint8_t levels[MAX_CODE_POINTS * 4];
-    static uint8_t workspace[MAX_CODE_POINTS * 4];
-    static uint8_t lineLevels[MAX_CODE_POINTS * 4];
-    static muniBidiRun runs[MAX_CODE_POINTS];
+    uint8_t* lineLevels = s_lineLevels;
     size_t paragraphLength = 0;
     uint8_t paragraphLevel = 0;
-    if (muniResolveBidi(c->text, c->length, direction, levels, workspace, &paragraphLength,
+    if (muniResolveBidi(text, c->length, direction, levels, workspace, &paragraphLength,
                         &paragraphLevel) != muni_success ||
         paragraphLength != c->length ||
         (expectedParagraphLevel >= 0 && paragraphLevel != expectedParagraphLevel))
@@ -106,8 +106,19 @@ static bool Check(const Case* c, muniBidiDirection direction, int expectedParagr
         return false;
     }
     size_t runCount = 0;
-    if (muniReorderBidiLine(c->text, levels, c->length, paragraphLevel, runs, MAX_CODE_POINTS,
-                            &runCount) != muni_success)
+    muniResult measured =
+        muniReorderBidiLine(text, levels, c->length, paragraphLevel, nullptr, 0, &runCount);
+    if ((measured != muni_errorCapacity && runCount != 0) || runCount == 0)
+    {
+        return false;
+    }
+    muniBidiRun* runs = malloc(runCount * sizeof(muniBidiRun));
+    *runsOut = runs;
+    size_t written = 0;
+    if (runs == nullptr ||
+        muniReorderBidiLine(text, levels, c->length, paragraphLevel, runs, runCount, &written) !=
+            muni_success ||
+        written != runCount)
     {
         return false;
     }
@@ -142,6 +153,30 @@ static bool Check(const Case* c, muniBidiDirection direction, int expectedParagr
         }
     }
     return visual == c->orderCount;
+}
+
+// Resolves the case and compares levels and order. The text, levels,
+// workspace and runs each sit alone in a heap allocation of exactly their
+// size, so that AddressSanitizer sees any access past them, and the runs
+// are counted first and then written into an array that fits exactly.
+static bool Check(const Case* c, muniBidiDirection direction, int expectedParagraphLevel)
+{
+    size_t length = c->length;
+    char* text = malloc(length);
+    uint8_t* levels = malloc(length);
+    uint8_t* workspace = malloc(length);
+    muniBidiRun* runs = nullptr;
+    bool passed = false;
+    if (text != nullptr && levels != nullptr && workspace != nullptr)
+    {
+        memcpy(text, c->text, length);
+        passed = Resolved(c, text, levels, workspace, &runs, direction, expectedParagraphLevel);
+    }
+    free(runs);
+    free(workspace);
+    free(levels);
+    free(text);
+    return passed;
 }
 
 static char* NextField(char* text)
