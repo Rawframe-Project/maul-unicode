@@ -91,6 +91,30 @@ static void TestRuns(void)
           "Han and Hiragana");
 }
 
+// The bracket stack: a closing bracket matches only its own opening one,
+// popped once; an opening one before the run's first script takes it;
+// one that matches nothing is neutral.
+static void TestBrackets(void)
+{
+    // Hebrew, " (", "abc", ")", " x", a second ")" that nothing opened, " d".
+    CHECK(Runs("\xD7\xA9\xD7\x9C (abc) x) d",
+               (muniScriptRun[]){{6, HEBR}, {9, LATN}, {11, HEBR}, {15, LATN}}, 4),
+          "a matched opening bracket is popped");
+    CHECK(Runs("a) b", (muniScriptRun[]){{4, LATN}}, 1), "a closing bracket alone joins the run");
+    CHECK(Runs(")", (muniScriptRun[]){{1, MUNI_SCRIPT_COMMON}}, 1), "only a closing bracket");
+    // "(" before Hebrew U+05E9 U+05DC U+05D5 U+05DD, " abc", ")".
+    CHECK(Runs("(\xD7\xA9\xD7\x9C\xD7\x95\xD7\x9D abc)",
+               (muniScriptRun[]){{10, HEBR}, {13, LATN}, {14, HEBR}}, 3),
+          "a bracket opened before the first script takes it");
+    CHECK(Runs("\xD7\xA9\xD7\x9C (abc] x", (muniScriptRun[]){{6, HEBR}, {12, LATN}}, 2),
+          "a bracket of another pair does not close");
+    // Hebrew, " ", U+2329, "abc", U+232A, " x".
+    CHECK(Runs("\xD7\xA9\xD7\x9C \xE2\x8C\xA9"
+               "abc\xE2\x8C\xAA x",
+               (muniScriptRun[]){{8, HEBR}, {11, LATN}, {15, HEBR}, {16, LATN}}, 4),
+          "angle brackets pair too");
+}
+
 static void TestCapacityAndArguments(void)
 {
     muniScriptRun runs[1];
@@ -107,6 +131,7 @@ static void TestCapacityAndArguments(void)
 int main(void)
 {
     TestRuns();
+    TestBrackets();
     TestCapacityAndArguments();
     return s_failures == 0 ? 0 : 1;
 }

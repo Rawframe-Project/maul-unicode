@@ -308,6 +308,60 @@ static void TestEncode(void)
     CHECK(muniEncodeUtf8(0x110000, bytes, &size) == muni_errorInvalid, "past U+10FFFF");
 }
 
+// The last code units of each surrogate range: U+DBFF and U+DFFF pair
+// into U+10FFFF, U+DFFF alone is refused, U+DFFF is no code point to
+// encode.
+static void TestSurrogateRangeEnds(void)
+{
+    const uint16_t pair[] = {0xDBFF, 0xDFFF};
+    CHECK(muniValidateUtf16(pair, 2).status == muni_success, "U+DBFF U+DFFF pair");
+    char bytes[8];
+    size_t needed = 0;
+    muniTextResult result = muniConvertUtf16ToUtf8(pair, 2, bytes, 8, muni_convertStrict, &needed);
+    CHECK(result.status == muni_success && needed == 4 && memcmp(bytes, "\xF4\x8F\xBF\xBF", 4) == 0,
+          "the pair is U+10FFFF");
+    const uint16_t lone[] = {0x0061, 0xDFFF};
+    result = muniValidateUtf16(lone, 2);
+    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 1, "a lone U+DFFF");
+    size_t size = 0;
+    CHECK(muniEncodeUtf8(0xDFFF, bytes, &size) == muni_errorInvalid, "U+DFFF is refused");
+    CHECK(muniEncodeUtf8(0xE000, bytes, &size) == muni_success && size == 3, "U+E000 is not");
+}
+
+// Validation reads no unit past the length given: the unit after it, a
+// lone surrogate, changes nothing.
+static void TestValidationStopsAtTheLength(void)
+{
+    const uint16_t units[] = {0x0061, 0x0062, 0xDC00};
+    CHECK(muniValidateUtf16(units, 2).status == muni_success, "the unit past the end unread");
+}
+
+// Output that fits exactly: every conversion succeeds and writes all of
+// it, and none writes past the capacity given.
+static void TestExactFit(void)
+{
+    const char emoji[] = "\xF0\x9F\x98\x80"; // U+1F600, two UTF-16 units
+    uint16_t units[3] = {0, 0, 0xFFFF};
+    size_t needed = 0;
+    muniTextResult result = muniConvertUtf8ToUtf16(emoji, 4, units, 2, muni_convertStrict, &needed);
+    CHECK(result.status == muni_success && needed == 2 && units[0] == 0xD83D &&
+              units[1] == 0xDE00 && units[2] == 0xFFFF,
+          "a surrogate pair into two units");
+    const uint16_t euro[] = {0x20AC};
+    char bytes[4] = {0, 0, 0, 'x'};
+    result = muniConvertUtf16ToUtf8(euro, 1, bytes, 3, muni_convertStrict, &needed);
+    CHECK(result.status == muni_success && needed == 3 && memcmp(bytes, "\xE2\x82\xACx", 4) == 0,
+          "three bytes into three");
+    uint32_t codePoints[3] = {0, 0, 0xFFFFFFFF};
+    result = muniConvertUtf8ToUtf32("ab", 2, codePoints, 2, muni_convertStrict, &needed);
+    CHECK(result.status == muni_success && needed == 2 && codePoints[0] == 'a' &&
+              codePoints[1] == 'b' && codePoints[2] == 0xFFFFFFFF,
+          "two code points into two");
+    result = muniConvertUtf8ToUtf32("abc", 3, codePoints, 2, muni_convertStrict, &needed);
+    CHECK(result.status == muni_errorCapacity && needed == 3 && codePoints[2] == 0xFFFFFFFF,
+          "one too many: nothing past the capacity");
+}
+
 // Prefixes of mixed text cut at every length, including inside a code
 // point, then three bytes of edge values: errors and truncations land on
 // either side of the validator's chunk and ASCII-run boundaries.
@@ -358,5 +412,8 @@ int main(void)
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
     TestEncode();
+    TestSurrogateRangeEnds();
+    TestValidationStopsAtTheLength();
+    TestExactFit();
     return s_failures == 0 ? 0 : 1;
 }

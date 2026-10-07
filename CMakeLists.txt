@@ -136,9 +136,15 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(base)
     maul_add_test(encoding)
     maul_add_test(properties WHITEBOX)
+    maul_add_test(cursor WHITEBOX)
     maul_add_test(segment)
     maul_add_test(bidi)
     maul_add_test(script)
+    # Script runs against Scripts.txt and ScriptExtensions.txt, two of the
+    # generator's inputs.
+    maul_add_test(script_extensions)
+    target_compile_definitions(test_script_extensions PRIVATE
+                               MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
     maul_add_test(identifier WHITEBOX)
     set(MUNI_DATA_SUITES segment bidi)
     if(MAUL_UNICODE_NORMALIZATION)
