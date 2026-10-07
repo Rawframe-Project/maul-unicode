@@ -146,7 +146,7 @@ if(MAUL_UNICODE_BUILD_TESTS)
     target_compile_definitions(test_script_extensions PRIVATE
                                MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
     maul_add_test(identifier WHITEBOX)
-    set(MUNI_DATA_SUITES segment bidi)
+    set(MUNI_DATA_SUITES segment bidi script_extensions)
     if(MAUL_UNICODE_NORMALIZATION)
         maul_add_test(normalize)
         list(APPEND MUNI_DATA_SUITES normalize)
