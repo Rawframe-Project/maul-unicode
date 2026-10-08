@@ -1,0 +1,19 @@
+# The size ceiling of each component's generated tables (muni-0008), in
+# bytes, and the tables the generator names for it. tools/table_budget.py
+# checks the generator's report against this list: a component past its
+# ceiling, or a table no line names, fails.
+#
+# component: ceiling tables...
+property core: 42627 GeneralCategory CombiningClass BidiMirror Script DecompositionBlock DecompositionData
+line breaking: 26577 LineBreak EastAsianWidth
+word breaking: 18488 WordBreak
+sentence breaking: 18379 SentenceBreak
+grapheme breaking: 12422 GraphemeClusterBreak IndicConjunctBreak
+compatibility decomposition: 22623 CompatibilityBlock CompatibilityData
+case: 9775 Case CaseData SoftDotted
+security: 36601 Security SecurityData
+emoji, white space and digits: 2058 Emoji WhiteSpace DecimalZeros
+default ignorable: 357 DefaultIgnorable
+bidi: 5200 BidiClass BidiBracket
+script extensions: 1633 ScriptExtensions
+identifiers: 6215 Identifier

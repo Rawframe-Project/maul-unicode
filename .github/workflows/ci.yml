@@ -43,8 +43,10 @@ jobs:
           cmake -B build-gen -G Ninja -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_BUILD_TESTS=OFF
           cmake --build build-gen --target munigen
           mkdir -p regenerated
-          ./build-gen/munigen tools/ucd regenerated
+          ./build-gen/munigen tools/ucd regenerated | tee table-sizes.txt
           diff -r src/generated regenerated
+      - name: Tables within their ceilings
+        run: python3 tools/table_budget.py table-sizes.txt
       - name: clang-tidy
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
