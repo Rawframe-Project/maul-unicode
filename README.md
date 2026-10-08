@@ -26,7 +26,7 @@ generated from the headers.
 
 ## Status
 
-0.2.0 is the current release. It covers, from Unicode 18.0.0:
+0.2.1 is the current release. It covers, from Unicode 18.0.0:
 
 1. Character properties, from tables the generator checks against the
    UCD for every code point.

@@ -8,11 +8,18 @@ format.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-08
+
+Two build fixes for Windows; the tables and the API are unchanged.
+
 ### Fixed
 
 - `MUNI_NODISCARD` is `[[nodiscard]]` under MSVC's C++17 compiler too,
   which keeps `__cplusplus` at 199711L without `/Zc:__cplusplus`; CI
   compiles every public header with MSVC as C17 and C++17.
+- Under Visual Studio's ClangCL toolset every target is compiled as
+  C23: a target made after another fetched project was compiled below
+  it, the generator mapping its C standard to `stdclatest`.
 
 ## [0.2.0] - 2026-09-27
 
