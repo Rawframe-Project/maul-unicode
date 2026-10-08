@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
 
 env:
+  # apt retries a stalled download and gives up on a dead one.
+  APT_OPTIONS: -o Acquire::Retries=3 -o Acquire::http::Timeout=30
   PREFIX: MAUL_UNICODE
 
 jobs:
@@ -19,9 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install tools
+        timeout-minutes: 15
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q clang-20 clang-tidy-20 ninja-build libharfbuzz-dev pkg-config
+          sudo apt-get $APT_OPTIONS update -q
+          sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 clang-tidy-20
+          sudo apt-get $APT_OPTIONS install -y -q ninja-build libharfbuzz-dev pkg-config
           pip install clang-format==22.1.5 >/dev/null
       - name: clang-format
         run: |
@@ -69,10 +73,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install compilers
+        timeout-minutes: 15
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q gcc-14 g++-14 clang-20 ninja-build libharfbuzz-dev pkg-config
+          sudo apt-get $APT_OPTIONS update -q
+          # clang without its recommends (llvm-20-dev alone is 50 MB), with
+          # the sanitizers' runtime.
+          sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 libclang-rt-20-dev
+          sudo apt-get $APT_OPTIONS install -y -q gcc-14 g++-14 ninja-build libharfbuzz-dev pkg-config
       - name: Configure
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -D${PREFIX}_WERROR=ON \
@@ -111,9 +119,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install compilers
+        timeout-minutes: 15
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q clang-20 ninja-build libicu-dev pkg-config
+          sudo apt-get $APT_OPTIONS update -q
+          # clang without its recommends, with libFuzzer's runtime.
+          sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 libclang-rt-20-dev
+          sudo apt-get $APT_OPTIONS install -y -q ninja-build libicu-dev pkg-config
       - name: Build
         # fuzz_icu compares with ICU, a test-only oracle.
         run: |
