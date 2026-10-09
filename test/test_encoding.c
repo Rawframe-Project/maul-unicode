@@ -212,7 +212,7 @@ static void TestReplacementFollowsTheStandard(void)
     uint32_t output[16];
     size_t needed = 0;
     muniTextResult result =
-        muniConvertUtf8ToUtf32(text, sizeof(text) - 1, output, 16, muni_convertReplace, &needed);
+        muniConvertUtf8ToUtf32(text, sizeof(text) - 1, muni_convertReplace, output, 16, &needed);
     CHECK(result.status == muni_success && needed == 10, "ten code points");
     CHECK(memcmp(output, expected, sizeof(expected)) == 0, "the standard's substitution");
 }
@@ -223,24 +223,24 @@ static void TestConversionsRoundTrip(void)
     uint16_t units[16];
     size_t unitCount = 0;
     muniTextResult toUtf16 =
-        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, units, 16, muni_convertStrict, &unitCount);
+        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, muni_convertStrict, units, 16, &unitCount);
     CHECK(toUtf16.status == muni_success && unitCount == 6, "six UTF-16 units");
     CHECK(units[3] == 0xD83D && units[4] == 0xDE00, "the emoji as a surrogate pair");
     char back[32];
     size_t byteCount = 0;
     muniTextResult toUtf8 =
-        muniConvertUtf16ToUtf8(units, unitCount, back, 32, muni_convertStrict, &byteCount);
+        muniConvertUtf16ToUtf8(units, unitCount, muni_convertStrict, back, 32, &byteCount);
     CHECK(toUtf8.status == muni_success && byteCount == sizeof(text) - 1, "same length back");
     CHECK(memcmp(back, text, byteCount) == 0, "same bytes back");
     uint32_t codePoints[8];
     size_t codePointCount = 0;
-    CHECK(muniConvertUtf8ToUtf32(text, sizeof(text) - 1, codePoints, 8, muni_convertStrict,
+    CHECK(muniConvertUtf8ToUtf32(text, sizeof(text) - 1, muni_convertStrict, codePoints, 8,
                                  &codePointCount)
                       .status == muni_success &&
               codePointCount == 5 && codePoints[3] == 0x1F600,
           "five code points");
     CHECK(
-        muniConvertUtf32ToUtf8(codePoints, codePointCount, back, 32, muni_convertStrict, &byteCount)
+        muniConvertUtf32ToUtf8(codePoints, codePointCount, muni_convertStrict, back, 32, &byteCount)
                     .status == muni_success &&
             byteCount == sizeof(text) - 1 && memcmp(back, text, byteCount) == 0,
         "UTF-32 back to the same bytes");
@@ -252,19 +252,19 @@ static void TestUtf32Values(void)
     char bytes[16];
     size_t needed = 0;
     muniTextResult result =
-        muniConvertUtf32ToUtf8(values, 4, bytes, 16, muni_convertStrict, &needed);
+        muniConvertUtf32ToUtf8(values, 4, muni_convertStrict, bytes, 16, &needed);
     CHECK(result.status == muni_errorUtf32Value && result.offset == 1 && needed == 1,
           "a surrogate is no scalar value");
-    result = muniConvertUtf32ToUtf8(values, 4, bytes, 16, muni_convertReplace, &needed);
+    result = muniConvertUtf32ToUtf8(values, 4, muni_convertReplace, bytes, 16, &needed);
     CHECK(result.status == muni_success && needed == 8 &&
               memcmp(bytes,
                      "a\xEF\xBF\xBD\xEF\xBF\xBD"
                      "b",
                      8) == 0,
           "each bad value becomes U+FFFD");
-    result = muniConvertUtf32ToUtf8(values, 1, nullptr, 4, muni_convertStrict, &needed);
+    result = muniConvertUtf32ToUtf8(values, 1, muni_convertStrict, nullptr, 4, &needed);
     CHECK(result.status == muni_errorInvalid, "no output buffer with a capacity");
-    result = muniConvertUtf32ToUtf8(values + 3, 1, nullptr, 0, muni_convertStrict, &needed);
+    result = muniConvertUtf32ToUtf8(values + 3, 1, muni_convertStrict, nullptr, 0, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 1, "measuring");
 }
 
@@ -274,11 +274,11 @@ static void TestCapacityReportsTheTotal(void)
     uint16_t units[2];
     size_t needed = 0;
     muniTextResult result =
-        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, units, 2, muni_convertStrict, &needed);
+        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, muni_convertStrict, units, 2, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 3, "capacity, three needed");
     CHECK(units[0] == 0x20AC && units[1] == 0x20AC, "the units that fit are written");
     result =
-        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, nullptr, 0, muni_convertStrict, &needed);
+        muniConvertUtf8ToUtf16(text, sizeof(text) - 1, muni_convertStrict, nullptr, 0, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 3, "measuring with a NULL buffer");
 }
 
@@ -289,7 +289,7 @@ static void TestUtf16Surrogates(void)
     CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 1, "lone low surrogate");
     char bytes[16];
     size_t needed = 0;
-    result = muniConvertUtf16ToUtf8(lone, 3, bytes, 16, muni_convertReplace, &needed);
+    result = muniConvertUtf16ToUtf8(lone, 3, muni_convertReplace, bytes, 16, &needed);
     CHECK(result.status == muni_success && needed == 5, "replaced by U+FFFD");
     CHECK(memcmp(bytes,
                  "a\xEF\xBF\xBD"
@@ -317,7 +317,7 @@ static void TestSurrogateRangeEnds(void)
     CHECK(muniValidateUtf16(pair, 2).status == muni_success, "U+DBFF U+DFFF pair");
     char bytes[8];
     size_t needed = 0;
-    muniTextResult result = muniConvertUtf16ToUtf8(pair, 2, bytes, 8, muni_convertStrict, &needed);
+    muniTextResult result = muniConvertUtf16ToUtf8(pair, 2, muni_convertStrict, bytes, 8, &needed);
     CHECK(result.status == muni_success && needed == 4 && memcmp(bytes, "\xF4\x8F\xBF\xBF", 4) == 0,
           "the pair is U+10FFFF");
     const uint16_t lone[] = {0x0061, 0xDFFF};
@@ -343,21 +343,21 @@ static void TestExactFit(void)
     const char emoji[] = "\xF0\x9F\x98\x80"; // U+1F600, two UTF-16 units
     uint16_t units[3] = {0, 0, 0xFFFF};
     size_t needed = 0;
-    muniTextResult result = muniConvertUtf8ToUtf16(emoji, 4, units, 2, muni_convertStrict, &needed);
+    muniTextResult result = muniConvertUtf8ToUtf16(emoji, 4, muni_convertStrict, units, 2, &needed);
     CHECK(result.status == muni_success && needed == 2 && units[0] == 0xD83D &&
               units[1] == 0xDE00 && units[2] == 0xFFFF,
           "a surrogate pair into two units");
     const uint16_t euro[] = {0x20AC};
     char bytes[4] = {0, 0, 0, 'x'};
-    result = muniConvertUtf16ToUtf8(euro, 1, bytes, 3, muni_convertStrict, &needed);
+    result = muniConvertUtf16ToUtf8(euro, 1, muni_convertStrict, bytes, 3, &needed);
     CHECK(result.status == muni_success && needed == 3 && memcmp(bytes, "\xE2\x82\xACx", 4) == 0,
           "three bytes into three");
     uint32_t codePoints[3] = {0, 0, 0xFFFFFFFF};
-    result = muniConvertUtf8ToUtf32("ab", 2, codePoints, 2, muni_convertStrict, &needed);
+    result = muniConvertUtf8ToUtf32("ab", 2, muni_convertStrict, codePoints, 2, &needed);
     CHECK(result.status == muni_success && needed == 2 && codePoints[0] == 'a' &&
               codePoints[1] == 'b' && codePoints[2] == 0xFFFFFFFF,
           "two code points into two");
-    result = muniConvertUtf8ToUtf32("abc", 3, codePoints, 2, muni_convertStrict, &needed);
+    result = muniConvertUtf8ToUtf32("abc", 3, muni_convertStrict, codePoints, 2, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 3 && codePoints[2] == 0xFFFFFFFF,
           "one too many: nothing past the capacity");
 }

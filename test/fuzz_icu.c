@@ -87,7 +87,7 @@ static void CompareConversion(const char* text, size_t length)
     static UChar theirs[MAX_UNITS];
     size_t needed = 0;
     muniTextResult result =
-        muniConvertUtf8ToUtf16(text, length, ours, MAX_UNITS, muni_convertReplace, &needed);
+        muniConvertUtf8ToUtf16(text, length, muni_convertReplace, ours, MAX_UNITS, &needed);
     UErrorCode error = U_ZERO_ERROR;
     int32_t theirLength = 0;
     u_strFromUTF8WithSub(theirs, MAX_UNITS, &theirLength, text, (int32_t)length, 0xFFFD, nullptr,

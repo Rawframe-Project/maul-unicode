@@ -8,6 +8,10 @@ format.
 
 ## [Unreleased]
 
+### Changed
+
+- The encoding converters (`muniConvertUtf8ToUtf16`, `muniConvertUtf16ToUtf8`, `muniConvertUtf8ToUtf32`, `muniConvertUtf32ToUtf8`) take the mode before the output, as `muniNormalize` and `muniConvertCase` do: input, length, mode, output, capacity, `neededOut`. Move the mode argument from after the capacity to after the length; a call in the old order no longer compiles.
+
 ## [0.2.1] - 2026-10-08
 
 Two build fixes for Windows; the tables and the API are unchanged.

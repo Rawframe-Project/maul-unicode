@@ -50,7 +50,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     uint16_t* units = malloc(sizeof(uint16_t) * (size + 1));
     size_t unitCount = 0;
     muniTextResult strict =
-        muniConvertUtf8ToUtf16(text, size, units, size, muni_convertStrict, &unitCount);
+        muniConvertUtf8ToUtf16(text, size, muni_convertStrict, units, size, &unitCount);
     Require(strict.status == validation.status && strict.offset == validation.offset);
 
     if (validation.status == muni_success)
@@ -58,7 +58,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         char* back = malloc(size + 1);
         size_t byteCount = 0;
         muniTextResult reverse =
-            muniConvertUtf16ToUtf8(units, unitCount, back, size, muni_convertStrict, &byteCount);
+            muniConvertUtf16ToUtf8(units, unitCount, muni_convertStrict, back, size, &byteCount);
         Require(reverse.status == muni_success && byteCount == size);
         Require(size == 0 || memcmp(back, text, size) == 0);
         free(back);
@@ -67,7 +67,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     uint32_t* codePoints = malloc(sizeof(uint32_t) * (size + 1));
     size_t codePointCount = 0;
     muniTextResult replaced =
-        muniConvertUtf8ToUtf32(text, size, codePoints, size, muni_convertReplace, &codePointCount);
+        muniConvertUtf8ToUtf32(text, size, muni_convertReplace, codePoints, size, &codePointCount);
     Require(replaced.status == muni_success && codePointCount <= size);
     for (size_t i = 0; i < codePointCount; i++)
     {
@@ -77,8 +77,8 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     // is valid, and at most three bytes per input byte otherwise.
     char* again = malloc(3 * size + 1);
     size_t againCount = 0;
-    muniTextResult back = muniConvertUtf32ToUtf8(codePoints, codePointCount, again, 3 * size,
-                                                 muni_convertStrict, &againCount);
+    muniTextResult back = muniConvertUtf32ToUtf8(codePoints, codePointCount, muni_convertStrict,
+                                                 again, 3 * size, &againCount);
     Require(back.status == muni_success && againCount <= 3 * size);
     Require(validation.status != muni_success ||
             (againCount == size && (size == 0 || memcmp(again, text, size) == 0)));
