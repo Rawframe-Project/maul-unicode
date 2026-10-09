@@ -1,0 +1,2 @@
+# The <math.h> functions the sources may call (conventions section 11):
+# none, as the library uses no floating point (muni-0001).
