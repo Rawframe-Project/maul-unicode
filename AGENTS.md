@@ -43,7 +43,7 @@ Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the s
 
 ## Testing
 
-Follow the [repository standard's Tests section](https://github.com/Rawframe-Project/rawframe-org/blob/main/docs/repository-standard.md#tests); in this repository:
+Follow the [repository standard's Tests section](https://github.com/Rawframe-Project/.github/blob/main/docs/repository-standard.md#tests); in this repository:
 
 - Conformance comes from the Unicode files, not hand-written cases. A rule change is proven by the conformance suite, and the segmentation files also run fed one byte at a time.
 - Test through the public headers. The white-box suites include `src/tables.h` only for the generator's hashes; do not test internal state.
@@ -54,7 +54,7 @@ Follow the [repository standard's Tests section](https://github.com/Rawframe-Pro
 
 ## Documentation
 
-Follow the [repository standard's Documentation section](https://github.com/Rawframe-Project/rawframe-org/blob/main/docs/repository-standard.md#documentation). A change in what a caller must do or can rely on updates the page of `docs/user/` for that part and, if it is in a snippet, the matching code in `test/test_guide*.c`. The API reference is generated from the headers into the documentation site; never commit it.
+Follow the [repository standard's Documentation section](https://github.com/Rawframe-Project/.github/blob/main/docs/repository-standard.md#documentation). A change in what a caller must do or can rely on updates the page of `docs/user/` for that part and, if it is in a snippet, the matching code in `test/test_guide*.c`. The API reference is generated from the headers into the documentation site; never commit it.
 
 ## Pull requests
 

@@ -2,7 +2,7 @@
 
 Terms the code, the tests and the documentation use with one meaning.
 
-- **Code point:** a value from U+0000 to U+10FFFF. A **scalar value** is a code point that is not a surrogate (`U+D800` to `U+DFFF`); only scalar values are encoded.
+- **Code point:** a value from U+0000 to U+10FFFF. A **scalar value** is a code point that is not a surrogate (U+D800 to U+DFFF); only scalar values are encoded.
 - **Maximal ill-formed subpart:** the longest prefix of an ill-formed UTF-8 sequence that could start a well-formed one, or one byte. Each becomes one U+FFFD, the Unicode Standard's recommended practice, so every reader agrees on offsets over damaged text.
 - **Piece:** one part of a text that arrives in several. Offsets are always from the start of the whole text.
 - **Boundary:** a position between code points that a segmentation reports. Iterators report every boundary after the start, the end included.
