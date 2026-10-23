@@ -10,7 +10,7 @@ What verifies a change, locally and in CI, and the time each may take.
 |---|---|---|
 | `changed` | The source, module, length, API documentation and snippet rules, the organization's documentation check, `clang-format` on the changed C files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
 | `pr` | Every rule on every file, the generated tables against the generator and their ceilings, clang-tidy, the `linux-harfbuzz` and `linux-clang-20-asan` presets, and 10 seconds of fuzzing per target. | under 10 minutes |
-| `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the package test, every optional component left out, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
+| `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the HarfBuzz functions and the package test, every optional component left out, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
 
 Run `changed` before every push. On the shared development machine, run `pr` and `full` through the workspace's heavy-job wrapper. Builds go to `out/<preset>` and the other trees to `out/check-*`, each with its log beside it.
 
@@ -24,7 +24,7 @@ Run `changed` before every push. On the shared development machine, run `pr` and
 | `docs` | The organization's documentation check: allowed files, the em dash, record numbers, page sizes, links. `tools/ucd/` is excluded. |
 | `zizmor` | The workflows: injection, persisted credentials, permissions, unpinned actions. |
 | `checks` | `clang-format`, the family's source rules, the module graph, lengths, API documentation, documentation snippets, that the documentation site builds, that `munigen` regenerates `src/generated/` byte for byte, the table ceilings, and clang-tidy. It runs on documentation changes too. |
-| `build` | One call of the organization's `cpp.yml` per preset: GCC 14 and Clang 20 in Release, Clang with AddressSanitizer and UBSan (each test repeated up to three times on a pull request, so a flaky one fails before it merges), Clang with ThreadSanitizer, the shared library, the HarfBuzz functions, every optional component left out, macOS and `clang-cl` on Windows. All build with warnings as errors; the shared and HarfBuzz cells run the package test. ccache is restored on every run and saved only from `main`. |
+| `build` | One call of the organization's `cpp.yml` per preset: GCC 14 and Clang 20 in Release, Clang with AddressSanitizer and UBSan (each test repeated up to three times on a pull request, so a flaky one fails before it merges), Clang with ThreadSanitizer, the shared library (with the HarfBuzz functions, so they link only against what it exports), the static library with the HarfBuzz functions, every optional component left out, macOS and `clang-cl` on Windows. All build with warnings as errors; the shared and HarfBuzz cells run the package test. ccache is restored on every run and saved only from `main`. |
 | `msvc-headers` | Every public header compiled by MSVC's `cl` as C17 and C++17 with `/W4 /WX`. |
 | `fuzz` | Every fuzz target from its seeds in `test/seeds/`: 20 seconds each on a pull request, 90 seconds on `main` and at night. |
 | `web` | The library and its tests under Emscripten and Node, and the size of the static library in total and per optional component. The image has no Emscripten, so this job uses the runner and the emsdk action. |
@@ -33,7 +33,7 @@ Run `changed` before every push. On the shared development machine, run `pr` and
 
 ## Tests
 
-Each suite in `test/` is one executable, registered with CTest under its name and labeled with it. The data suites read the Unicode files in `tools/ucd/`. The white-box suites (properties, identifier, case, security) include `src/tables.h` for the generator's hashes and are not built in shared builds. No test reports itself skipped, and a test preset that finds no test fails. `test_guide.c` and `test_guide_harfbuzz.c` run the C snippets of `docs/user/` as written; `tools/check_guide.py` fails when a snippet and its copy differ.
+Each suite in `test/` is one executable, registered with CTest under its name and labeled with it. The data suites read the Unicode files in `tools/ucd/`. The white-box suites (properties, identifier, case, security) include `src/tables.h` for the generator's hashes and are not built in shared builds. No test reports itself skipped; a test preset that finds no test fails, and so does a CI cell where a test is skipped or not run. `test_guide.c` and `test_guide_harfbuzz.c` run the C snippets of `docs/user/` as written; `tools/check_guide.py` fails when a snippet and its copy differ.
 
 ## Fuzzing
 

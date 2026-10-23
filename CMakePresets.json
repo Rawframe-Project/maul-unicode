@@ -51,11 +51,12 @@
     },
     {
       "name": "linux-shared",
-      "displayName": "Clang 20, shared library, installed and used by samples/minimal",
+      "displayName": "Clang 20, shared library with the HarfBuzz functions, installed and used by samples/minimal",
       "inherits": ["linux", "clang"],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "MAUL_UNICODE_BUILD_SHARED": "ON",
+        "MAUL_UNICODE_HARFBUZZ": "ON",
         "MAUL_UNICODE_TEST_PACKAGE": "ON"
       }
     },

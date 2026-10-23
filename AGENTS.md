@@ -15,7 +15,7 @@ It never compromises on:
 ```sh
 tools/check.sh changed          # before every push: rules, format, Debug build, affected tests (< 2 min)
 tools/check.sh pr               # what the pull request check runs (< 10 min)
-tools/check.sh full             # adds TSan, shared, minimal and HarfBuzz builds, longer fuzzing (< 20 min)
+tools/check.sh full             # adds TSan, shared, minimal and Release builds, longer fuzzing (< 20 min)
 cmake --preset linux-clang-20-asan && cmake --build --preset linux-clang-20-asan   # one CI cell
 ctest --preset linux-clang-20-asan -L segment   # one suite, by label
 cmake --build out/linux-gcc-14 --target munigen && ./out/linux-gcc-14/munigen tools/ucd src/generated   # regenerate tables

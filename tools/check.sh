@@ -16,8 +16,9 @@
 #                            linux-clang-20-asan presets, and a short fuzzing
 #                            pass.
 #   tools/check.sh full      also every other Linux preset (ThreadSanitizer,
-#                            shared with the package test, minimal, Clang
-#                            Release, GCC Release) and longer fuzzing.
+#                            shared with HarfBuzz and the package test,
+#                            minimal, Clang Release, GCC Release) and
+#                            longer fuzzing.
 #
 # The builds are the CI cells' CMake presets (CMakePresets.json), in
 # out/<preset>; the other trees go to out/check-*. Needs gcc-14, clang-20,
