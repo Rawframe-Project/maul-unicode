@@ -65,7 +65,7 @@ The libraries are one product family: a program may link several of them, and a 
 
 ## API shape
 
-- Every creation takes a def struct initialized by `P...Default...Def`. Defs carry a cookie, so an uninitialized def is refused instead of read.
+- Every creation takes a def struct initialized by `P...Default...Def`. Defs carry a cookie, so an uninitialized def is refused instead of read. They also carry `PP_ABI_VERSION`, stamped by the default from the headers the program was built with: a function that takes a def checks the cookie first and the version second, and refuses a mismatched version with `P_errorVersion` before it reads anything else. The number names the releases that share a binary interface: one major and minor version from 1.0 on, the whole version before it. Its top bit is always set, so a zeroed or hand-written value never matches, and `base.h` rejects at compile time a version the encoding cannot hold. Stored data uses its own format number, never this one. A library that takes no defs has no stamp.
 - The root def (the def of the object a program creates first) carries the version of the headers the program was built with. Its default is built in the program, a `static inline` function or a macro, so it stamps the program's version rather than the library's; the root creation refuses another minor version before it reads anything else.
 - A function that fills a caller array takes the array and its capacity and reports the true total, which may exceed the capacity. A NULL array with capacity 0 measures.
 - Getters that cannot fail take ids and return values. Out-parameters end in `Out`.
@@ -105,9 +105,9 @@ The libraries are one product family: a program may link several of them, and a 
 ## Compatibility
 
 - Versions follow Semantic Versioning, and the version lives in one place, the `PP_VERSION_*` macros of the base header, which CMake reads.
-- Before 1.0.0 any minor release may change the API, the ABI and every data format. A data format's version is bumped whenever its bytes change.
+- Before 1.0.0 any release may change the API, the ABI and every data format. A data format's version is bumped whenever its bytes change.
 - From 1.0.0, within a major version: a program that builds against 1.y builds against any later 1.z and means the same (functions, types, enum values and fields are added, never removed or renamed; a field is added only at the end of its struct; deprecation names the replacement); a 1.z library reads everything an earlier 1.y wrote; results that change between versions are stated in the changelog.
-- The ABI is promised within a minor version only. Shared libraries carry major.minor in their `SOVERSION`, and the CMake package's version check is SameMinorVersion before 1.0 and SameMajorVersion from it.
+- Before 1.0.0 no two releases share an ABI or an API: a shared library's `SOVERSION` is its whole version and the CMake package's version check is ExactVersion. From 1.0.0 the ABI holds within a minor version (a minor release may grow a def) and the API within a major one: `SOVERSION` is major.minor and the check is SameMajorVersion.
 
 ## Outside code and data
 
