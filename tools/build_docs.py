@@ -7,7 +7,9 @@
 # two published pages points at the other page; a link to anything else
 # points at the repository.
 # The same script serves every Maul library; it reads the library's name
-# and title from CMakeLists.txt.
+# and title from CMakeLists.txt. A library with more generated reference
+# pages adds tools/site_pages.py, whose pages() returns (output name,
+# navigation title or None, Markdown) for each; they go after the API.
 # Requires: pip install markdown.
 #
 # Usage: python3 tools/build_docs.py  (from the repository root)
@@ -48,7 +50,12 @@ def pages():
     result.append(("changelog", "Changelog", ROOT / "CHANGELOG.md"))
     found = [(name, title, source, source.read_text(encoding="utf-8"))
              for name, title, source in result if source.exists()]
-    found.insert(len(found) - 1, ("api", "API", ROOT / "api.md", gen_api.render()))
+    generated = [("api", "API", ROOT / "api.md", gen_api.render())]
+    if (ROOT / "tools" / "site_pages.py").exists():
+        import site_pages
+        generated += [(name, title, ROOT / (name + ".md"), text)
+                      for name, title, text in site_pages.pages()]
+    found[len(found) - 1:len(found) - 1] = generated
     return found
 
 
