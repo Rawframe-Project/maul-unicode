@@ -60,8 +60,7 @@
           "type": "generic",
           "path": "include/maul-unicode/base.h"
         }
-      ],
-      "release-as": "0.0.1"
+      ]
     }
   }
 }
