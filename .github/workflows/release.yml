@@ -42,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.release-please.outputs.tag }}
           persist-credentials: false
       - name: Build the release files into dist/
         # The library ships as source: the tagged tree with the generated
@@ -50,7 +51,7 @@ jobs:
         # checksummed and attested.
         run: |
           mkdir -p dist
-          git archive --format=tar.gz --prefix="${GITHUB_REPOSITORY#*/}-${TAG#v}/" -o "dist/${GITHUB_REPOSITORY#*/}-${TAG#v}.tar.gz" "$TAG"
+          git archive --format=tar.gz --prefix="${GITHUB_REPOSITORY#*/}-${TAG#v}/" -o "dist/${GITHUB_REPOSITORY#*/}-${TAG#v}.tar.gz" HEAD
         env:
           TAG: ${{ needs.release-please.outputs.tag }}
       - uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3

@@ -311,6 +311,9 @@ static void TestEncode(void)
     CHECK(memcmp(bytes, "\xF0\x9F\x98\x80", 4) == 0, "U+1F600");
     CHECK(muniEncodeUtf8(0xD800, bytes, &size) == muni_errorInvalid, "a surrogate is refused");
     CHECK(muniEncodeUtf8(0x110000, bytes, &size) == muni_errorInvalid, "past U+10FFFF");
+    CHECK(muniEncodeUtf8(0xDFFF, bytes, &size) == muni_errorInvalid, "the last surrogate");
+    CHECK(muniEncodeUtf8(0xE000, bytes, &size) == muni_success && size == 3,
+          "the first code point after the surrogates");
 }
 
 // Output that fits exactly: every conversion succeeds and writes all of
