@@ -163,16 +163,42 @@ jobs:
             -D${PREFIX}_FUZZ_ICU=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
           cmake --build out/fuzz
       - name: Run
+        # Four targets at a time, one per core of the runner; each keeps its
+        # full time. A target's output goes to its log, printed when it
+        # finds something.
         run: |
-          for target in out/fuzz/fuzz_*; do
-            name=$(basename "$target")
+          mkdir -p out/fuzz-logs
+          fuzz_one() {
+            name=$(basename "$1")
             mkdir -p "out/corpus/$name"
             # Seeds reach inputs random bytes rarely form, like Thai text.
             if [ -d "test/seeds/$name" ]; then
               cp test/seeds/"$name"/* "out/corpus/$name"/
             fi
-            "$target" -max_total_time="$FUZZ_SECONDS" -max_len=256 "out/corpus/$name"
-          done
+            if "$1" -max_total_time="$FUZZ_SECONDS" -max_len=256 "out/corpus/$name" \
+              >"out/fuzz-logs/$name.log" 2>&1; then
+              echo "$name: no finding"
+            else
+              tail -n 60 "out/fuzz-logs/$name.log"
+              echo "::error::$name found something"
+              return 1
+            fi
+          }
+          export -f fuzz_one
+          printf '%s\n' out/fuzz/fuzz_* | xargs -P 4 -I {} bash -c 'fuzz_one "$1"' _ {}
+      - name: Fuzz logs and crash inputs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz
+          path: |
+            out/fuzz-logs/
+            crash-*
+            leak-*
+            timeout-*
+            oom-*
+          if-no-files-found: ignore
+          retention-days: 7
 
   # The library and its tests under Emscripten and Node, and the size of the
   # static library in total and per optional component. The CI image has no
