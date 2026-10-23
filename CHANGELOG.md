@@ -2,8 +2,8 @@
 
 All notable changes to this project are recorded here, grouped as
 Added, Changed, Fixed, Removed and Security. The project uses
-[Semantic Versioning](https://semver.org/). Before 1.0.0, any minor
-release may change the API, the ABI and every data format.
+[Semantic Versioning](https://semver.org/). Before 1.0.0, any release
+may change the API, the ABI and every data format.
 
 ## [0.0.1](https://github.com/Rawframe-Project/maul-unicode/releases/tag/v0.0.1) (2026-10-23)
 
