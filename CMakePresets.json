@@ -1,0 +1,127 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/${presetName}",
+      "cacheVariables": { "MAUL_UNICODE_WERROR": "ON" }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "gcc",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_C_COMPILER": "gcc-14", "CMAKE_CXX_COMPILER": "g++-14" }
+    },
+    {
+      "name": "clang",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_C_COMPILER": "clang-20", "CMAKE_CXX_COMPILER": "clang++-20" }
+    },
+    {
+      "name": "linux-gcc-14",
+      "displayName": "GCC 14, Release",
+      "inherits": ["linux", "gcc"],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "linux-clang-20",
+      "displayName": "Clang 20, Release",
+      "inherits": ["linux", "clang"],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "linux-clang-20-asan",
+      "displayName": "Clang 20, AddressSanitizer and UBSan, assertions on",
+      "inherits": ["linux", "clang"],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "MAUL_UNICODE_SANITIZE": "ON" }
+    },
+    {
+      "name": "linux-clang-20-tsan",
+      "displayName": "Clang 20, ThreadSanitizer, assertions on",
+      "inherits": ["linux", "clang"],
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "MAUL_UNICODE_TSAN": "ON" }
+    },
+    {
+      "name": "linux-shared",
+      "displayName": "Clang 20, shared library with the HarfBuzz functions, installed and used by samples/minimal",
+      "inherits": ["linux", "clang"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MAUL_UNICODE_BUILD_SHARED": "ON",
+        "MAUL_UNICODE_HARFBUZZ": "ON",
+        "MAUL_UNICODE_TEST_PACKAGE": "ON"
+      }
+    },
+    {
+      "name": "linux-harfbuzz",
+      "displayName": "GCC 14 with the HarfBuzz functions, installed and used by samples/minimal",
+      "inherits": ["linux", "gcc"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MAUL_UNICODE_HARFBUZZ": "ON",
+        "MAUL_UNICODE_TEST_PACKAGE": "ON"
+      }
+    },
+    {
+      "name": "linux-minimal",
+      "displayName": "GCC 14, every optional component left out",
+      "inherits": ["linux", "gcc"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MAUL_UNICODE_NORMALIZATION": "OFF",
+        "MAUL_UNICODE_CASE": "OFF",
+        "MAUL_UNICODE_SECURITY": "OFF"
+      }
+    },
+    {
+      "name": "macos-clang",
+      "displayName": "Apple Clang, Release",
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "windows-clang-cl",
+      "displayName": "clang-cl through Visual Studio's ClangCL toolset",
+      "inherits": "base",
+      "toolset": { "value": "ClangCL", "strategy": "set" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "linux-gcc-14", "configurePreset": "linux-gcc-14" },
+    { "name": "linux-clang-20", "configurePreset": "linux-clang-20" },
+    { "name": "linux-clang-20-asan", "configurePreset": "linux-clang-20-asan" },
+    { "name": "linux-clang-20-tsan", "configurePreset": "linux-clang-20-tsan" },
+    { "name": "linux-shared", "configurePreset": "linux-shared" },
+    { "name": "linux-harfbuzz", "configurePreset": "linux-harfbuzz" },
+    { "name": "linux-minimal", "configurePreset": "linux-minimal" },
+    { "name": "macos-clang", "configurePreset": "macos-clang" },
+    { "name": "windows-clang-cl", "configurePreset": "windows-clang-cl", "configuration": "Release" }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error", "timeout": 300, "jobs": 4 }
+    },
+    { "name": "linux-gcc-14", "inherits": "base", "configurePreset": "linux-gcc-14" },
+    { "name": "linux-clang-20", "inherits": "base", "configurePreset": "linux-clang-20" },
+    { "name": "linux-clang-20-asan", "inherits": "base", "configurePreset": "linux-clang-20-asan" },
+    { "name": "linux-clang-20-tsan", "inherits": "base", "configurePreset": "linux-clang-20-tsan" },
+    { "name": "linux-shared", "inherits": "base", "configurePreset": "linux-shared" },
+    { "name": "linux-harfbuzz", "inherits": "base", "configurePreset": "linux-harfbuzz" },
+    { "name": "linux-minimal", "inherits": "base", "configurePreset": "linux-minimal" },
+    { "name": "macos-clang", "inherits": "base", "configurePreset": "macos-clang" },
+    { "name": "windows-clang-cl", "inherits": "base", "configurePreset": "windows-clang-cl", "configuration": "Release" }
+  ]
+}

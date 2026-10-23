@@ -10,8 +10,11 @@ on:
   schedule:
     - cron: "41 3 * * 2"
 
-permissions:
-  contents: read
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   analyze:

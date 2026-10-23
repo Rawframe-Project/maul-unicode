@@ -31,6 +31,7 @@ option(MAUL_UNICODE_NORMALIZATION "Include normalization (UAX #15)" ON)
 option(MAUL_UNICODE_CASE "Include case mapping and folding" ON)
 option(MAUL_UNICODE_SECURITY "Include confusable and mixed-script detection (UTS #39)" ON)
 option(MAUL_UNICODE_HARFBUZZ "Build maul-unicode-harfbuzz, Unicode functions for HarfBuzz" OFF)
+option(MAUL_UNICODE_TEST_PACKAGE "Test the installed package by building samples/minimal against it" OFF)
 
 # Every executable (tests, samples, benchmarks, tools) lands in the top of the
 # build tree, so scripts and CI find them in one place.
@@ -183,6 +184,15 @@ if(MAUL_UNICODE_BUILD_TESTS)
         endif()
     endforeach()
     maul_add_header_tests()
+    # Installs the build into the binary tree and builds and runs
+    # samples/minimal against it, as a consumer of the package would.
+    if(MAUL_UNICODE_TEST_PACKAGE AND MAUL_UNICODE_INSTALL)
+        add_test(NAME package
+                 COMMAND ${CMAKE_COMMAND} -DBINARY_DIR=${PROJECT_BINARY_DIR}
+                         -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -DGENERATOR=${CMAKE_GENERATOR}
+                         -DC_COMPILER=${CMAKE_C_COMPILER} -P ${PROJECT_SOURCE_DIR}/cmake/PackageTest.cmake)
+        set_tests_properties(package PROPERTIES LABELS package)
+    endif()
 endif()
 
 # The fuzz targets: test/fuzz_<area>.c, run as fuzz_<area> <corpus dir>.

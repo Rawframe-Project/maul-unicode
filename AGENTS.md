@@ -15,12 +15,13 @@ It never compromises on:
 ```sh
 tools/check.sh changed          # before every push: rules, format, Debug build, affected tests (< 2 min)
 tools/check.sh pr               # what the pull request check runs (< 10 min)
-tools/check.sh full             # adds TSan, shared, minimal and HarfBuzz builds, longer fuzzing (< 20 min)
-ctest --test-dir build-check/debug -L segment --output-on-failure   # one suite, by label
-cmake --build build --target munigen && ./build/munigen tools/ucd src/generated   # regenerate tables
+tools/check.sh full             # adds TSan, shared, minimal and Release builds, longer fuzzing (< 20 min)
+cmake --preset linux-clang-20-asan && cmake --build --preset linux-clang-20-asan   # one CI cell
+ctest --preset linux-clang-20-asan -L segment   # one suite, by label
+cmake --build out/linux-gcc-14 --target munigen && ./out/linux-gcc-14/munigen tools/ucd src/generated   # regenerate tables
 ```
 
-Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `harfbuzz`, `guide`, `guide_harfbuzz`).
+Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Every CI cell is a preset in `CMakePresets.json` (configure, build and test of one name, built in `out/<preset>`); add a cell there, never as commands in a workflow. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `harfbuzz`, `guide`, `guide_harfbuzz`).
 
 ## Ways to hurt yourself
 

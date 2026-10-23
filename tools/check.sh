@@ -6,22 +6,25 @@
 #
 #   tools/check.sh changed   the files changed against origin/main: the
 #                            source rules, formatting, the documentation
-#                            checks, a Debug build with assertions on, and
-#                            the test labels the changes reach. Under two
-#                            minutes; run it before every push.
+#                            checks, the linux-clang-20-asan preset
+#                            (assertions on), and the test labels the changes
+#                            reach. Under two minutes; run it before every
+#                            push.
 #   tools/check.sh pr        what the pull request check runs on this
-#                            machine: every check, the generated tables,
-#                            the table budget, clang-tidy, warnings as
-#                            errors, the whole suite under AddressSanitizer
-#                            and UBSan, and a short fuzzing pass.
-#   tools/check.sh full      also ThreadSanitizer, the shared, minimal and
-#                            HarfBuzz builds, the installed package, and
+#                            machine: every check, the generated tables, the
+#                            table budget, clang-tidy, the linux-harfbuzz and
+#                            linux-clang-20-asan presets, and a short fuzzing
+#                            pass.
+#   tools/check.sh full      also every other Linux preset (ThreadSanitizer,
+#                            shared with HarfBuzz and the package test,
+#                            minimal, Clang Release, GCC Release) and
 #                            longer fuzzing.
 #
-# Build trees go to build-check/ (ignored by git). Needs gcc-14, clang-20,
-# clang-tidy-20, ninja and the clang-format version CI pins; HarfBuzz and
-# ICU development packages for the full tier. The org documentation check
-# runs when the organization's .github checkout is at ORG_DEFAULTS
+# The builds are the CI cells' CMake presets (CMakePresets.json), in
+# out/<preset>; the other trees go to out/check-*. Needs gcc-14, clang-20,
+# clang-tidy-20, ninja and the clang-format version CI pins, HarfBuzz and
+# ICU: the organization's CI image has them all. The org documentation
+# check runs when the organization's .github checkout is at ORG_DEFAULTS
 # (default: ../../.github from the repository).
 set -euo pipefail
 
@@ -36,25 +39,31 @@ esac
 
 cd "$(dirname "$0")/.."
 root=$PWD
-out=$root/build-check
+out=$root/out
 mkdir -p "$out"
 org=${ORG_DEFAULTS:-$root/../../.github}
 jobs=${JOBS:-8}
 
 step() { printf '\n== %s\n' "$*"; }
 
+# A tree outside the presets (the generator, clang-tidy, fuzzing).
 configure() { # name, then cmake arguments
-    local name=$1
+    local name=check-$1
     shift
     cmake -S "$root" -B "$out/$name" -G Ninja -DMAUL_UNICODE_WERROR=ON "$@" >"$out/$name.log"
 }
 
-build() { cmake --build "$out/$1" -j "$jobs" >>"$out/$1.log"; }
+build() { cmake --build "$out/check-$1" -j "$jobs" >>"$out/check-$1.log"; }
 
-run_tests() { # name, then ctest arguments
+# A CI cell: its configure, build and test presets. More ctest arguments
+# (a label filter) follow the preset's name.
+preset() {
     local name=$1
     shift
-    ctest --test-dir "$out/$name" --output-on-failure -j "$jobs" "$@"
+    step "preset $name"
+    cmake --preset "$name" >"$out/$name.log"
+    cmake --build --preset "$name" -j "$jobs" >>"$out/$name.log"
+    ctest --preset "$name" -j "$jobs" "$@"
 }
 
 # The ctest labels a changed path reaches; "all" when it reaches every
@@ -122,16 +131,12 @@ if [ "$tier" = changed ]; then
         echo "no test reached by the changes"
         exit 0
     fi
-    step "Debug build, assertions on"
-    configure debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_BUILD_BENCH=OFF
-    build debug
     if [[ " $labels " == *" all "* ]]; then
-        step "every test"
-        run_tests debug
+        preset linux-clang-20-asan
     else
         regex=$(printf '%s\n' $labels | sort -u | paste -sd '|')
-        step "tests labeled $regex"
-        run_tests debug -L "^($regex)\$"
+        echo "tests labeled $regex"
+        preset linux-clang-20-asan -L "^($regex)\$"
     fi
     exit 0
 fi
@@ -143,29 +148,23 @@ clang-format --dry-run -Werror $(all_c_files)
 
 step "generated tables match the generator, and stay within their ceilings"
 configure generator -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_BUILD_TESTS=OFF
-cmake --build "$out/generator" --target munigen >>"$out/generator.log"
+cmake --build "$out/check-generator" --target munigen >>"$out/check-generator.log"
 rm -rf "$out/regenerated"
 mkdir -p "$out/regenerated"
-"$out/generator/munigen" tools/ucd "$out/regenerated" >"$out/table-sizes.txt"
+"$out/check-generator/munigen" tools/ucd "$out/regenerated" >"$out/table-sizes.txt"
 diff -r src/generated "$out/regenerated"
 python3 tools/table_budget.py "$out/table-sizes.txt"
 
-step "Release build with GCC and the HarfBuzz functions, warnings as errors"
-configure release -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_HARFBUZZ=ON
-build release
-run_tests release
+preset linux-harfbuzz
 
 step "clang-tidy"
 configure tidy -DCMAKE_C_COMPILER=clang-20 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMAUL_UNICODE_BUILD_TESTS=OFF \
     -DMAUL_UNICODE_HARFBUZZ=ON
 for f in src/*.c; do
-    clang-tidy-20 -p "$out/tidy" --quiet --warnings-as-errors='*' "$f" 2>/dev/null
+    clang-tidy-20 -p "$out/check-tidy" --quiet --warnings-as-errors='*' "$f" 2>/dev/null
 done
 
-step "AddressSanitizer and UBSan, assertions on"
-configure asan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_SANITIZE=ON
-build asan
-run_tests asan
+preset linux-clang-20-asan
 
 fuzz_seconds=10
 [ "$tier" = full ] && fuzz_seconds=60
@@ -175,7 +174,7 @@ fuzz_icu=OFF
 configure fuzz -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_FUZZ=ON -DMAUL_UNICODE_FUZZ_ICU=$fuzz_icu \
     -DMAUL_UNICODE_BUILD_TESTS=OFF
 build fuzz
-for target in "$out"/fuzz/fuzz_*; do
+for target in "$out"/check-fuzz/fuzz_*; do
     name=$(basename "$target")
     corpus=$out/corpus/$name
     mkdir -p "$corpus"
@@ -190,27 +189,8 @@ done
 
 [ "$tier" = full ] || exit 0
 
-step "ThreadSanitizer"
-configure tsan -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_TSAN=ON
-build tsan
-run_tests tsan
-
-step "components left out"
-configure minimal -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_NORMALIZATION=OFF \
-    -DMAUL_UNICODE_CASE=OFF -DMAUL_UNICODE_SECURITY=OFF
-build minimal
-run_tests minimal
-
-step "shared library with HarfBuzz, installed and used by samples/minimal"
-configure shared -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_BUILD_SHARED=ON \
-    -DMAUL_UNICODE_HARFBUZZ=ON
-build shared
-run_tests shared
-rm -rf "$out/package"
-cmake --install "$out/shared" --prefix "$out/package" >>"$out/shared.log"
-cmake -S samples/minimal -B "$out/package-user" -DCMAKE_C_COMPILER=gcc-14 \
-    -DCMAKE_PREFIX_PATH="$out/package" >"$out/package-user.log"
-cmake --build "$out/package-user" >>"$out/package-user.log"
-LD_LIBRARY_PATH="$out/package/lib" "$out/package-user/minimal"
+for name in linux-clang-20-tsan linux-shared linux-minimal linux-clang-20 linux-gcc-14; do
+    preset "$name"
+done
 
 step "all checks passed"
