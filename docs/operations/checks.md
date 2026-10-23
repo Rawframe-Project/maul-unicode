@@ -27,7 +27,7 @@ Run `changed` before every push. On the shared development machine, run `pr` and
 | `windows-clang-cl` | The library and its tests with `clang-cl`, and every public header compiled by MSVC's `cl` as C17 and C++17 with `/W4 /WX`. |
 | `web-emscripten` | The library and its tests under Emscripten and Node, and the size of the static library in total and per optional component. |
 
-`pr-title.yml` checks that the pull request title is a conventional commit with a scope from `AGENTS.md`.
+`pr-title.yml` checks that the pull request title is a conventional commit with a scope from `AGENTS.md`. `codeql.yml` runs CodeQL on every pull request and on `main`, building with GCC 14 (an advanced setup, since the default one builds with the runner's GCC 13). `scorecard.yml` grades the repository's security practices weekly for the README badge, and Dependabot proposes updates of the pinned actions once a week in one pull request.
 
 ## Tests
 

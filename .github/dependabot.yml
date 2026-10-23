@@ -1,0 +1,13 @@
+# Keeps the pinned action commits current: one grouped pull request a
+# week, titled as a conventional commit.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

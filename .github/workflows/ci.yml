@@ -31,7 +31,7 @@ jobs:
   # The organization's documentation check; tools/ucd holds the Unicode
   # data, kept exactly as published.
   docs:
-    uses: Rawframe-Project/.github/.github/workflows/docs-check.yml@main
+    uses: Rawframe-Project/.github/.github/workflows/docs-check.yml@9f232b058d1cc607fc555945e27fd55e9edcd460 # main
     with:
       exclude: tools/ucd
 
@@ -42,9 +42,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Downloaded packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/apt-archives
           key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -109,10 +111,12 @@ jobs:
           - { name: linux-minimal,       os: ubuntu-24.04, cc: gcc-14,   cxx: g++-14,     config: Release, extra: "-DMAUL_UNICODE_NORMALIZATION=OFF -DMAUL_UNICODE_CASE=OFF -DMAUL_UNICODE_SECURITY=OFF" }
           - { name: macos-clang,         os: macos-15,     cc: clang,    cxx: clang++,    config: Release, extra: "" }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Downloaded packages
         if: runner.os == 'Linux'
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/apt-archives
           key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -159,9 +163,11 @@ jobs:
     env:
       FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || 90 }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Downloaded packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/apt-archives
           key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -200,7 +206,9 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Configure
         run: cmake -B build -T ClangCL -D${PREFIX}_WERROR=ON
       - name: Build
@@ -224,8 +232,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: emscripten-core/setup-emsdk@v16
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
       - name: Configure
         run: emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release -D${PREFIX}_WERROR=ON
       - name: Build

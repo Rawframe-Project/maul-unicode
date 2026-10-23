@@ -5,6 +5,7 @@ Unicode algorithms and character properties in C, with no dependencies and no al
 [![CI](https://github.com/Rawframe-Project/maul-unicode/actions/workflows/ci.yml/badge.svg)](https://github.com/Rawframe-Project/maul-unicode/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/Rawframe-Project/maul-unicode)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/Rawframe-Project/maul-unicode)](https://github.com/Rawframe-Project/maul-unicode/releases)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Rawframe-Project/maul-unicode/badge)](https://scorecard.dev/viewer/?uri=github.com/Rawframe-Project/maul-unicode)
 
 Every program that handles text has to answer the same questions. Is this valid UTF-8, and where does it go wrong? Where does one user-perceived character end, for the caret and for backspace? Where may a line break? In which order do mixed left-to-right and right-to-left runs appear? Which script is each part in, for shaping and fonts? Are two strings the same text in different forms, or do they only look alike?
 
