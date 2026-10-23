@@ -8,23 +8,60 @@
   "draft-pull-request": true,
   "pull-request-title-pattern": "chore: release ${version}",
   "changelog-sections": [
-    {"type": "feat", "section": "Added"},
-    {"type": "fix", "section": "Fixed"},
-    {"type": "perf", "section": "Changed"},
-    {"type": "refactor", "section": "Changed", "hidden": true},
-    {"type": "docs", "section": "Documentation", "hidden": true},
-    {"type": "test", "section": "Tests", "hidden": true},
-    {"type": "build", "section": "Build", "hidden": true},
-    {"type": "ci", "section": "CI", "hidden": true},
-    {"type": "chore", "section": "Chores", "hidden": true}
+    {
+      "type": "feat",
+      "section": "Added"
+    },
+    {
+      "type": "fix",
+      "section": "Fixed"
+    },
+    {
+      "type": "perf",
+      "section": "Changed"
+    },
+    {
+      "type": "refactor",
+      "section": "Changed",
+      "hidden": true
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "build",
+      "section": "Build",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "CI",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Chores",
+      "hidden": true
+    }
   ],
   "packages": {
     ".": {
       "package-name": "maul-unicode",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        {"type": "generic", "path": "include/maul-unicode/base.h"}
-      ]
+        {
+          "type": "generic",
+          "path": "include/maul-unicode/base.h"
+        }
+      ],
+      "release-as": "0.0.1"
     }
   }
 }
