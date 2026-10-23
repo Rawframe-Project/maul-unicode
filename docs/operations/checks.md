@@ -4,34 +4,36 @@ What verifies a change, locally and in CI, and the time each may take.
 
 ## Locally
 
-`tools/check.sh` runs the checks in three tiers; each includes the one before it.
+`tools/check.sh` runs the checks in three tiers; each includes the one before it. Its builds are the CI cells' presets from `CMakePresets.json`.
 
 | Tier | Runs | Budget |
 |---|---|---|
-| `changed` | The source, module, length, API documentation and snippet rules, the organization's documentation check, `clang-format` on the changed C files, a Debug build with assertions on, and the CTest labels the changed files reach. | under 2 minutes |
-| `pr` | Every rule on every file, the generated tables against the generator and their ceilings, a Release build with GCC and the HarfBuzz functions, clang-tidy, the suite under AddressSanitizer and UBSan, and 10 seconds of fuzzing per target. | under 10 minutes |
-| `full` | Also ThreadSanitizer, a build with every optional component left out, the shared library with HarfBuzz installed and used by `samples/minimal`, and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
+| `changed` | The source, module, length, API documentation and snippet rules, the organization's documentation check, `clang-format` on the changed C files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
+| `pr` | Every rule on every file, the generated tables against the generator and their ceilings, clang-tidy, the `linux-harfbuzz` and `linux-clang-20-asan` presets, and 10 seconds of fuzzing per target. | under 10 minutes |
+| `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the package test, every optional component left out, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
 
-Run `changed` before every push. On the shared development machine, run `pr` and `full` through the workspace's heavy-job wrapper. Build trees go to `build-check/`, one per configuration, with each build's log beside it.
+Run `changed` before every push. On the shared development machine, run `pr` and `full` through the workspace's heavy-job wrapper. Builds go to `out/<preset>` and the other trees to `out/check-*`, each with its log beside it.
 
 ## In CI
 
-`.github/workflows/ci.yml` runs on every pull request, on every push to `main` and every night. The ruleset requires only its `required` job, which passes when every other job passed.
+`.github/workflows/ci.yml` runs on every pull request, on every push to `main` and every night. The Linux jobs run in the organization's CI image, pinned by digest, and install nothing. The ruleset requires only its `required` job, which passes when every other job passed or was skipped, and the title check.
 
 | Job | What it guards |
 |---|---|
+| `changes` | Whether a pull request changes anything beyond documentation; when it does not, the build jobs below are skipped. |
 | `docs` | The organization's documentation check: allowed files, the em dash, record numbers, page sizes, links. `tools/ucd/` is excluded. |
-| `checks` | `clang-format`, the family's source rules, the module graph, lengths, API documentation, documentation snippets, that the documentation site builds, that `munigen` regenerates `src/generated/` byte for byte, the table ceilings, and clang-tidy. |
-| `build-test` | Eight cells, all with warnings as errors: GCC 14 and Clang 20 in Release, Clang with AddressSanitizer and UBSan, Clang with ThreadSanitizer, a shared library, the HarfBuzz functions, every optional component left out, and macOS. The shared and HarfBuzz cells install the library and build `samples/minimal` against it. A skipped test fails its cell. |
+| `zizmor` | The workflows: injection, persisted credentials, permissions, unpinned actions. |
+| `checks` | `clang-format`, the family's source rules, the module graph, lengths, API documentation, documentation snippets, that the documentation site builds, that `munigen` regenerates `src/generated/` byte for byte, the table ceilings, and clang-tidy. It runs on documentation changes too. |
+| `build` | One call of the organization's `cpp.yml` per preset: GCC 14 and Clang 20 in Release, Clang with AddressSanitizer and UBSan (each test repeated up to three times on a pull request, so a flaky one fails before it merges), Clang with ThreadSanitizer, the shared library, the HarfBuzz functions, every optional component left out, macOS and `clang-cl` on Windows. All build with warnings as errors; the shared and HarfBuzz cells run the package test. ccache is restored on every run and saved only from `main`. |
+| `msvc-headers` | Every public header compiled by MSVC's `cl` as C17 and C++17 with `/W4 /WX`. |
 | `fuzz` | Every fuzz target from its seeds in `test/seeds/`: 20 seconds each on a pull request, 90 seconds on `main` and at night. |
-| `windows-clang-cl` | The library and its tests with `clang-cl`, and every public header compiled by MSVC's `cl` as C17 and C++17 with `/W4 /WX`. |
-| `web-emscripten` | The library and its tests under Emscripten and Node, and the size of the static library in total and per optional component. |
+| `web` | The library and its tests under Emscripten and Node, and the size of the static library in total and per optional component. The image has no Emscripten, so this job uses the runner and the emsdk action. |
 
-`pr-title.yml` checks that the pull request title is a conventional commit with a scope from `AGENTS.md`. `codeql.yml` runs CodeQL on every pull request and on `main`, building with GCC 14 (an advanced setup, since the default one builds with the runner's GCC 13). `scorecard.yml` grades the repository's security practices weekly for the README badge, and Dependabot proposes updates of the pinned actions once a week in one pull request.
+`pr-title.yml` checks that the pull request title is a conventional commit with a scope from `AGENTS.md`, and `pr-gate.yml` closes a pull request from outside the organization unless it closes an issue labeled `accepted`. `codeql.yml` runs CodeQL on every pull request and on `main`, building with GCC 14 (an advanced setup, since the default one builds with the runner's GCC 13). `scorecard.yml` grades the repository's security practices weekly for the README badge, and Dependabot proposes updates of the pinned actions once a week in one pull request.
 
 ## Tests
 
-Each suite in `test/` is one executable, registered with CTest under its name and labeled with it. The data suites read the Unicode files in `tools/ucd/`. The white-box suites (properties, identifier, case, security) include `src/tables.h` for the generator's hashes and are skipped in shared builds. `test_guide.c` and `test_guide_harfbuzz.c` run the C snippets of `docs/user/` as written; `tools/check_guide.py` fails when a snippet and its copy differ.
+Each suite in `test/` is one executable, registered with CTest under its name and labeled with it. The data suites read the Unicode files in `tools/ucd/`. The white-box suites (properties, identifier, case, security) include `src/tables.h` for the generator's hashes and are not built in shared builds. No test reports itself skipped, and a test preset that finds no test fails. `test_guide.c` and `test_guide_harfbuzz.c` run the C snippets of `docs/user/` as written; `tools/check_guide.py` fails when a snippet and its copy differ.
 
 ## Fuzzing
 
@@ -41,4 +43,4 @@ A crash a fuzzer finds becomes a test in the suite of its module (see [developme
 
 ## Budgets
 
-Over a budget, tests are pruned or merged before anything else is added. The pull request check takes about six minutes, most of it the fuzz job; the run on `main` and at night about seventeen.
+Over a budget, tests are pruned or merged before anything else is added. The pull request check takes about PR_TIME; the run on `main` and at night about MAIN_TIME, most of it the fuzz job.
