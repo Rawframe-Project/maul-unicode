@@ -43,4 +43,4 @@ A crash a fuzzer finds becomes a test in the suite of its module (see [developme
 
 ## Budgets
 
-Over a budget, tests are pruned or merged before anything else is added. The pull request check takes about four minutes and the run on `main` and at night about fifteen, most of it the fuzz job; every build cell takes under a minute, even without ccache.
+Over a budget, tests are pruned or merged before anything else is added. The pull request check takes about two minutes and the run on `main` and at night about five, most of it the fuzz job; a build cell takes under a minute and a half, with or without ccache.
