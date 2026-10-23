@@ -88,7 +88,7 @@ static bool CheckLine(const Text* c)
 
 static void TestConformance(void)
 {
-    FILE* file = fopen(MUNI_TEST_DATA "/NormalizationTest.txt", "r");
+    FILE* file = fopen(MUNI_UCD_DATA "/NormalizationTest.txt", "r");
     CHECK(file != nullptr, "NormalizationTest.txt opens");
     if (file == nullptr)
     {

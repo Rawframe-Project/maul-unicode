@@ -2,9 +2,9 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // munigen: writes the property tables in src/generated/ from the Unicode
-// Character Database files in tools/ucd/ (docs/adr/muni-0003 and
-// muni-0004). For each property it builds the full array of values,
-// searches the multi-level split that stores it in the fewest bytes,
+// Character Database files in tools/ucd/. For each property it builds
+// the full array of values, searches the multi-level split that stores it
+// in the fewest bytes,
 // checks every code point through the finished table against the array,
 // and writes the table with a hash of the array.
 //

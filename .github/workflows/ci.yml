@@ -1,31 +1,67 @@
-# Continuous integration for Maul Unicode.
+# Continuous integration: the pull request check, and the full check on
+# main and every night, which fuzzes longer. docs/operations/checks.md
+# explains each job; tools/check.sh runs the same checks locally.
 name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 2 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 env:
-  # apt retries a stalled download and gives up on a dead one.
-  APT_OPTIONS: -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+  # apt retries a stalled download and gives up on a dead one, and keeps
+  # the packages it downloads in a folder the cache step saves, since the
+  # runners' mirror sometimes serves them at a few kilobytes a second.
+  APT_OPTIONS: >-
+    -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+    -o Dir::Cache::Archives=/home/runner/apt-archives -o APT::Keep-Downloaded-Packages=true
   PREFIX: MAUL_UNICODE
 
 jobs:
+  # The organization's documentation check; tools/ucd holds the Unicode
+  # data, kept exactly as published.
+  docs:
+    uses: Rawframe-Project/.github/.github/workflows/docs-check.yml@9f232b058d1cc607fc555945e27fd55e9edcd460 # main
+    with:
+      exclude: tools/ucd
+
   # The rules no compiler checks: formatting, static analysis and the
   # family's source, module, documentation and length checks.
   checks:
     name: checks
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Downloaded packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/apt-archives
+          key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          # Any job's packages cover most of another's.
+          restore-keys: |
+            apt-${{ github.job }}-${{ matrix.name }}-
+            apt-
       - name: Install tools
         timeout-minutes: 15
         run: |
+          mkdir -p /home/runner/apt-archives/partial
           sudo apt-get $APT_OPTIONS update -q
           sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 clang-tidy-20
           sudo apt-get $APT_OPTIONS install -y -q ninja-build libharfbuzz-dev pkg-config
+          sudo chown -R "$(id -u):$(id -g)" /home/runner/apt-archives
           pip install clang-format==22.1.5 >/dev/null
       - name: clang-format
         run: |
@@ -38,6 +74,10 @@ jobs:
           python3 tools/check_docs.py
           python3 tools/check_lengths.py
           python3 tools/check_guide.py
+      - name: The documentation site builds
+        run: |
+          pip install markdown==3.6 >/dev/null
+          python3 tools/build_docs.py
       - name: Generated tables match the generator
         run: |
           cmake -B build-gen -G Ninja -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_BUILD_TESTS=OFF
@@ -60,6 +100,7 @@ jobs:
   build-test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -73,16 +114,30 @@ jobs:
           - { name: linux-minimal,       os: ubuntu-24.04, cc: gcc-14,   cxx: g++-14,     config: Release, extra: "-DMAUL_UNICODE_NORMALIZATION=OFF -DMAUL_UNICODE_CASE=OFF -DMAUL_UNICODE_SECURITY=OFF" }
           - { name: macos-clang,         os: macos-15,     cc: clang,    cxx: clang++,    config: Release, extra: "" }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Downloaded packages
+        if: runner.os == 'Linux'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/apt-archives
+          key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          # Any job's packages cover most of another's.
+          restore-keys: |
+            apt-${{ github.job }}-${{ matrix.name }}-
+            apt-
       - name: Install compilers
         timeout-minutes: 15
         if: runner.os == 'Linux'
         run: |
+          mkdir -p /home/runner/apt-archives/partial
           sudo apt-get $APT_OPTIONS update -q
           # clang without its recommends (llvm-20-dev alone is 50 MB), with
           # the sanitizers' runtime.
           sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 libclang-rt-20-dev
           sudo apt-get $APT_OPTIONS install -y -q gcc-14 g++-14 ninja-build libharfbuzz-dev pkg-config
+          sudo chown -R "$(id -u):$(id -g)" /home/runner/apt-archives
       - name: Configure
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -D${PREFIX}_WERROR=ON \
@@ -104,33 +159,37 @@ jobs:
           cmake --build build-minimal
           LD_LIBRARY_PATH="$PWD/package/lib" ./build-minimal/minimal
 
-  # The API reference is generated from the headers; it must match them,
-  # and the README must give its function count.
-  docs:
-    name: generated docs
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - name: The API reference matches the headers
-        run: |
-          COUNT=$(python3 tools/gen_api.py | grep -oE '\([0-9]+ functions\)' | grep -oE '[0-9]+')
-          git diff --exit-code docs/api.md || { echo "docs/api.md is stale: run tools/gen_api.py"; exit 1; }
-          grep -q "$COUNT public functions" README.md || { echo "README says the wrong function count ($COUNT)"; exit 1; }
-
-  # Each fuzz target runs for one minute on every push; it looks for
-  # crashes and for answers that disagree with each other or with ICU.
+  # Each fuzz target looks for crashes, broken invariants and answers that
+  # disagree with each other or with ICU: briefly on a pull request,
+  # longer on main and at night.
   fuzz:
     name: fuzz
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || 90 }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Downloaded packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /home/runner/apt-archives
+          key: apt-${{ github.job }}-${{ matrix.name }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          # Any job's packages cover most of another's.
+          restore-keys: |
+            apt-${{ github.job }}-${{ matrix.name }}-
+            apt-
       - name: Install compilers
         timeout-minutes: 15
         run: |
+          mkdir -p /home/runner/apt-archives/partial
           sudo apt-get $APT_OPTIONS update -q
           # clang without its recommends, with libFuzzer's runtime.
           sudo apt-get $APT_OPTIONS install -y -q --no-install-recommends clang-20 libclang-rt-20-dev
           sudo apt-get $APT_OPTIONS install -y -q ninja-build libicu-dev pkg-config
+          sudo chown -R "$(id -u):$(id -g)" /home/runner/apt-archives
       - name: Build
         # fuzz_icu compares with ICU, a test-only oracle.
         run: |
@@ -145,17 +204,20 @@ jobs:
             if [ -d "test/seeds/$(basename $target)" ]; then
               cp test/seeds/"$(basename $target)"/* "corpus-$(basename $target)"/
             fi
-            "$target" -max_total_time=60 -max_len=256 "corpus-$(basename $target)"
+            "$target" -max_total_time=$FUZZ_SECONDS -max_len=256 "corpus-$(basename $target)"
           done
 
   windows-clang-cl:
     name: windows-clang-cl
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Configure
         run: cmake -B build -T ClangCL -D${PREFIX}_WERROR=ON
       - name: Build
@@ -167,7 +229,8 @@ jobs:
           ctest --test-dir build -C Release --output-on-failure --timeout 300 2>&1 | tee ctest.log
           if grep -q "(Skipped)" ctest.log; then echo "::error::a test was skipped"; exit 1; fi
       # The public headers alone under MSVC's cl, as C17 and C++17 with
-      # /W4 /WX, which cannot build the library itself (family record 0008).
+      # /W4 /WX: consumers may compile them with it, though it cannot
+      # build the library itself.
       - name: Headers under MSVC
         run: |
           cmake -S cmake/HeaderCheck -B build-headers
@@ -176,9 +239,12 @@ jobs:
   web:
     name: web-emscripten
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: emscripten-core/setup-emsdk@v16
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
       - name: Configure
         run: emcmake cmake -B build -DCMAKE_BUILD_TYPE=Release -D${PREFIX}_WERROR=ON
       - name: Build
@@ -207,3 +273,19 @@ jobs:
           echo "security                  $((all - noSecurity)) bytes"
           echo "case                      $((all - noCase)) bytes"
           echo "normalization             $((noSecurity - noNormalization)) bytes"
+
+  # The one check the ruleset requires: it passes when every job above
+  # passed, so adding or renaming a job never touches the ruleset.
+  required:
+    name: required
+    if: always()
+    needs: [docs, checks, build-test, fuzz, windows-clang-cl, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || exit 1; done

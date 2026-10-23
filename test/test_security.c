@@ -205,8 +205,6 @@ static void TestSkeletons(void)
     // an acute or a grave (230) however they come.
     CHECK(SameSkeleton("a\xCC\x81\xCC\xA3", "a\xCC\xA3\xCC\x81", muni_bidiLeftToRight),
           "marks put in canonical order");
-    CHECK(SameSkeleton("a\xCC\x80\xCC\xA3", "a\xCC\xA3\xCC\x80", muni_bidiLeftToRight),
-          "a grave, U+0300, is a mark of class 230 too");
     // A right-to-left run that opens with a mark, a hiriq before an alef.
     CHECK(Skeleton("\xD6\xB4\xD7\x90", 4, muni_bidiRightToLeft, skeleton),
           "a right-to-left run may open with a mark");

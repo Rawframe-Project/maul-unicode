@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// The guide's C snippets (docs/guide.md), each as written there
-// (tools/check_guide.py checks it, family record 0019), run on small
-// texts: each function gives a snippet what it uses and checks what it
-// keeps. Built with normalization and case, which the snippets use;
-// the HarfBuzz snippet runs in test_guide_harfbuzz.c.
+// The C snippets of docs/user/, each as written there (tools/check_guide.py
+// checks it), run on small texts: each function gives a snippet what it
+// uses and checks what it keeps. Built with normalization and case, which
+// the snippets use; the HarfBuzz snippet runs in test_guide_harfbuzz.c.
 
 #include "test_harness.h"
 

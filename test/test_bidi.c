@@ -222,7 +222,7 @@ static bool RunCharacterLine(char* line, Case* c)
 
 static void TestCharacterFile(void)
 {
-    FILE* file = fopen(MUNI_TEST_DATA "/BidiCharacterTest.txt", "r");
+    FILE* file = fopen(MUNI_UCD_DATA "/BidiCharacterTest.txt", "r");
     CHECK(file != nullptr, "BidiCharacterTest.txt opens");
     if (file == nullptr)
     {
@@ -288,7 +288,7 @@ static bool ParseClasses(char* text, Case* c)
 
 static void TestClassFile(void)
 {
-    FILE* file = fopen(MUNI_TEST_DATA "/BidiTest.txt", "r");
+    FILE* file = fopen(MUNI_UCD_DATA "/BidiTest.txt", "r");
     CHECK(file != nullptr, "BidiTest.txt opens");
     if (file == nullptr)
     {

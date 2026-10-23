@@ -1,4 +1,4 @@
-# The size ceiling of each component's generated tables (muni-0008), in
+# The size ceiling of each component's generated tables, in
 # bytes, and the tables the generator names for it. tools/table_budget.py
 # checks the generator's report against this list: a component past its
 # ceiling, or a table no line names, fails.

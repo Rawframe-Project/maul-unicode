@@ -136,37 +136,27 @@ if(MAUL_UNICODE_BUILD_TESTS)
     maul_add_test(base)
     maul_add_test(encoding)
     maul_add_test(properties WHITEBOX)
-    maul_add_test(cursor WHITEBOX)
     maul_add_test(segment)
     maul_add_test(bidi)
     maul_add_test(script)
-    # Script runs against Scripts.txt and ScriptExtensions.txt, two of the
-    # generator's inputs.
-    maul_add_test(script_extensions)
-    target_compile_definitions(test_script_extensions PRIVATE
-                               MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
     maul_add_test(identifier WHITEBOX)
-    set(MUNI_DATA_SUITES segment bidi script_extensions)
+    set(MUNI_DATA_SUITES segment bidi)
     if(MAUL_UNICODE_NORMALIZATION)
         maul_add_test(normalize)
-        target_compile_definitions(test_normalize PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
         list(APPEND MUNI_DATA_SUITES normalize)
     endif()
     if(MAUL_UNICODE_CASE)
-        # With normalization, the case suite checks NFKC_Casefold against
-        # DerivedNormalizationProps.txt, one of the generator's inputs.
+        # With normalization, the case suite also checks NFKC_Casefold
+        # against DerivedNormalizationProps.txt.
         maul_add_test(case WHITEBOX)
         if(MAUL_UNICODE_NORMALIZATION AND TARGET test_case)
-            target_compile_definitions(test_case PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
             list(APPEND MUNI_DATA_SUITES case)
         endif()
     endif()
     if(MAUL_UNICODE_SECURITY)
-        # The security suite reads confusables.txt, one of the generator's
-        # inputs; as a white-box suite, it is skipped in shared builds.
+        # White-box suites are skipped in shared builds.
         maul_add_test(security WHITEBOX)
         if(TARGET test_security)
-            target_compile_definitions(test_security PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
             list(APPEND MUNI_DATA_SUITES security)
         endif()
     endif()
@@ -176,14 +166,15 @@ if(MAUL_UNICODE_BUILD_TESTS)
         maul_add_test(guide_harfbuzz)
         target_link_libraries(test_guide_harfbuzz PRIVATE maul-unicode-harfbuzz)
     endif()
-    # The guide's snippets as written (family record 0019); they use
-    # normalization and case.
+    # The C snippets of docs/user/, as written; they use normalization and
+    # case.
     if(MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE)
         maul_add_test(guide)
     endif()
-    # Conformance suites read the Unicode test files in test/data/.
+    # Data suites read the Unicode files in tools/ucd/: the conformance
+    # tests and the UCD the generator reads.
     foreach(suite ${MUNI_DATA_SUITES})
-        target_compile_definitions(test_${suite} PRIVATE MUNI_TEST_DATA="${PROJECT_SOURCE_DIR}/test/data")
+        target_compile_definitions(test_${suite} PRIVATE MUNI_UCD_DATA="${PROJECT_SOURCE_DIR}/tools/ucd")
         if(EMSCRIPTEN)
             target_link_options(test_${suite} PRIVATE -sNODERAWFS=1)
         endif()

@@ -17,10 +17,17 @@ extern "C"
 {
 #endif
 
-// The library version. CMake reads it from here.
+// The library version. CMake reads it from here, and release-please
+// moves it between the markers.
+// x-release-please-start-major
 #define MUNI_VERSION_MAJOR 0
-#define MUNI_VERSION_MINOR 3
-#define MUNI_VERSION_PATCH 0
+// x-release-please-end
+// x-release-please-start-minor
+#define MUNI_VERSION_MINOR 0
+// x-release-please-end
+// x-release-please-start-patch
+#define MUNI_VERSION_PATCH 1
+// x-release-please-end
 
 // The one Unicode version every table in the library comes from.
 #define MUNI_UNICODE_VERSION_MAJOR 18

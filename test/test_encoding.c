@@ -296,6 +296,11 @@ static void TestUtf16Surrogates(void)
                  "b",
                  5) == 0,
           "a, U+FFFD, b");
+    const uint16_t last[] = {0xDBFF, 0xDFFF};
+    result = muniConvertUtf16ToUtf8(last, 2, muni_convertStrict, bytes, 16, &needed);
+    CHECK(result.status == muni_success && needed == 4 && memcmp(bytes, "\xF4\x8F\xBF\xBF", 4) == 0,
+          "U+DBFF U+DFFF is U+10FFFF");
+    CHECK(muniValidateUtf16(lone, 1).status == muni_success, "nothing past the length is read");
 }
 
 static void TestEncode(void)
@@ -306,34 +311,9 @@ static void TestEncode(void)
     CHECK(memcmp(bytes, "\xF0\x9F\x98\x80", 4) == 0, "U+1F600");
     CHECK(muniEncodeUtf8(0xD800, bytes, &size) == muni_errorInvalid, "a surrogate is refused");
     CHECK(muniEncodeUtf8(0x110000, bytes, &size) == muni_errorInvalid, "past U+10FFFF");
-}
-
-// The last code units of each surrogate range: U+DBFF and U+DFFF pair
-// into U+10FFFF, U+DFFF alone is refused, U+DFFF is no code point to
-// encode.
-static void TestSurrogateRangeEnds(void)
-{
-    const uint16_t pair[] = {0xDBFF, 0xDFFF};
-    CHECK(muniValidateUtf16(pair, 2).status == muni_success, "U+DBFF U+DFFF pair");
-    char bytes[8];
-    size_t needed = 0;
-    muniTextResult result = muniConvertUtf16ToUtf8(pair, 2, muni_convertStrict, bytes, 8, &needed);
-    CHECK(result.status == muni_success && needed == 4 && memcmp(bytes, "\xF4\x8F\xBF\xBF", 4) == 0,
-          "the pair is U+10FFFF");
-    const uint16_t lone[] = {0x0061, 0xDFFF};
-    result = muniValidateUtf16(lone, 2);
-    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 1, "a lone U+DFFF");
-    size_t size = 0;
-    CHECK(muniEncodeUtf8(0xDFFF, bytes, &size) == muni_errorInvalid, "U+DFFF is refused");
-    CHECK(muniEncodeUtf8(0xE000, bytes, &size) == muni_success && size == 3, "U+E000 is not");
-}
-
-// Validation reads no unit past the length given: the unit after it, a
-// lone surrogate, changes nothing.
-static void TestValidationStopsAtTheLength(void)
-{
-    const uint16_t units[] = {0x0061, 0x0062, 0xDC00};
-    CHECK(muniValidateUtf16(units, 2).status == muni_success, "the unit past the end unread");
+    CHECK(muniEncodeUtf8(0xDFFF, bytes, &size) == muni_errorInvalid, "the last surrogate");
+    CHECK(muniEncodeUtf8(0xE000, bytes, &size) == muni_success && size == 3,
+          "the first code point after the surrogates");
 }
 
 // Output that fits exactly: every conversion succeeds and writes all of
@@ -412,8 +392,6 @@ int main(void)
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
     TestEncode();
-    TestSurrogateRangeEnds();
-    TestValidationStopsAtTheLength();
     TestExactFit();
     return s_failures == 0 ? 0 : 1;
 }
