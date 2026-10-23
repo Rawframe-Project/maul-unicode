@@ -17,9 +17,8 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: write
-      pull-requests: write
+    # Both steps act with the app token, so github.token needs no permissions here.
+    permissions: {}
     outputs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
