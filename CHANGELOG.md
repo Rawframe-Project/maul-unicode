@@ -1,12 +1,9 @@
 # Changelog
 
-All notable changes to this project are recorded here. The format
-follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-the project uses [Semantic Versioning](https://semver.org/). Before
-1.0.0, any minor release may change the API, the ABI and every data
-format.
-
-## [Unreleased]
+All notable changes to this project are recorded here, grouped as
+Added, Changed, Fixed, Removed and Security. The project uses
+[Semantic Versioning](https://semver.org/). Before 1.0.0, any minor
+release may change the API, the ABI and every data format.
 
 ## [0.3.0] - 2026-10-09
 
@@ -39,13 +36,13 @@ moves into the core.
 
 - `muniToNfkcCasefold`: NFKC_Casefold, the caseless comparison UAX #31
   gives identifiers, from the decomposition, case folding and
-  Default_Ignorable data already present (muni-0017); built with both
+  Default_Ignorable data already present; built with both
   normalization and case. It matches NFKC_CF of the UCD for every code
   point, and a new fuzz target and the ICU comparison check it over
   text. 143 MiB/s on the benchmark text. `samples/names.c` keys names
   with it.
 - `muni_caseLithuanian`: the Lithuanian rules of SpecialCasing.txt, the
-  last language rules missing (muni-0018), over a 146-byte Soft_Dotted
+  last language rules missing, over a 146-byte Soft_Dotted
   list; the case component takes 9,775 bytes.
 
 ### Changed
@@ -58,8 +55,8 @@ moves into the core.
 - Case folding runs 1.52 times as fast, and lowercasing and
   uppercasing slightly faster, by tracking context only where a
   language rule reads it.
-- The family rules for handles, threads and asynchronous requests
-  (records 0016 to 0018); thread safety paragraphs open with a statement
+- The family rules for handles, threads and asynchronous requests;
+  thread safety paragraphs open with a statement
   from a closed list.
 
 ## [0.1.0] - 2026-09-27
@@ -96,7 +93,7 @@ for, from Unicode 18.0.0, passing every official conformance file.
   Standard recommends. Validation agrees with an independent reference
   on every string of up to three bytes; a fuzz target checks that every
   answer agrees with every other. Outside ASCII, validation runs a
-  shift-based DFA (muni-0016): 2.3 to 3.5 GB/s where the decoder alone
+  shift-based DFA: 2.3 to 3.5 GB/s where the decoder alone
   gave 0.9 to 2.4.
 - Grapheme cluster, word and sentence boundaries (UAX #29):
   `muniFindGraphemeBreaks`, `muniFindWordBreaks` and
@@ -116,12 +113,12 @@ for, from Unicode 18.0.0, passing every official conformance file.
   the segmentation rules. Passes all 19,346 cases of LineBreakTest.txt
   whole, through the iterator and fed one byte at a time.
 - `muniSetComplexBreaker`: a caller's word segmenter for Thai, Lao,
-  Khmer and Burmese (muni-0005). Line and word iterators hand it each
+  Khmer and Burmese. Line and word iterators hand it each
   run of SA text in the current piece; its breaks replace the default
   ones inside the run, never before a combining mark.
 - The bidirectional algorithm (UAX #9): `muniResolveBidi` gives each
   byte of a paragraph its embedding level using one workspace byte per
-  byte and no allocation (muni-0010); `muniReorderBidiLine` applies
+  byte and no allocation; `muniReorderBidiLine` applies
   rules L1 and L2 and returns a line's runs in visual order;
   `muniReorderBidiLevels` and `muniInvertBidiMap` give visual and
   logical orders for any units. Passes all 91,707 cases of
@@ -138,7 +135,7 @@ for, from Unicode 18.0.0, passing every official conformance file.
 - Normalization (UAX #15): `muniNormalize` into NFC, NFD, NFKC or NFKD
   in a caller buffer, `muniCheckNormalization` (quick check),
   `muniDecomposePair` and `muniComposePair`. Canonical data takes 12,067
-  bytes and compatibility data 22,623, behind rank indexes (muni-0011).
+  bytes and compatibility data 22,623, behind rank indexes.
   Passes all 20,171 cases of NormalizationTest.txt, and leaves every
   code point the file does not list unchanged; a fuzz target checks
   idempotence, round trips between forms and quick-check answers. A
@@ -148,11 +145,11 @@ for, from Unicode 18.0.0, passing every official conformance file.
   `muniFoldCase` and `muniIsCased` per code point, and
   `muniConvertCase` over text with the full mappings, the final sigma,
   titlecase by word, and the Turkish and Azerbaijani rules through
-  `muni_caseTurkic` (muni-0012). 9,629 bytes of tables; a fuzz target
+  `muni_caseTurkic`. 9,629 bytes of tables; a fuzz target
   checks idempotence and short output buffers.
 - Build options `MAUL_UNICODE_NORMALIZATION` and `MAUL_UNICODE_CASE`
-  (on by default) to leave those components and their tables out
-  (muni-0013); CI builds a cell without them.
+  (on by default) to leave those components and their tables out; CI
+  builds a cell without them.
 - Identifiers (UAX #31): `muniIsIdentifierStart`,
   `muniIsIdentifierContinue`, `muniIsPatternSyntax`,
   `muniIsPatternWhiteSpace` over one 6,215-byte table of bits, and
@@ -172,7 +169,7 @@ for, from Unicode 18.0.0, passing every official conformance file.
   confusable skeleton in display order for a paragraph direction;
   `muniGetResolvedScripts`; `muniGetRestrictionLevel`;
   `muniCheckMixedNumbers`; `muniIsIdentifierAllowed` and
-  `muniIsDefaultIgnorable`. 36,601 bytes of tables (muni-0014); a fuzz
+  `muniIsDefaultIgnorable`. 36,601 bytes of tables; a fuzz
   target checks short output buffers, skeleton idempotence and the
   agreement of levels with resolved scripts.
 - `muniConvertUtf32ToUtf8`, completing the conversions between the three
@@ -182,7 +179,7 @@ for, from Unicode 18.0.0, passing every official conformance file.
   `muniIsEmojiModifierBase` and `muniIsEmojiComponent` (UTS #51), which
   share one 1,653-byte table with Extended_Pictographic;
   `muniIsWhiteSpace` (95 bytes); `muniGetDecimalDigitValue` from the
-  zeros of the 77 decimal digit systems (310 bytes, muni-0015).
+  zeros of the 77 decimal digit systems (310 bytes).
 - `bench/bench_main.c`: validation, segmentation, line breaking, bidi,
   script run, normalization, case and security throughput, through
   iterators and the array conveniences.

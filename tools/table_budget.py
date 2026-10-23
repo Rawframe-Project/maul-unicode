@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Sirac Ozmen
 #
 # Checks the generated tables' sizes against their ceilings
-# (muni-0008): reads the generator's report, the lines
+# (docs/internals/tables.md): reads the generator's report, the lines
 # "Name  12345 bytes ...", and tools/table-budget.txt, and fails when a
 # component's tables together pass its ceiling or when a table in the
 # report belongs to no component.

@@ -1,93 +1,61 @@
 # Maul Unicode
 
-Unicode algorithms and character properties for games, engines and
-applications. Written in C23 with public headers any C17 or C++17
-program can include, no dependencies and an MIT license.
+Unicode algorithms and character properties in C, with no dependencies and no allocation.
 
-It answers the questions every program that handles text has to ask:
+[![CI](https://github.com/Rawframe-Project/maul-unicode/actions/workflows/ci.yml/badge.svg)](https://github.com/Rawframe-Project/maul-unicode/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Rawframe-Project/maul-unicode)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Rawframe-Project/maul-unicode)](https://github.com/Rawframe-Project/maul-unicode/releases)
 
-- Is this text valid UTF-8, and where does it go wrong?
-- Where does one user-perceived character end (for the caret, for
-  backspace, for an emoji family of five code points)?
-- Where may a line break, and where must it?
-- In which order do mixed left-to-right and right-to-left runs appear?
-- Which script is each part of the text in, for shaping and fonts?
-- Are two strings the same text in different forms, or do they only
-  look alike?
+Every program that handles text has to answer the same questions. Is this valid UTF-8, and where does it go wrong? Where does one user-perceived character end, for the caret and for backspace? Where may a line break? In which order do mixed left-to-right and right-to-left runs appear? Which script is each part in, for shaping and fonts? Are two strings the same text in different forms, or do they only look alike?
 
-Every answer comes from one declared Unicode version, **18.0.0**. The
-library allocates nothing: iterators live on the caller's stack and
-results go into caller buffers. Every function is safe from any thread,
-and results are identical on every platform.
+Maul Unicode answers them for games, engines and applications:
 
-[The guide](docs/guide.md) walks through each part, and
-[the API reference](docs/api.md) lists all 75 public functions,
-generated from the headers.
+- **Validation and conversion** of UTF-8, UTF-16 and UTF-32, treating input as hostile.
+- **Character properties**: categories, segmentation and line break classes, bidi classes, scripts, emoji, digits.
+- **Grapheme, word and sentence boundaries** (UAX #29) and **line breaking** (UAX #14), with a hook for Thai, Lao, Khmer and Burmese dictionaries.
+- **Bidirectional text** (UAX #9) and **script runs** for shaping, with Unicode functions for HarfBuzz.
+- **Normalization** (UAX #15), **case mapping** with the Turkic and Lithuanian rules, and **NFKC_Casefold**.
+- **Identifiers** (UAX #31) and **confusable detection** (UTS #39).
 
-## Status
+Every answer comes from one Unicode version, 18.0.0, and every official conformance test passes completely. Iterators live on the caller's stack and results go into caller buffers, every function is safe from any thread, and results are identical on every platform. Normalization, case and confusable detection can be left out of a build with their tables.
 
-0.3.0 is the current release. It covers, from Unicode 18.0.0:
-
-1. Character properties, from tables the generator checks against the
-   UCD for every code point.
-2. UTF-8, UTF-16 and UTF-32 validation and conversion.
-3. Grapheme, word and sentence segmentation (UAX #29).
-4. Line breaking (UAX #14), with a hook for Thai, Lao, Khmer and
-   Burmese.
-5. Bidirectional text (UAX #9).
-6. Script itemization, and Unicode functions for HarfBuzz.
-7. Normalization (UAX #15), case mapping and NFKC_Casefold.
-8. Identifiers (UAX #31) and security mechanisms (UTS #39).
-
-Each passes the official Unicode conformance files completely. Until
-1.0.0 any minor release may change the API.
-
-## Building
-
-Requirements: CMake 3.25 and GCC 14 or Clang 19 or newer; on Windows,
-`clang-cl` (the Visual Studio component "C++ Clang tools for Windows").
+## Quick start
 
 ```sh
+git clone https://github.com/Rawframe-Project/maul-unicode.git
+cd maul-unicode
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build
+./build/sample_segments "Hello, world. 👋🏽 Next."
 ```
 
-Use the package from CMake with `find_package(maul-unicode)` and link
-`maul-unicode::maul-unicode`, or through pkg-config.
+Install it with `cmake --install build --prefix <prefix>` and use it from CMake:
 
-`samples/` shows the library at work: `segments.c` splits text into
-grapheme clusters, words, sentences and line break opportunities;
-`bidi.c` lays out a line of mixed-direction text; `names.c` builds a
-user name policy from NFKC_Casefold, confusable skeletons and
-restriction levels. `samples/minimal` is a separate project that
-uses only the installed package.
+```cmake
+find_package(maul-unicode REQUIRED CONFIG)
+target_link_libraries(app PRIVATE maul-unicode::maul-unicode)
+```
 
-Three components can be left out with their tables when a build does
-not need them: `-DMAUL_UNICODE_NORMALIZATION=OFF` (34.7 KB of tables),
-`-DMAUL_UNICODE_CASE=OFF` (9.8 KB) and `-DMAUL_UNICODE_SECURITY=OFF`
-(35.5 KB; confusables and mixed scripts, which need normalization).
+or through pkg-config as `maul-unicode`. [Getting started](docs/user/getting-started.md) covers the build options and the model the API follows.
 
-With `-DMAUL_UNICODE_HARFBUZZ=ON` the build adds the static library
-`maul-unicode-harfbuzz`, whose `muniCreateHarfBuzzFunctions` gives
-HarfBuzz its Unicode data from Maul Unicode (see
-`include/maul-unicode/harfbuzz.h`). Installed, it is a package of its
-own: `find_package(maul-unicode-harfbuzz)` with the target
-`maul-unicode::maul-unicode-harfbuzz`, or pkg-config's
-`maul-unicode-harfbuzz`, which bring in HarfBuzz as well.
+## Platforms
 
-## The Maul family
+Linux with GCC 14 or Clang 19 and newer, macOS with Apple Clang, Windows with `clang-cl`, and WebAssembly with Emscripten; CI builds and tests each. The public headers are C17 and C++17, so any C or C++ program can include them.
 
-Maul Unicode belongs to the Maul family of standalone libraries, with
-[Maul2D](https://github.com/Rawframe-Project/maul2d) and
-[Maul3D](https://github.com/Rawframe-Project/maul3d) among them. The
-libraries share one rulebook,
-[docs/conventions.md](docs/conventions.md), and one set of design
-records, [docs/adr/](docs/adr/README.md). The
-records specific to this library are listed in
-[docs/adr/muni.md](docs/adr/muni.md).
+## Documentation
+
+- [The documentation site](https://rawframe-project.github.io/maul-unicode/), with the API reference generated from the headers.
+- [User documentation](docs/README.md): one page per part of the library.
+- [How it works](docs/internals/overview.md) and [how to develop it](docs/operations/development.md).
+- [Changelog](CHANGELOG.md).
+
+Maul Unicode belongs to the Maul family of standalone C libraries, which share one set of conventions.
+
+## Contributing
+
+Issues are welcome. Pull requests are accepted for issues a maintainer has approved; see [CONTRIBUTING.md](https://github.com/Rawframe-Project/.github/blob/main/CONTRIBUTING.md). The project is developed with AI coding agents, directed and reviewed by its maintainers; outside contributions follow the [AI policy](https://github.com/Rawframe-Project/.github/blob/main/AI_POLICY.md).
 
 ## License
 
-MIT; see [LICENSE](LICENSE). The Unicode Character Database files the
-generator reads are covered by the Unicode License v3.
+MIT; see [LICENSE](LICENSE). The Unicode data files in `tools/ucd/` are covered by the Unicode License v3.

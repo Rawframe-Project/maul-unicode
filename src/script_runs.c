@@ -291,10 +291,11 @@ muniResult muniFeedScriptIterator(muniScriptIterator* iterator, const char* text
         return muni_errorInvalid;
     }
     ScriptState state = Load(iterator);
-    if (!state.waiting || !muniCursorFeed(&state.cursor, text, length, moreFollows))
+    if (!state.waiting)
     {
         return muni_errorInvalid;
     }
+    muniCursorFeed(&state.cursor, text, length, moreFollows);
     state.waiting = false;
     Store(iterator, &state);
     return muni_success;

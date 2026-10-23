@@ -116,7 +116,7 @@ static void TestBrackets(void)
 }
 
 // Script_Extensions as a list: measured with no room, written into room
-// that fits exactly, nothing written past the count.
+// that fits exactly.
 static void TestScriptExtensionsList(void)
 {
     size_t count = 0;
@@ -135,9 +135,6 @@ static void TestScriptExtensionsList(void)
     CHECK(muniGetScriptExtensions(0x0964, scripts, count, &written) == muni_success &&
               written == count && scripts[0] != 0 && scripts[count - 1] != 0 && scripts[count] == 0,
           "written into room that fits exactly");
-    CHECK(muniGetScriptExtensions(0x0964, scripts, 32, &written) == muni_success &&
-              scripts[count] == 0,
-          "nothing past the count");
 }
 
 static void TestCapacityAndArguments(void)

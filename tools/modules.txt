@@ -1,22 +1,23 @@
-# The internal module graph (docs/conventions.md, section 6): each module
-# and the modules it may use. tools/check_modules.py enforces it.
+# The internal module graph: each module and the modules it may use.
+# tools/check_modules.py enforces it.
 base:
 bidi: bidi_core bidi_explicit bidi_implicit
-bidi_brackets: bidi_core
+bidi_brackets: bidi_core invariant
 bidi_core: encoding tables
-bidi_explicit: bidi_core
+bidi_explicit: bidi_core invariant
 bidi_implicit: bidi_brackets bidi_core
 bidi_line: bidi_core
-bits:
+bits: invariant
 case: case_map encoding tables writer
 case_map: tables
 complex: encoding segmenter tables
-cursor: encoding
-decompose: bits tables
+cursor: encoding invariant
+decompose: bits invariant tables
 encoding:
 grapheme: segmenter tables
 harfbuzz:
 identifier: encoding tables
+invariant:
 line: complex segmenter tables
 normalize: decompose encoding normalizer tables writer
 normalizer: decompose tables writer
@@ -24,7 +25,7 @@ nfkc_casefold: case_map decompose encoding normalizer tables
 properties: tables
 script_runs: cursor tables
 segment: segmenter
-segmenter: cursor
+segmenter: cursor invariant
 security: bits encoding tables
 sentence: segmenter tables
 skeleton: bidi_line bits decompose encoding tables writer

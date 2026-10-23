@@ -1,0 +1,23 @@
+# Keeps a draft release pull request open from the conventional commits
+# on main. Merging it tags vX.Y.Z and publishes the GitHub release with
+# the changelog entry; docs/operations/release.md has the steps.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

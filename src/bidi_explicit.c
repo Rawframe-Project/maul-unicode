@@ -8,6 +8,8 @@
 
 #include "bidi_explicit.h"
 
+#include "invariant.h"
+
 enum
 {
     OverrideNone = 0,
@@ -89,6 +91,7 @@ uint8_t muniBidiFirstStrongLevel(const muniBidiParagraph* paragraph, size_t inde
 
 static Status* Top(Explicit* state)
 {
+    MUNI_ASSERT(state->depth >= 1);
     return &state->stack[state->depth - 1];
 }
 
@@ -106,6 +109,7 @@ static void PushEmbedding(Explicit* state, bool rightToLeft, uint8_t override)
     if (level <= MUNI_BIDI_MAX_DEPTH && state->overflowIsolates == 0 &&
         state->overflowEmbeddings == 0)
     {
+        MUNI_ASSERT(state->depth < sizeof(state->stack) / sizeof(state->stack[0]));
         state->stack[state->depth] = (Status){level, override, false};
         state->depth += 1;
     }
@@ -123,6 +127,7 @@ static void PushIsolate(Explicit* state, bool rightToLeft)
         state->overflowEmbeddings == 0)
     {
         state->validIsolates += 1;
+        MUNI_ASSERT(state->depth < sizeof(state->stack) / sizeof(state->stack[0]));
         state->stack[state->depth] = (Status){level, OverrideNone, true};
         state->depth += 1;
     }
@@ -142,8 +147,10 @@ static void PopIsolate(Explicit* state)
     else if (state->validIsolates > 0)
     {
         state->overflowEmbeddings = 0;
+        // The entry at the bottom is the paragraph's, never an isolate's.
         while (!Top(state)->isolate)
         {
+            MUNI_ASSERT(state->depth > 1);
             state->depth -= 1;
         }
         state->depth -= 1;

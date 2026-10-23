@@ -1,6 +1,6 @@
-# Publishes the documentation site to GitHub Pages: the guide, the API
-# reference, the samples page, the conventions and the changelog, built
-# by tools/build_docs.py.
+# Publishes the documentation site to GitHub Pages: the README, the user
+# documentation, the API reference generated from the headers and the
+# changelog, built by tools/build_docs.py.
 name: pages
 
 on:
@@ -20,6 +20,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -36,6 +37,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

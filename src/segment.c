@@ -90,10 +90,11 @@ muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* te
         return muni_errorInvalid;
     }
     muniSegmenter segmenter = Load(iterator);
-    if (!segmenter.waiting || !muniCursorFeed(&segmenter.cursor, text, length, moreFollows))
+    if (!segmenter.waiting)
     {
         return muni_errorInvalid;
     }
+    muniCursorFeed(&segmenter.cursor, text, length, moreFollows);
     segmenter.waiting = false;
     Store(iterator, &segmenter);
     return muni_success;

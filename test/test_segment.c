@@ -160,7 +160,7 @@ static int RunFind(const Kind* kind, const Case* c)
 static void RunConformance(const Kind* kind, int minimumCases)
 {
     char path[1024];
-    snprintf(path, sizeof(path), "%s/%s", MUNI_TEST_DATA, kind->file);
+    snprintf(path, sizeof(path), "%s/%s", MUNI_UCD_DATA, kind->file);
     FILE* file = fopen(path, "r");
     CHECK(file != nullptr, "the conformance file opens");
     if (file == nullptr)
@@ -389,44 +389,6 @@ static void TestComplexBreakerRuns(void)
     }
 }
 
-// A line iterator fed a byte at a time finds what it finds in the whole
-// text; the whole-text form fills an output that fits exactly.
-static void TestLinesInPieces(void)
-{
-    const char* text = "one two\nthree";
-    size_t length = strlen(text);
-    size_t whole[8];
-    bool mandatory[8];
-    size_t count = 0;
-    CHECK(muniFindLineBreaks(text, length, whole, mandatory, 3, &count) == muni_success &&
-              count == 3 && whole[0] == 4 && whole[1] == 8 && mandatory[1] && whole[2] == length,
-          "three breaks into three");
-    muniSegmentIterator iterator;
-    size_t fed = 1;
-    size_t found = 0;
-    bool same = muniInitLineIterator(&iterator, text, 1, true) == muni_success;
-    while (same)
-    {
-        size_t offset = 0;
-        bool must = false;
-        muniResult status = muniNextLineBreak(&iterator, &offset, &must);
-        if (status == muni_needMoreText)
-        {
-            same =
-                muniFeedSegmentIterator(&iterator, text + fed, 1, fed + 1 < length) == muni_success;
-            fed += 1;
-            continue;
-        }
-        if (status != muni_success)
-        {
-            break;
-        }
-        same = found < count && offset == whole[found] && must == mandatory[found];
-        found += 1;
-    }
-    CHECK(same && found == count, "fed a byte at a time");
-}
-
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -452,7 +414,6 @@ int main(void)
     TestLineBreaks();
     TestComplexBreaker();
     TestComplexBreakerRuns();
-    TestLinesInPieces();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

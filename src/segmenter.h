@@ -15,6 +15,7 @@
 #define MAUL_UNICODE_SRC_SEGMENTER_H
 
 #include "cursor.h"
+#include "invariant.h"
 
 #include "maul-unicode/segment.h"
 
@@ -88,7 +89,7 @@ typedef struct muniLineRules
 } muniLineRules;
 
 // A run of Thai, Lao, Khmer or Burmese (Line_Break=SA) that a caller's
-// breaker segments (muni-0005). The run lies in the current piece.
+// breaker segments. The run lies in the current piece.
 typedef struct muniComplexRun
 {
     muniComplexBreakFn breaker; // NULL when the caller set none
@@ -136,6 +137,8 @@ typedef void (*muniAbsorbRule)(muniSegmenter* segmenter, uint8_t value, uint32_t
 static inline muniResult muniSegmenterReport(muniSegmenter* segmenter, size_t offset,
                                              bool mandatory, size_t* offsetOut)
 {
+    // Every boundary lies after at least one code point.
+    MUNI_ASSERT(offset > 0);
     segmenter->mandatory = mandatory;
     *offsetOut = offset;
     return muni_success;
@@ -185,6 +188,7 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
         muniDecision decision = muni_decideJoin;
         if (segmenter->holding)
         {
+            MUNI_ASSERT(segmenter->heldOffset < segmenter->cursor.offset);
             decision = resolve(segmenter, value, codePoint);
             if (decision == muni_decideBreak)
             {
