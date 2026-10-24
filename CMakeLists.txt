@@ -184,6 +184,7 @@ if(MAUL_UNICODE_BUILD_TESTS)
         endif()
     endforeach()
     maul_add_header_tests()
+    maul_add_exports_test(EXCLUDE harfbuzz.h)
     # Installs the build into the binary tree and builds and runs
     # samples/minimal against it, as a consumer of the package would.
     if(MAUL_UNICODE_TEST_PACKAGE AND MAUL_UNICODE_INSTALL)
