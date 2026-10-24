@@ -144,7 +144,13 @@ fi
 source_checks
 
 step "clang-format on every file"
-clang-format --dry-run -Werror $(all_c_files)
+mapfile -t files < <(all_c_files)
+# An empty list would make clang-format read stdin and pass.
+[ ${#files[@]} -gt 0 ] || {
+    echo "no files to format" >&2
+    exit 1
+}
+clang-format --dry-run -Werror "${files[@]}"
 
 step "generated tables match the generator, and stay within their ceilings"
 configure generator -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_BUILD_TESTS=OFF
