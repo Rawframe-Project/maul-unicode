@@ -200,8 +200,11 @@ if(MAUL_UNICODE_FUZZ)
     # The library is instrumented too: its coverage guides libFuzzer, and
     # the sanitizers watch its code, not only the targets'. Whatever links
     # it (samples, benchmarks, tools) links the sanitizer runtimes.
-    target_compile_options(maul-unicode PRIVATE -fsanitize=fuzzer-no-link,address,undefined)
-    target_link_options(maul-unicode PUBLIC -fsanitize=address,undefined)
+    # -fno-sanitize-recover=all makes undefined behavior a crash libFuzzer
+    # stops on and saves; without it UBSan prints and the run goes on.
+    target_compile_options(maul-unicode PRIVATE -fsanitize=fuzzer-no-link,address,undefined
+                           -fno-sanitize-recover=all)
+    target_link_options(maul-unicode PUBLIC -fsanitize=address,undefined -fno-sanitize-recover=all)
     set(MUNI_FUZZ_AREAS encoding segment bidi script)
     if(MAUL_UNICODE_NORMALIZATION)
         list(APPEND MUNI_FUZZ_AREAS normalize)
@@ -222,8 +225,10 @@ if(MAUL_UNICODE_FUZZ)
         add_executable(fuzz_${area} test/fuzz_${area}.c)
         target_link_libraries(fuzz_${area} PRIVATE maul-unicode)
         maul_apply_flags(fuzz_${area})
-        target_compile_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined)
-        target_link_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined)
+        target_compile_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined
+                               -fno-sanitize-recover=all)
+        target_link_options(fuzz_${area} PRIVATE -fsanitize=fuzzer,address,undefined
+                            -fno-sanitize-recover=all)
     endforeach()
     # ICU is an oracle for the tests alone, never linked into the library.
     if(TARGET fuzz_icu)
