@@ -114,6 +114,23 @@ static size_t BreakThai(void* context, const char* run, size_t length, size_t fr
     return FindWordBreak(dictionary, run, length, from);
 }
 
+static void GuideLineOptions(void)
+{
+    // U+3042, then U+3041 HIRAGANA LETTER SMALL A (Line_Break=CJ).
+    const char text[] = "\xE3\x81\x82\xE3\x81\x81";
+    muniSegmentIterator lines;
+    CHECK(muniInitLineIterator(&lines, text, sizeof(text) - 1, false) == muni_success,
+          "a line iterator");
+    if (muniSetLineOptions(&lines, muni_lineCjAsIdeographic) != muni_success)
+    {
+        // lines is not a line iterator, or has already started
+    }
+    size_t end = 0;
+    bool mandatory = false;
+    CHECK(muniNextLineBreak(&lines, &end, &mandatory) == muni_success && end == 3 && !mandatory,
+          "a break before the small kana");
+}
+
 static void GuideComplexBreaker(void)
 {
     // Four Thai consonants, three bytes each, read as two words of two.
@@ -209,6 +226,7 @@ int main(void)
     GuideValidate();
     GuideGraphemes();
     GuideLines();
+    GuideLineOptions();
     GuideComplexBreaker();
     GuideLanguageConventions();
     GuideBidi();

@@ -171,6 +171,29 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniSetBreakClassOverrides(
         muniSegmentIterator* iterator, const muniBreakClassOverride* overrides, size_t count);
 
+    // Options of a line iterator, combined with |.
+    enum
+    {
+        // Resolves Line_Break=CJ, such as the small kana and the prolonged
+        // sound mark, as ID instead of NS (rule LB1), so a line may break
+        // before them, as CSS's normal and loose line breaking do for
+        // Chinese and Japanese.
+        muni_lineCjAsIdeographic = 1u << 0,
+    };
+
+    /// Sets the options of a line iterator. Without options, or with 0,
+    /// it follows the default rules of UAX #14.
+    ///
+    /// @param iterator  A line iterator not yet asked for a break.
+    /// @param options   A combination of muni_line options, or 0.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
+    ///         another kind of iterator or one already started, or an
+    ///         unknown option.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniSetLineOptions(muniSegmentIterator* iterator,
+                                                          uint32_t options);
+
     /// Hands an iterator the next piece of its text, after it returned
     /// muni_needMoreText. The iterator keeps no pointer to earlier pieces.
     ///

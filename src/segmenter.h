@@ -114,6 +114,7 @@ typedef struct muniSegmenter
     bool waiting;      // the last call returned muni_needMoreText
     bool mandatory;    // the last boundary reported must be taken
     uint8_t holdKind;  // the kind of the open hold
+    uint8_t options;   // a line iterator's muni_line options
 
     union
     {

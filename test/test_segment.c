@@ -537,6 +537,40 @@ static void TestClassOverrideArguments(void)
           "no overrides once asked for a boundary");
 }
 
+static void TestLineOptions(void)
+{
+    // U+3042 HIRAGANA LETTER A (ID), then U+3041 HIRAGANA LETTER SMALL A
+    // and U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK (both CJ).
+    static const char kana[] = "\xE3\x81\x82\xE3\x81\x81\xE3\x83\xBC";
+    size_t offsets[16];
+    muniSegmentIterator iterator;
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 1 && offsets[0] == 9,
+          "by default CJ is NS: no break before the small kana or the mark");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 3 && offsets[1] == 6 &&
+              offsets[2] == 9,
+          "as ID, a line may break before each");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_success &&
+              muniSetLineOptions(&iterator, 0) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 1,
+          "0 restores the default rules");
+    size_t offset;
+    CHECK(muniSetLineOptions(nullptr, 0) == muni_errorInvalid, "no iterator");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniSetLineOptions(&iterator, 1u << 1) == muni_errorInvalid,
+          "an unknown option");
+    CHECK(muniInitWordIterator(&iterator, kana, 9, false) == muni_success &&
+              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorInvalid,
+          "word iterators take no line options");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorInvalid,
+          "no options after the first break");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -564,6 +598,7 @@ int main(void)
     TestComplexBreakerRuns();
     TestClassOverrides();
     TestClassOverrideArguments();
+    TestLineOptions();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

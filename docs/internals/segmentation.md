@@ -8,6 +8,8 @@ UAX #29 defines three segmentations of the same shape: walk the text and decide,
 
 The public struct is opaque storage. [`src/segment.c`](../../src/segment.c) copies the internal `muniSegmenter` in and out of it with `memcpy`, which keeps every access within the C aliasing rules, and dispatches on the kind once per boundary, not per code point.
 
+Its size is ABI, so a `static_assert` in [`src/segmenter.h`](../../src/segmenter.h) keeps `muniSegmenter` within it. On 64-bit targets `muniSegmenter` fills all 128 bytes: the class overrides' pointer takes the last 8, and the line options the one byte that was padding. No byte is free, so the next option or piece of state needs a larger public iterator, which breaks the ABI and so goes in a pull request whose title carries `!`.
+
 ## The engine and its holds
 
 [`src/segmenter.h`](../../src/segmenter.h) walks the text and asks a rule set about each code point: break, mandatory break, join, or hold. The engine is a `static inline` function that takes the rules as function arguments, and each rule file ([`grapheme.c`](../../src/grapheme.c), [`word.c`](../../src/word.c), [`sentence.c`](../../src/sentence.c), [`line.c`](../../src/line.c)) calls it with its own, so the compiler builds one loop per rule set with the rules inlined.

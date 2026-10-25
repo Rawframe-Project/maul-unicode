@@ -133,6 +133,22 @@ muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
     return muni_success;
 }
 
+muniResult muniSetLineOptions(muniSegmentIterator* iterator, uint32_t options)
+{
+    if (iterator == nullptr || (options & ~(uint32_t)muni_lineCjAsIdeographic) != 0)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    if (segmenter.kind != muni_segmentLine || segmenter.started || segmenter.waiting)
+    {
+        return muni_errorInvalid;
+    }
+    segmenter.options = (uint8_t)options;
+    Store(iterator, &segmenter);
+    return muni_success;
+}
+
 muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* text, size_t length,
                                    bool moreFollows)
 {
