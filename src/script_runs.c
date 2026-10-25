@@ -38,8 +38,17 @@ typedef struct ScriptState
     bool finished;       // the last run has been reported
 } ScriptState;
 
+// The public iterator's size follows the state: it holds the state on
+// every target, and on 64-bit targets, where the state is largest, it
+// has no whole uint64_t to spare. A change to the state that breaks
+// either resizes the public iterator.
 static_assert(sizeof(ScriptState) <= sizeof(muniScriptIterator),
               "the public iterator must hold the state");
+static_assert(alignof(ScriptState) <= alignof(muniScriptIterator),
+              "the public iterator must be aligned for the state");
+static_assert(sizeof(void*) < 8 ||
+                  sizeof(muniScriptIterator) - sizeof(ScriptState) < sizeof(uint64_t),
+              "the public iterator must be no larger than the state needs");
 
 static bool IsNeutral(uint8_t script)
 {
