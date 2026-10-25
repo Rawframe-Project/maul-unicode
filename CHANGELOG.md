@@ -7,14 +7,13 @@ may change the API, the ABI and every data format.
 
 ## [0.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.1...v0.2.0) (2026-10-25)
 
-
-### ⚠ BREAKING CHANGES
-
-* **script:** `muniScriptIterator` shrinks from 224 to 208 bytes on every target. Programs must be rebuilt against the new headers; no source change is needed.
-
 ### Changed
 
-* **script:** size the script iterator to its state ([#54](https://github.com/Rawframe-Project/maul-unicode/issues/54)) ([05b32db](https://github.com/Rawframe-Project/maul-unicode/commit/05b32dbd034d4257ff2d99f2c635efcf9c5aac61)), closes [#51](https://github.com/Rawframe-Project/maul-unicode/issues/51)
+- **Breaking:** `muniScriptIterator` is 208 bytes on every target, from
+  224: its storage now follows the state it holds instead of keeping
+  16 spare bytes. Programs must be rebuilt against the new headers; no
+  source change is needed
+  ([#54](https://github.com/Rawframe-Project/maul-unicode/pull/54)).
 
 ## [0.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.0...v0.1.1) (2026-10-25)
 
