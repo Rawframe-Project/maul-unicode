@@ -5,6 +5,17 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.1...v0.2.0) (2026-10-25)
+
+### Changed
+
+- **Breaking:** `muniScriptIterator` is 208 bytes on every target, from
+  224: its storage now fits the state it holds on 64-bit targets,
+  where the state is largest, instead of keeping 16 spare bytes there.
+  Programs must be rebuilt against the new headers; no
+  source change is needed
+  ([#54](https://github.com/Rawframe-Project/maul-unicode/pull/54)).
+
 ## [0.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.0...v0.1.1) (2026-10-25)
 
 ### Fixed
