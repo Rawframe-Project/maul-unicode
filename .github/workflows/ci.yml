@@ -11,7 +11,13 @@ on:
   pull_request:
   schedule:
     - cron: "7 1 * * *"
+  # A dispatch runs the night's checks, its fuzzing included.
   workflow_dispatch:
+    inputs:
+      fuzz-seconds:
+        description: Seconds each fuzz target runs (the night's run is 600)
+        type: number
+        default: 600
 
 # A new push to a pull request cancels its running CI; runs on main get a
 # group of their own, so they are never cancelled.
@@ -157,7 +163,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ github.event_name == 'schedule' && 50 || 25 }}
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 50 || 25 }}
     # The image cpp.yml uses; --init reaps orphaned processes.
     container:
       image: ghcr.io/rawframe-project/ci-cpp:2026.10.6@sha256:50c383f608f992c272196139d749f15978e35143a2876362b1e0aef6993480bd
@@ -165,7 +171,7 @@ jobs:
     permissions:
       contents: read
     env:
-      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || (github.event_name == 'schedule' && 600 || 90) }}
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || (github.event_name == 'push' && 90 || (inputs.fuzz-seconds || 600)) }}
       # A target's minimized corpus may not pass this, so one target's
       # growth cannot crowd the others out of the cache.
       CORPUS_LIMIT_MB: 25
