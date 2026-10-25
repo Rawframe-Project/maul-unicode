@@ -517,6 +517,10 @@ static void TestClassOverrideArguments(void)
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
               muniSetBreakClassOverrides(&iterator, pastMax, 1) == muni_errorInvalid,
           "past U+10FFFF");
+    // Refused before any entry is read, so the one-entry table is enough.
+    CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 0x10F801) == muni_errorInvalid,
+          "more overrides than scalar values");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
               muniSetBreakClassOverrides(&iterator, surrogate, 1) == muni_errorInvalid,
           "a surrogate");
