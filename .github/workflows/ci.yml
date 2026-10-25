@@ -151,12 +151,13 @@ jobs:
 
   # Each fuzz target looks for crashes, broken invariants and answers that
   # disagree with each other or with ICU: briefly on a pull request, longer
-  # on main and at night.
+  # on main, and an extended run at night. Each target's corpus carries over
+  # in one cache entry; docs/operations/checks.md says why one job.
   fuzz:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: ${{ github.event_name == 'schedule' && 50 || 25 }}
     # The image cpp.yml uses; --init reaps orphaned processes.
     container:
       image: ghcr.io/rawframe-project/ci-cpp:2026.10.6@sha256:50c383f608f992c272196139d749f15978e35143a2876362b1e0aef6993480bd
@@ -164,7 +165,10 @@ jobs:
     permissions:
       contents: read
     env:
-      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || 90 }}
+      FUZZ_SECONDS: ${{ github.event_name == 'pull_request' && 20 || (github.event_name == 'schedule' && 600 || 90) }}
+      # A target's minimized corpus may not pass this, so one target's
+      # growth cannot crowd the others out of the cache.
+      CORPUS_LIMIT_MB: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -175,6 +179,14 @@ jobs:
           cmake -B out/fuzz -G Ninja -DCMAKE_C_COMPILER=clang-20 -D${PREFIX}_FUZZ=ON \
             -D${PREFIX}_FUZZ_ICU=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
           cmake --build out/fuzz
+      # Caches are immutable: each run saves a new entry and the next run
+      # restores the latest.
+      - name: Restore the corpus
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
       - name: Run
         # Four targets at a time, one per core of the runner; each keeps its
         # full time. A target's output goes to its log, printed when it
@@ -184,7 +196,8 @@ jobs:
           fuzz_one() {
             name=$(basename "$1")
             mkdir -p "out/corpus/$name"
-            # Seeds reach inputs random bytes rarely form, like Thai text.
+            # Seeds reach inputs random bytes rarely form, like Thai text;
+            # they join whatever corpus the cache brought.
             if [ -d "test/seeds/$name" ]; then
               cp test/seeds/"$name"/* "out/corpus/$name"/
             fi
@@ -199,6 +212,46 @@ jobs:
           }
           export -f fuzz_one
           printf '%s\n' out/fuzz/fuzz_* | xargs -P 4 -I {} bash -c 'fuzz_one "$1"' _ {}
+      # Each corpus is merged into a fresh directory and swapped in only
+      # when the merge finished, so a failed merge leaves the old corpus.
+      - name: Minimize the corpus
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          merge_one() {
+            name=$(basename "$1")
+            rm -rf "out/merged/$name" && mkdir -p "out/merged/$name"
+            if "$1" -merge=1 -max_len=256 "out/merged/$name" "out/corpus/$name" \
+              >"out/fuzz-logs/$name.merge.log" 2>&1; then
+              rm -rf "out/corpus/$name" && mv "out/merged/$name" "out/corpus/$name"
+            else
+              tail -n 30 "out/fuzz-logs/$name.merge.log"
+              echo "::error::$name: the merge failed"
+              return 1
+            fi
+          }
+          export -f merge_one
+          printf '%s\n' out/fuzz/fuzz_* | xargs -P 4 -I {} bash -c 'merge_one "$1"' _ {}
+          over=0
+          {
+            echo "| Target | Inputs | MB |"
+            echo "|---|---|---|"
+            for d in out/corpus/*/; do
+              name=$(basename "$d")
+              mb=$(du -sm "$d" | cut -f1)
+              echo "| $name | $(find "$d" -type f | wc -l) | $mb |"
+              if [ "$mb" -gt "$CORPUS_LIMIT_MB" ]; then
+                echo "::error::$name: corpus of $mb MB passes $CORPUS_LIMIT_MB MB" >&2
+                over=1
+              fi
+            done
+          } >>"$GITHUB_STEP_SUMMARY"
+          exit "$over"
+      - name: Save the corpus
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/corpus
+          key: fuzz-corpus-${{ github.run_id }}
       - name: Fuzz logs and crash inputs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
