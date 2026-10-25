@@ -82,6 +82,10 @@ muniResult muniSetComplexBreaker(muniSegmentIterator* iterator, muniComplexBreak
     return muni_success;
 }
 
+// The most overrides a table can hold: one per scalar value, since its
+// code points strictly increase.
+#define MAX_OVERRIDES 0x10F800u
+
 // Whether a table of overrides is in strictly increasing order of code
 // point and names only code points and known classes: up to classCount.
 static bool ValidOverrides(const muniBreakClassOverride* overrides, size_t count,
@@ -102,7 +106,7 @@ static bool ValidOverrides(const muniBreakClassOverride* overrides, size_t count
 muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
                                       const muniBreakClassOverride* overrides, size_t count)
 {
-    if (iterator == nullptr || (overrides == nullptr && count != 0) || (uint64_t)count > UINT32_MAX)
+    if (iterator == nullptr || (overrides == nullptr && count != 0) || count > MAX_OVERRIDES)
     {
         return muni_errorInvalid;
     }

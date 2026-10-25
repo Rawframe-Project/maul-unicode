@@ -157,11 +157,12 @@ extern "C"
     /// @param overrides  The code points and their classes, in strictly
     ///                   increasing order of code point. May be NULL when
     ///                   count is 0.
-    /// @param count      The number of overrides, at most UINT32_MAX; 0
-    ///                   restores the classes Unicode assigns.
+    /// @param count      The number of overrides, at most 0x10F800 (one
+    ///                   per scalar value); 0 restores the classes Unicode
+    ///                   assigns.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
     ///         NULL overrides with a nonzero count, another kind of
-    ///         iterator or one already started, a count over UINT32_MAX, a
+    ///         iterator or one already started, a count over 0x10F800, a
     ///         code point past U+10FFFF or a surrogate, code points out of
     ///         order or repeated, or a value that is not a class of the
     ///         iterator's property.
