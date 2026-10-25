@@ -37,21 +37,27 @@ env:
 jobs:
   # Whether anything beyond documentation changed; the builds skip when not.
   changes:
-    uses: Rawframe-Project/.github/.github/workflows/changes.yml@c84f41e11c17d61e2876d65faf9aed1bea5130f7 # v0.0.19
+    uses: Rawframe-Project/.github/.github/workflows/changes.yml@a3914e1146cb646af8444ebe06f135733aea11ae # v0.0.20
     permissions:
       pull-requests: read
 
-  # The organization's documentation check; tools/ucd holds the Unicode
-  # data, kept exactly as published.
+  # The organization's documentation check, run from the pinned commit of
+  # .github; tools/ucd holds the Unicode data, kept exactly as published.
   docs:
-    uses: Rawframe-Project/.github/.github/workflows/docs-check.yml@c84f41e11c17d61e2876d65faf9aed1bea5130f7 # v0.0.19
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     permissions:
       contents: read
-    with:
-      exclude: tools/ucd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: Rawframe-Project/.github/.github/actions/docs-check@a3914e1146cb646af8444ebe06f135733aea11ae # v0.0.20
+        with:
+          exclude: tools/ucd
 
   zizmor:
-    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@c84f41e11c17d61e2876d65faf9aed1bea5130f7 # v0.0.19
+    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@a3914e1146cb646af8444ebe06f135733aea11ae # v0.0.20
     permissions:
       contents: read
 
@@ -141,7 +147,7 @@ jobs:
           - { preset: linux-i686-gcc-14 }
           - { preset: macos-clang, runner: macos-15 }
           - { preset: windows-clang-cl, runner: windows-2025 }
-    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@c84f41e11c17d61e2876d65faf9aed1bea5130f7 # v0.0.19
+    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@a3914e1146cb646af8444ebe06f135733aea11ae # v0.0.20
     permissions:
       contents: read
     with:
