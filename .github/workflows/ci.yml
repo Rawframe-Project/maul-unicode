@@ -197,7 +197,19 @@ jobs:
         # Four targets at a time, one per core of the runner; each keeps its
         # full time. A target's output goes to its log, printed when it
         # finds something.
+        #
+        # A dispatch's fuzz-seconds must leave time for the minimize and
+        # save, or the timeout kills the job and the corpus is lost: the
+        # nine targets run in three waves of four, and the night's 50
+        # minutes less about 10 for the build, the merge and the save leave
+        # 40, so at most 800 seconds a wave. libFuzzer reads a negative
+        # time as no limit.
         run: |
+          if ! [[ "$FUZZ_SECONDS" =~ ^[0-9]+$ ]] || [ "$FUZZ_SECONDS" -lt 1 ] ||
+            [ "$FUZZ_SECONDS" -gt 800 ]; then
+            echo "::error::fuzz-seconds must be a whole number from 1 to 800, not $FUZZ_SECONDS"
+            exit 1
+          fi
           mkdir -p out/fuzz-logs
           fuzz_one() {
             name=$(basename "$1")
