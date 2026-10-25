@@ -7,10 +7,15 @@ may change the API, the ABI and every data format.
 
 ## [0.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.2.0...v0.3.0) (2026-10-25)
 
-
 ### Added
 
-* **properties:** the Ideographic property ([#63](https://github.com/Rawframe-Project/maul-unicode/issues/63)) ([78f6ad3](https://github.com/Rawframe-Project/maul-unicode/commit/78f6ad3a909417185c51ddf3065879668916fb6f)), closes [#62](https://github.com/Rawframe-Project/maul-unicode/issues/62)
+- `muniIsIdeographic` tells whether a code point has Unicode's
+  Ideographic property (PropList.txt), which a word rule over ideographs
+  such as CLDR's Japanese one needs. It is not Script=Han: Han includes
+  the CJK radicals, which are not Ideographic, and leaves out Tangut,
+  Khitan Small Script, Jurchen, Nushu and Small Seal, which are. A value
+  past U+10FFFF is false. No existing result changes
+  ([#63](https://github.com/Rawframe-Project/maul-unicode/pull/63)).
 
 ## [0.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.1...v0.2.0) (2026-10-25)
 
