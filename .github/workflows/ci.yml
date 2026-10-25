@@ -138,6 +138,7 @@ jobs:
           - { preset: linux-shared }
           - { preset: linux-harfbuzz }
           - { preset: linux-minimal }
+          - { preset: linux-i686-gcc-14 }
           - { preset: macos-clang, runner: macos-15 }
           - { preset: windows-clang-cl, runner: windows-2025 }
     uses: Rawframe-Project/.github/.github/workflows/cpp.yml@c84f41e11c17d61e2876d65faf9aed1bea5130f7 # v0.0.19

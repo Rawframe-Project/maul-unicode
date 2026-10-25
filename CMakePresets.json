@@ -38,6 +38,16 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
+      "name": "linux-i686-gcc-14",
+      "displayName": "GCC 14, 32-bit x86, Release",
+      "inherits": ["linux", "gcc"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-m32",
+        "CMAKE_CXX_FLAGS": "-m32"
+      }
+    },
+    {
       "name": "linux-clang-20-asan",
       "displayName": "Clang 20, AddressSanitizer and UBSan, assertions on",
       "inherits": ["linux", "clang"],
@@ -99,6 +109,7 @@
   "buildPresets": [
     { "name": "linux-gcc-14", "configurePreset": "linux-gcc-14" },
     { "name": "linux-clang-20", "configurePreset": "linux-clang-20" },
+    { "name": "linux-i686-gcc-14", "configurePreset": "linux-i686-gcc-14" },
     { "name": "linux-clang-20-asan", "configurePreset": "linux-clang-20-asan" },
     { "name": "linux-clang-20-tsan", "configurePreset": "linux-clang-20-tsan" },
     { "name": "linux-shared", "configurePreset": "linux-shared" },
@@ -116,6 +127,7 @@
     },
     { "name": "linux-gcc-14", "inherits": "base", "configurePreset": "linux-gcc-14" },
     { "name": "linux-clang-20", "inherits": "base", "configurePreset": "linux-clang-20" },
+    { "name": "linux-i686-gcc-14", "inherits": "base", "configurePreset": "linux-i686-gcc-14" },
     { "name": "linux-clang-20-asan", "inherits": "base", "configurePreset": "linux-clang-20-asan" },
     { "name": "linux-clang-20-tsan", "inherits": "base", "configurePreset": "linux-clang-20-tsan" },
     { "name": "linux-shared", "inherits": "base", "configurePreset": "linux-shared" },
