@@ -248,6 +248,19 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsDefaultIgnorable(uint32_t codePoint);
 
+    /// Tells whether a code point has the Ideographic property
+    /// (PropList.txt): the CJK unified and compatibility ideographs, the
+    /// Small Seal characters, the characters of Tangut, Khitan Small
+    /// Script, Jurchen and Nushu, and a few CJK marks and numerals such
+    /// as U+3007 IDEOGRAPHIC NUMBER ZERO. The CJK radicals, which
+    /// Script=Han includes, do not have it.
+    ///
+    /// @param codePoint  Any value; one above U+10FFFF has it not.
+    /// @return true when the code point is Ideographic.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API bool muniIsIdeographic(uint32_t codePoint);
+
     /// Returns the value of a decimal digit: a code point of General
     /// Category Nd (Numeric_Type Decimal), such as '7' or the Devanagari
     /// seven, which parse as numbers. Superscripts, fractions and Roman
