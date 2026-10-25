@@ -27,7 +27,7 @@ extern "C"
     // data the caller keeps anywhere and needs no cleanup.
     typedef struct muniScriptIterator
     {
-        uint64_t opaque[28];
+        uint64_t opaque[26];
     } muniScriptIterator;
 
     // A script run: it ends at byte offset end, where the next one starts.
