@@ -12,8 +12,9 @@ may change the API, the ABI and every data format.
 - `muniSetBreakClassOverrides` refuses a count over 0x10F800, one entry
   per scalar value, before it reads any entry, and `segment.h`
   documents that limit. The old check against `UINT32_MAX` never fired
-  where `size_t` is 32 bits, and with GCC 14's `-Wtype-limits` it
-  stopped the build there. A longer count is still `muni_errorInvalid`,
+  where `size_t` is 32 bits. GCC 14 warned about it there
+  (`-Wtype-limits`), which stopped builds that treat warnings as errors
+  (`MAUL_UNICODE_WERROR`). A larger count is still `muni_errorInvalid`,
   and valid tables behave the same
   ([#50](https://github.com/Rawframe-Project/maul-unicode/pull/50)).
 
