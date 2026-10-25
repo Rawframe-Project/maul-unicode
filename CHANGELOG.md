@@ -10,8 +10,9 @@ may change the API, the ABI and every data format.
 ### Changed
 
 - **Breaking:** `muniScriptIterator` is 208 bytes on every target, from
-  224: its storage now follows the state it holds instead of keeping
-  16 spare bytes. Programs must be rebuilt against the new headers; no
+  224: its storage now fits the state it holds on 64-bit targets,
+  where the state is largest, instead of keeping 16 spare bytes there.
+  Programs must be rebuilt against the new headers; no
   source change is needed
   ([#54](https://github.com/Rawframe-Project/maul-unicode/pull/54)).
 
