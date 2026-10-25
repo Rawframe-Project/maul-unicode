@@ -18,6 +18,13 @@ void Good(void)
     // hygiene: the fixture shows a marked sleep on the line after
     usleep(10);
     gettimeofday(nullptr, nullptr); // hygiene: a marked wall-clock read
+    // Again alone is a result computed a second time, not a retry.
+    int again = 1;
+    int entries = 2;
+    int against = 3;
     (void)text;
     (void)used;
+    (void)again;
+    (void)entries;
+    (void)against;
 }
