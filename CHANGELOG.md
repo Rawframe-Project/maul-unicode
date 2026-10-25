@@ -7,10 +7,15 @@ may change the API, the ABI and every data format.
 
 ## [0.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.0...v0.1.1) (2026-10-25)
 
-
 ### Fixed
 
-* **segment:** bound the override count by the scalar values ([#50](https://github.com/Rawframe-Project/maul-unicode/issues/50)) ([0793d73](https://github.com/Rawframe-Project/maul-unicode/commit/0793d73d581a12fd4e000d0940facb4947188c86)), closes [#49](https://github.com/Rawframe-Project/maul-unicode/issues/49)
+- `muniSetBreakClassOverrides` refuses a count over 0x10F800, one entry
+  per scalar value, before it reads any entry, and `segment.h`
+  documents that limit. The old check against `UINT32_MAX` never fired
+  where `size_t` is 32 bits, and with GCC 14's `-Wtype-limits` it
+  stopped the build there. A longer count is still `muni_errorInvalid`,
+  and valid tables behave the same
+  ([#50](https://github.com/Rawframe-Project/maul-unicode/pull/50)).
 
 ## [0.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.0.1...v0.1.0) (2026-10-25)
 
