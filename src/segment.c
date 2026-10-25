@@ -82,6 +82,57 @@ muniResult muniSetComplexBreaker(muniSegmentIterator* iterator, muniComplexBreak
     return muni_success;
 }
 
+// Whether a table of overrides is in strictly increasing order of code
+// point and names only code points and known classes: up to classCount.
+static bool ValidOverrides(const muniBreakClassOverride* overrides, size_t count,
+                           uint8_t classCount)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
+        uint32_t codePoint = overrides[i].codePoint;
+        if (codePoint > 0x10FFFF || (codePoint >= 0xD800 && codePoint <= 0xDFFF) ||
+            overrides[i].value >= classCount || (i > 0 && codePoint <= overrides[i - 1].codePoint))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
+                                      const muniBreakClassOverride* overrides, size_t count)
+{
+    if (iterator == nullptr || (overrides == nullptr && count != 0) || (uint64_t)count > UINT32_MAX)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    if (segmenter.started || segmenter.waiting)
+    {
+        return muni_errorInvalid;
+    }
+    uint32_t* countField = nullptr;
+    uint8_t classCount = 0;
+    if (segmenter.kind == muni_segmentWord)
+    {
+        countField = &segmenter.rules.word.overrideCount;
+        classCount = muni_wbWSegSpace + 1;
+    }
+    else if (segmenter.kind == muni_segmentSentence)
+    {
+        countField = &segmenter.rules.sentence.overrideCount;
+        classCount = muni_sbClose + 1;
+    }
+    if (countField == nullptr || !ValidOverrides(overrides, count, classCount))
+    {
+        return muni_errorInvalid;
+    }
+    segmenter.overrides = count == 0 ? nullptr : overrides;
+    *countField = (uint32_t)count;
+    Store(iterator, &segmenter);
+    return muni_success;
+}
+
 muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* text, size_t length,
                                    bool moreFollows)
 {

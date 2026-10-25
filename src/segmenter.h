@@ -59,19 +59,21 @@ typedef struct muniGraphemeRules
 
 typedef struct muniWordRules
 {
-    uint8_t actual;   // the previous code point's Word_Break
-    uint8_t previous; // the previous one after rule WB4, which skips Extend
-    uint8_t before;   // the one before that, after rule WB4
-    bool oddRegional; // an odd number of regional indicators precedes
+    uint8_t actual;         // the previous code point's Word_Break
+    uint8_t previous;       // the previous one after rule WB4, which skips Extend
+    uint8_t before;         // the one before that, after rule WB4
+    bool oddRegional;       // an odd number of regional indicators precedes
+    uint32_t overrideCount; // the entries of the segmenter's overrides
 } muniWordRules;
 
 typedef struct muniSentenceRules
 {
-    uint8_t actual;   // the previous code point's Sentence_Break
-    uint8_t previous; // the previous one after rule SB5, which skips Extend
-    uint8_t before;   // the one before that, after rule SB5
-    uint8_t ending;   // where a sentence ending "SATerm Close* Sp*" stands
-    bool aterm;       // the ending's terminator is an ATerm
+    uint8_t actual;         // the previous code point's Sentence_Break
+    uint8_t previous;       // the previous one after rule SB5, which skips Extend
+    uint8_t before;         // the one before that, after rule SB5
+    uint8_t ending;         // where a sentence ending "SATerm Close* Sp*" stands
+    bool aterm;             // the ending's terminator is an ATerm
+    uint32_t overrideCount; // the entries of the segmenter's overrides
 } muniSentenceRules;
 
 typedef struct muniLineRules
@@ -120,6 +122,11 @@ typedef struct muniSegmenter
         muniSentenceRules sentence;
         muniLineRules line;
     } rules;
+
+    // The caller's class overrides of a word or sentence iterator, sorted
+    // by code point; their count is in the rules, where it fits the
+    // iterator's size.
+    const muniBreakClassOverride* overrides;
 } muniSegmenter;
 
 static_assert(sizeof(muniSegmenter) <= sizeof(muniSegmentIterator),
@@ -128,10 +135,34 @@ static_assert(sizeof(muniSegmenter) <= sizeof(muniSegmentIterator),
 // The rules as functions of the segmenter and the next code point: its
 // property value from lookup, the decision about the boundary before it,
 // the decision while a hold is open, and the update after it is read.
-typedef uint8_t (*muniLookupRule)(uint32_t codePoint);
+typedef uint8_t (*muniLookupRule)(const muniSegmenter* segmenter, uint32_t codePoint);
 typedef muniDecision (*muniDecideRule)(const muniSegmenter* segmenter, uint8_t value,
                                        uint32_t codePoint);
 typedef void (*muniAbsorbRule)(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint);
+
+// The class overrides give a code point, or value when they do not name
+// it: a binary search, so a long table costs a logarithm per code point.
+static inline uint8_t muniOverrideClass(const muniBreakClassOverride* overrides, uint32_t count,
+                                        uint32_t codePoint, uint8_t value)
+{
+    // Set only with a table of at least one entry.
+    MUNI_ASSERT(overrides != nullptr && count > 0);
+    uint32_t low = 0;
+    uint32_t high = count;
+    while (low < high)
+    {
+        uint32_t middle = low + (high - low) / 2;
+        if (overrides[middle].codePoint < codePoint)
+        {
+            low = middle + 1;
+        }
+        else
+        {
+            high = middle;
+        }
+    }
+    return low < count && overrides[low].codePoint == codePoint ? overrides[low].value : value;
+}
 
 // Reports a boundary.
 static inline muniResult muniSegmenterReport(muniSegmenter* segmenter, size_t offset,
@@ -184,7 +215,7 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
         {
             return muniSegmenterEnd(segmenter, offsetOut, resolve);
         }
-        uint8_t value = lookup(codePoint);
+        uint8_t value = lookup(segmenter, codePoint);
         muniDecision decision = muni_decideJoin;
         if (segmenter->holding)
         {

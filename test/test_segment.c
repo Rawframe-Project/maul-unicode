@@ -389,6 +389,154 @@ static void TestComplexBreakerRuns(void)
     }
 }
 
+// The boundaries of a text fed one byte at a time, each byte alone in its
+// allocation, with the given overrides. A piece stays valid until the
+// next one has been fed.
+static size_t CollectFedBreaks(bool word, const char* text, size_t length,
+                               const muniBreakClassOverride* overrides, size_t count,
+                               size_t* offsets)
+{
+    muniSegmentIterator iterator;
+    muniResult init = word ? muniInitWordIterator(&iterator, nullptr, 0, true)
+                           : muniInitSentenceIterator(&iterator, nullptr, 0, true);
+    if (init != muni_success ||
+        muniSetBreakClassOverrides(&iterator, overrides, count) != muni_success)
+    {
+        return 0;
+    }
+    size_t found = 0;
+    size_t fed = 0;
+    char* piece = nullptr;
+    muniResult status;
+    for (;;)
+    {
+        size_t offset;
+        status = muniNextSegmentBreak(&iterator, &offset);
+        if (status == muni_success && found < 16)
+        {
+            offsets[found++] = offset;
+            continue;
+        }
+        if (status != muni_needMoreText || fed == length)
+        {
+            break;
+        }
+        char* next = malloc(1);
+        if (next == nullptr)
+        {
+            break;
+        }
+        *next = text[fed++];
+        muniResult feed = muniFeedSegmentIterator(&iterator, next, 1, fed < length);
+        free(piece);
+        piece = next;
+        if (feed != muni_success)
+        {
+            break;
+        }
+    }
+    free(piece);
+    return status == muni_done ? found : 0;
+}
+
+static void TestClassOverrides(void)
+{
+    // Greek ends a sentence at U+003B and U+037E GREEK QUESTION MARK.
+    static const muniBreakClassOverride greek[] = {{0x003B, muni_sbSTerm}, {0x037E, muni_sbSTerm}};
+    static const char sentences[] = "Ti; Nai\xCD\xBE Ok.";
+    size_t offsets[16];
+    muniSegmentIterator iterator;
+    CHECK(muniInitSentenceIterator(&iterator, sentences, 13, false) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 1,
+          "without overrides, U+003B and U+037E continue the sentence");
+    // The table alone in its allocation, so AddressSanitizer sees a read
+    // past its last entry.
+    muniBreakClassOverride* table = malloc(sizeof(greek));
+    CHECK(table != nullptr, "a table");
+    if (table != nullptr)
+    {
+        memcpy(table, greek, sizeof(greek));
+        CHECK(muniInitSentenceIterator(&iterator, sentences, 13, false) == muni_success &&
+                  muniSetBreakClassOverrides(&iterator, table, 2) == muni_success &&
+                  CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 4 && offsets[1] == 10 &&
+                  offsets[2] == 13,
+              "as STerm, both end a sentence");
+        CHECK(CollectFedBreaks(false, sentences, 13, table, 2, offsets) == 3 && offsets[0] == 4 &&
+                  offsets[1] == 10 && offsets[2] == 13,
+              "the same fed one byte at a time");
+        free(table);
+    }
+
+    // POSIX English keeps U+002E out of words, but not out of numbers.
+    static const muniBreakClassOverride posix[] = {{0x002E, muni_wbMidNum}};
+    CHECK(muniInitWordIterator(&iterator, "a.b 3.5", 7, false) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 3,
+          "without overrides, a.b is one word");
+    CHECK(muniInitWordIterator(&iterator, "a.b 3.5", 7, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 5 && offsets[0] == 1 && offsets[1] == 2 &&
+              offsets[2] == 3 && offsets[3] == 4 && offsets[4] == 7,
+          "as MidNum, U+002E splits a.b and keeps 3.5");
+    CHECK(CollectFedBreaks(true, "a.b 3.5", 7, posix, 1, offsets) == 5 && offsets[1] == 2,
+          "the same fed one byte at a time");
+    CHECK(muniInitWordIterator(&iterator, "a.b", 3, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, nullptr, 0) == muni_success &&
+              CollectBreaks(&iterator, offsets) == 1,
+          "no overrides restores the Unicode classes");
+}
+
+static void TestClassOverrideArguments(void)
+{
+    static const muniBreakClassOverride posix[] = {{0x002E, muni_wbMidNum}};
+    static const muniBreakClassOverride unordered[] = {{0x003B, muni_sbSTerm},
+                                                       {0x002E, muni_sbSTerm}};
+    static const muniBreakClassOverride repeated[] = {{0x003B, muni_sbSTerm},
+                                                      {0x003B, muni_sbSTerm}};
+    static const muniBreakClassOverride pastMax[] = {{0x110000, muni_sbSTerm}};
+    static const muniBreakClassOverride surrogate[] = {{0xD800, muni_sbSTerm}};
+    static const muniBreakClassOverride wordClass[] = {{0x003B, muni_wbWSegSpace + 1}};
+    static const muniBreakClassOverride sentenceClass[] = {{0x003B, muni_sbClose + 1}};
+    muniSegmentIterator iterator;
+    CHECK(muniSetBreakClassOverrides(nullptr, posix, 1) == muni_errorInvalid, "no iterator");
+    CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, nullptr, 1) == muni_errorInvalid,
+          "no table with a count");
+    CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, wordClass, 1) == muni_errorInvalid,
+          "past the last Word_Break class");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, sentenceClass, 1) == muni_errorInvalid,
+          "past the last Sentence_Break class");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, unordered, 2) == muni_errorInvalid,
+          "out of order");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, repeated, 2) == muni_errorInvalid,
+          "repeated");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, pastMax, 1) == muni_errorInvalid,
+          "past U+10FFFF");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, surrogate, 1) == muni_errorInvalid,
+          "a surrogate");
+    CHECK(muniInitGraphemeIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+          "grapheme iterators take no overrides");
+    CHECK(muniInitLineIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+          "line iterators take no overrides");
+    size_t offset;
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+          "no overrides after the first boundary");
+    CHECK(muniInitWordIterator(&iterator, nullptr, 0, true) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+          "no overrides once asked for a boundary");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -414,6 +562,8 @@ int main(void)
     TestLineBreaks();
     TestComplexBreaker();
     TestComplexBreakerRuns();
+    TestClassOverrides();
+    TestClassOverrideArguments();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

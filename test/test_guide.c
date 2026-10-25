@@ -137,6 +137,29 @@ static void GuideComplexBreaker(void)
     CHECK(s_asked > 0 && between, "the dictionary's break between the words");
 }
 
+static void GuideLanguageConventions(void)
+{
+    const char text[] = "Ti; Nai\xCD\xBE Ok.";
+    size_t length = sizeof(text) - 1;
+    static const muniBreakClassOverride greek[] = {
+        {0x003B, muni_sbSTerm},
+        {0x037E, muni_sbSTerm},
+    };
+    muniSegmentIterator sentences;
+    if (muniInitSentenceIterator(&sentences, text, length, false) == muni_success &&
+        muniSetBreakClassOverrides(&sentences, greek, 2) == muni_success)
+    {
+        // a sentence now ends after "; " as after "? "
+    }
+    size_t end = 0;
+    size_t count = 0;
+    while (muniNextSegmentBreak(&sentences, &end) == muni_success)
+    {
+        count += 1;
+    }
+    CHECK(count == 3, "three Greek sentences");
+}
+
 static void GuideBidi(void)
 {
     const char* text = "abc";
@@ -187,6 +210,7 @@ int main(void)
     GuideGraphemes();
     GuideLines();
     GuideComplexBreaker();
+    GuideLanguageConventions();
     GuideBidi();
     GuideScripts();
     GuideIdentifierKey();

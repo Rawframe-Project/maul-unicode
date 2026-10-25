@@ -28,6 +28,21 @@ Thai, Lao, Khmer and Burmese (Line_Break=SA) need a dictionary to break between 
 
 A run lies within the current piece and starts at an SA code point read whole from it. The breaker is asked for the next break each time the iterator passes the previous one. Its answer is caller input and is clamped: an answer at or before the position asked about, or past the run, means no break inside the run. A break before a combining mark is ignored.
 
+## Class overrides
+
+Locale data such as CLDR changes segmentation in two ways. Suppressions, like the abbreviation lists that keep "Mr." from ending a sentence, only remove boundaries, so a caller filters the boundaries an iterator reports and the library needs nothing. A class change, such as Greek's semicolon as STerm, also adds boundaries, so it has to reach the rules. `muniSetBreakClassOverrides` gives a word or sentence iterator a caller-owned table of code points and classes, and the rule file's lookup consults it before the rules see the class.
+
+The table is sorted by code point and checked once when it is set (code points, order, classes), so the lookup is a binary search and a table of any length costs a logarithm per code point, keeping segmentation linear in the text. With no table the lookup skips it. The iterator stores the pointer in its last eight bytes and the count in the word or sentence rule state, which has room for it, so the public iterator keeps its size. Only the lookup changes: rules that read another property of the code point, such as WB3c's Extended_Pictographic or the Line_Break=SA runs a word iterator hands to a complex breaker, see Unicode's values.
+
+## CLDR root
+
+CLDR's `common/segments/root.xml` writes the same rules as regular expressions, and locale files tailor them. Checked against CLDR 49, its word and sentence rules are UAX #29's. Two rules differ, and the library follows the current UAX in both, since its every answer comes from one Unicode version and the conformance files define them:
+
+- Line breaking, LB12a: root writes `[^ $SP $BA $HY $HH] × $GL`, which allows a break after BA before GL. Unicode 18 keeps BA × GL (`LineBreakTest.txt` has a BA × GL case under rule 12.1).
+- Grapheme clusters, GB9c: root still requires a consonant before the linker; Unicode 18 does not (see the trap below).
+
+Elsewhere root takes every class from the Unicode properties, so a difference can only come from the data's Unicode version.
+
 ## Script runs
 
 [`src/script_runs.c`](../../src/script_runs.c) keeps, for the current run, the set of scripts every code point in it can belong to, as a 256-bit mask over Script indexes. A code point with a real Script narrows the set to its Script or its Script_Extensions, and the run ends where that would leave no script; Common and Inherited code points leave it alone. Opening brackets remember the run's script on a stack of 32, whose oldest entry drops when it is full; a closing bracket that matches one counts as a code point of that script, so brackets around foreign text land in the script outside. The iterator shares the cursor and the piece protocol with the segmenters.

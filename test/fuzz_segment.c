@@ -5,6 +5,8 @@
 // byte picks the kind and a piece size; the rest is the text. Feeding the text in pieces must
 // give exactly the boundaries the whole text gives, and those must rise
 // strictly, fall on code point starts and end at the length of the text.
+// Word and sentence iterators are also run with class overrides for some
+// of the text's own code points, each given a class the input picks.
 // Word and sentence boundaries need not be grapheme boundaries: the
 // UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
 // to grapheme clusters) when punctuation follows, for example.
@@ -48,11 +50,16 @@ static muniResult FindLines(const char* text, size_t length, size_t* offsets, si
     return muniFindLineBreaks(text, length, offsets, nullptr, capacity, countOut);
 }
 
-static size_t Chunked(InitFn init, const char* text, size_t length, size_t piece, size_t* breaks)
+static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size_t overrideCount,
+                      const char* text, size_t length, size_t piece, size_t* breaks)
 {
     size_t fed = piece < length ? piece : length;
     muniSegmentIterator iterator;
     Require(init(&iterator, text, fed, fed < length) == muni_success);
+    if (overrideCount > 0)
+    {
+        Require(muniSetBreakClassOverrides(&iterator, overrides, overrideCount) == muni_success);
+    }
     size_t count = 0;
     for (;;)
     {
@@ -106,6 +113,63 @@ static void CheckBreaker(InitFn init, const char* text, size_t length)
     Require(status == muni_done && previous == length);
 }
 
+#define MAX_OVERRIDES 8
+
+// Up to MAX_OVERRIDES of the text's distinct code points in increasing
+// order, each with a class below classCount picked from the code point and
+// salt.
+static size_t BuildOverrides(const char* text, size_t length, uint8_t classCount, uint8_t salt,
+                             muniBreakClassOverride* overrides)
+{
+    size_t count = 0;
+    size_t position = 0;
+    while (position < length && count < MAX_OVERRIDES)
+    {
+        uint32_t codePoint;
+        size_t step;
+        (void)muniDecodeUtf8(text + position, length - position, &codePoint, &step);
+        position += step;
+        size_t at = 0;
+        while (at < count && overrides[at].codePoint < codePoint)
+        {
+            at++;
+        }
+        if (at < count && overrides[at].codePoint == codePoint)
+        {
+            continue;
+        }
+        memmove(overrides + at + 1, overrides + at, (count - at) * sizeof(*overrides));
+        overrides[at].codePoint = codePoint;
+        overrides[at].value = (uint8_t)((codePoint * 7u + salt) % classCount);
+        count++;
+    }
+    return count;
+}
+
+// With class overrides: the boundaries fed in pieces equal the whole
+// text's, rise, fall on code point starts and end at the length.
+static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const char* text,
+                           size_t length, size_t piece)
+{
+    static size_t whole[MAX_BREAKS];
+    static size_t pieces[MAX_BREAKS];
+    muniBreakClassOverride overrides[MAX_OVERRIDES];
+    size_t overrideCount = BuildOverrides(text, length, classCount, salt, overrides);
+    if (overrideCount == 0)
+    {
+        return;
+    }
+    size_t count = Chunked(init, overrides, overrideCount, text, length, length, whole);
+    Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
+    for (size_t i = 0; i < count; i++)
+    {
+        Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
+        Require(StartsCodePoint(text, length, whole[i]));
+    }
+    Require(Chunked(init, overrides, overrideCount, text, length, piece, pieces) == count);
+    Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -132,11 +196,16 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(inits[kind], text, length, piece, pieces) == count);
+    Require(Chunked(inits[kind], nullptr, 0, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
     if (kind == 1 || kind == 3)
     {
         CheckBreaker(inits[kind], text, length);
+    }
+    if (kind == 1 || kind == 2)
+    {
+        uint8_t classCount = kind == 1 ? muni_wbWSegSpace + 1 : muni_sbClose + 1;
+        CheckOverrides(inits[kind], classCount, data[0], text, length, piece);
     }
     return 0;
 }

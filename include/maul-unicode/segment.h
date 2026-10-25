@@ -25,6 +25,7 @@
 #define MAUL_UNICODE_SEGMENT_H
 
 #include "maul-unicode/base.h"
+#include "maul-unicode/properties.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -132,6 +133,43 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniSetComplexBreaker(muniSegmentIterator* iterator,
                                                              muniComplexBreakFn breaker,
                                                              void* context);
+
+    // A code point and the class a word or sentence iterator gives it in
+    // place of its Word_Break or Sentence_Break value, as a language's
+    // conventions may: Greek ends a sentence at U+003B and U+037E
+    // (muni_sbSTerm), and POSIX English keeps U+002E out of words
+    // (muni_wbMidNum).
+    typedef struct muniBreakClassOverride
+    {
+        uint32_t codePoint; // at most U+10FFFF, not a surrogate
+        uint8_t value;      // a muniWordBreak or muniSentenceBreak value
+    } muniBreakClassOverride;
+
+    /// Gives code points other classes in a word iterator (Word_Break
+    /// values) or a sentence iterator (Sentence_Break values). The rules
+    /// then treat each such code point as a code point of its new class;
+    /// what they read from other properties, such as Extended_Pictographic
+    /// and Line_Break=SA, stays as Unicode assigns it. The table is read in
+    /// place, so it must stay unchanged while the iterator is used.
+    ///
+    /// @param iterator   A word or sentence iterator not yet asked for a
+    ///                   boundary.
+    /// @param overrides  The code points and their classes, in strictly
+    ///                   increasing order of code point. May be NULL when
+    ///                   count is 0.
+    /// @param count      The number of overrides, at most UINT32_MAX; 0
+    ///                   restores the classes Unicode assigns.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
+    ///         NULL overrides with a nonzero count, another kind of
+    ///         iterator or one already started, a count over UINT32_MAX, a
+    ///         code point past U+10FFFF or a surrogate, code points out of
+    ///         order or repeated, or a value that is not a class of the
+    ///         iterator's property.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator and its overrides are used by one
+    /// thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniSetBreakClassOverrides(
+        muniSegmentIterator* iterator, const muniBreakClassOverride* overrides, size_t count);
 
     /// Hands an iterator the next piece of its text, after it returned
     /// muni_needMoreText. The iterator keeps no pointer to earlier pieces.

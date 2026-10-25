@@ -95,8 +95,9 @@ static bool IsAksara(uint8_t value, uint32_t codePoint)
 
 // LB1, without a tailoring: AI, SG and XX are AL; SA is CM for marks and
 // AL otherwise; CJ is NS.
-static uint8_t Lookup(uint32_t codePoint)
+static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
 {
+    (void)segmenter;
     uint8_t value = muniLookupLineBreak(codePoint);
     switch (value)
     {
