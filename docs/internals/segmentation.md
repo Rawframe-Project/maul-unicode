@@ -8,7 +8,7 @@ UAX #29 defines three segmentations of the same shape: walk the text and decide,
 
 The public struct is opaque storage. [`src/segment.c`](../../src/segment.c) copies the internal `muniSegmenter` in and out of it with `memcpy`, which keeps every access within the C aliasing rules, and dispatches on the kind once per boundary, not per code point.
 
-Its size follows the state: a `static_assert` in [`src/segmenter.h`](../../src/segmenter.h) keeps `muniSegmenter` within it, so a change that grows the state fails to build until the public iterator grows with it. On 64-bit targets `muniSegmenter` fills all 128 bytes: the class overrides' pointer takes the last 8, and the line options the one byte that was padding. The next option or piece of state therefore grows the public iterator, which changes the ABI, so its pull request's title carries `!`.
+Its size follows the state: a `static_assert` in [`src/segmenter.h`](../../src/segmenter.h) keeps `muniSegmenter` within it, so a change that grows the state fails to build until the public iterator grows with it. On 64-bit targets `muniSegmenter` fills all 128 bytes, with the line options in the byte after the hold's kind and the class overrides' pointer in the last 8. The next option or piece of state therefore grows the public iterator, which changes the ABI, so its pull request's title carries `!`.
 
 ## The engine and its holds
 

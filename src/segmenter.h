@@ -125,8 +125,7 @@ typedef struct muniSegmenter
     } rules;
 
     // The caller's class overrides of a word or sentence iterator, sorted
-    // by code point; their count is in the rules, where it fits the
-    // iterator's size.
+    // by code point; their count is in the word or sentence rules.
     const muniBreakClassOverride* overrides;
 } muniSegmenter;
 
