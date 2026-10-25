@@ -17,6 +17,13 @@ may change the API, the ABI and every data format.
   past U+10FFFF is false. No existing result changes
   ([#63](https://github.com/Rawframe-Project/maul-unicode/pull/63)).
 
+### Changed
+
+- On 32-bit x86 the library is built with SSE2 (`-msse2 -mfpmath=sse`,
+  from the family's compiler flags), so it needs a processor with SSE2;
+  results are the same
+  ([#57](https://github.com/Rawframe-Project/maul-unicode/pull/57)).
+
 ## [0.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.1...v0.2.0) (2026-10-25)
 
 ### Changed
