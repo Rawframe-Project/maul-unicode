@@ -68,6 +68,25 @@ if (muniSetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
 
 The iterator then never breaks before a combining mark, whatever the segmenter answers, and a word iterator reports whole words. The segmenter must give the same answer for the same run and offset each time.
 
+## Language conventions
+
+The classes Unicode assigns are the default. Some languages' conventions, as CLDR records them, give a few code points another class: Greek ends a sentence at the semicolon and at U+037E GREEK QUESTION MARK, and POSIX English keeps the full stop out of words while numbers keep it. A word or sentence iterator takes a table of such overrides before its first boundary:
+
+```c
+static const muniBreakClassOverride greek[] = {
+    {0x003B, muni_sbSTerm},
+    {0x037E, muni_sbSTerm},
+};
+muniSegmentIterator sentences;
+if (muniInitSentenceIterator(&sentences, text, length, false) == muni_success &&
+    muniSetBreakClassOverrides(&sentences, greek, 2) == muni_success)
+{
+    // a sentence now ends after "; " as after "? "
+}
+```
+
+The entries are in strictly increasing order of code point, and their values are Word_Break classes (`muni_wb...`) for a word iterator and Sentence_Break classes (`muni_sb...`) for a sentence iterator. The table is read in place, so it must stay unchanged while the iterator is used. Conventions that only remove boundaries, such as CLDR's abbreviations after which a sentence goes on, need no override: the caller skips those boundaries.
+
 ## Text in pieces
 
 An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniFeedSegmentIterator` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked is refused, since the unread rest of the piece would be lost.
