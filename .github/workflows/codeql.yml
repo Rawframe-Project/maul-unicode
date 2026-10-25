@@ -1,6 +1,8 @@
 # CodeQL on every pull request and on main. An advanced setup, since the
 # default one builds with the runner's default compiler, GCC 13, and the
 # library needs GCC 14 for C23 (cmake/CompilerFlags.cmake refuses older).
+# It builds in the CI image, whose HarfBuzz lets it analyze the HarfBuzz
+# functions too.
 name: codeql
 
 on:
@@ -20,6 +22,9 @@ jobs:
   analyze:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    container:
+      image: ghcr.io/rawframe-project/ci-cpp:2026.10.6@sha256:50c383f608f992c272196139d749f15978e35143a2876362b1e0aef6993480bd
+      options: --init
     permissions:
       contents: read
       security-events: write
@@ -32,11 +37,11 @@ jobs:
           languages: c-cpp
           build-mode: manual
       - name: Build
-        # The library with every component, the generator and the tests;
-        # the HarfBuzz functions are left out, as they need HarfBuzz.
+        # The library with every component and the HarfBuzz functions, the
+        # generator, the tests and the samples: the CI cell of that name.
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc-14 -DMAUL_UNICODE_BUILD_BENCH=OFF
-          cmake --build build -j 4
+          cmake --preset linux-harfbuzz
+          cmake --build --preset linux-harfbuzz
       - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           category: /language:c-cpp
