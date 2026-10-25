@@ -8,7 +8,7 @@ What verifies a change, locally and in CI, and the time each may take.
 
 | Tier | Runs | Budget |
 |---|---|---|
-| `changed` | The source, module, length, API documentation and snippet rules, the organization's documentation check, `clang-format` on the changed C files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
+| `changed` | The source, module, length, API documentation and snippet rules, the Unicode files against their SHA-256, the organization's documentation check, `clang-format` on the changed C files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
 | `pr` | Every rule on every file, the generated tables against the generator and their ceilings, clang-tidy, the `linux-harfbuzz` and `linux-clang-20-asan` presets, and 10 seconds of fuzzing per target. | under 10 minutes |
 | `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the HarfBuzz functions, the package test and the exports test, every optional component left out, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
 
@@ -23,7 +23,7 @@ Run `changed` before every push. On the shared development machine, run `pr` and
 | `changes` | Whether a pull request changes anything beyond documentation; when it does not, the build jobs below are skipped. |
 | `docs` | The organization's documentation check: allowed files, the em dash, record numbers, page sizes, links. `tools/ucd/` is excluded. |
 | `zizmor` | The workflows: injection, persisted credentials, permissions, unpinned actions. |
-| `checks` | `clang-format`, the family's source rules, the module graph, lengths, API documentation, documentation snippets, that the documentation site builds, that `munigen` regenerates `src/generated/` byte for byte, the table ceilings, and clang-tidy. It runs on documentation changes too. |
+| `checks` | `clang-format`, the family's source rules, the module graph, lengths, API documentation, documentation snippets, that every file in `tools/ucd/` matches its SHA-256 in `tools/ucd/README.md` (`tools/check_ucd.py`), that the documentation site builds, that `munigen` regenerates `src/generated/` byte for byte, the table ceilings, and clang-tidy. It runs on documentation changes too. |
 | `build` | One call of the organization's `cpp.yml` per preset: GCC 14 and Clang 20 in Release, Clang with AddressSanitizer and UBSan (each test repeated up to three times on a pull request, so a flaky one fails before it merges), Clang with ThreadSanitizer, the shared library (with the HarfBuzz functions, so they link only against what it exports), the static library with the HarfBuzz functions, every optional component left out, macOS and `clang-cl` on Windows. All build with warnings as errors; the shared and HarfBuzz cells run the package test, and the shared cell checks that the library exports the public functions and nothing else. ccache is restored on every run and saved only from `main`. |
 | `msvc-headers` | Every public header compiled by MSVC's `cl` as C17 and C++17 with `/W4 /WX`. |
 | `fuzz` | Every fuzz target from its seeds in `test/seeds/`, four at a time: 20 seconds each on a pull request, 90 seconds on `main` and at night. A finding uploads the logs and the crashing input. |

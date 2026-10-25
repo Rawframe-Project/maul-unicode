@@ -56,7 +56,7 @@ It prints each table's size and layout, and stops at the first table that does n
 
 A new Unicode version is a new minor release of the library, made in one pull request:
 
-1. Replace the files in `tools/ucd/` with the new release's, from `https://www.unicode.org/Public/<version>/ucd/` (its `auxiliary/`, `extracted/` and `emoji/` folders flattened into `tools/ucd/`) and `https://www.unicode.org/Public/<version>/security/` (`confusables.txt`, `IdentifierStatus.txt`). The conformance test files come from the same `ucd/` and `ucd/auxiliary/` folders. Update the version and the SHA-256 of every file in `tools/ucd/README.md` (`sha256sum tools/ucd/*.txt`).
+1. Replace the files in `tools/ucd/` with the new release's, from `https://www.unicode.org/Public/<version>/ucd/` (its `auxiliary/`, `extracted/` and `emoji/` folders flattened into `tools/ucd/`) and `https://www.unicode.org/Public/<version>/security/` (`confusables.txt`, `IdentifierStatus.txt`). The conformance test files come from the same `ucd/` and `ucd/auxiliary/` folders. Update the version and the SHA-256 of every file in `tools/ucd/README.md` (`(cd tools/ucd && sha256sum *.txt)`, which prints the bare names the list uses); `tools/check_ucd.py` fails until the list matches the files.
 2. Set `MUNI_UNICODE_VERSION_*` in `include/maul-unicode/base.h`.
 3. Regenerate the tables. New property values (a new script, a new line break class) need the public enumerations and the generator's value lists extended together; the known-value tests catch a mismatch.
 4. Run the full check. Conformance failures point at rule changes: read the new UAX revisions' "Modifications" sections and change the rule files.
