@@ -7,11 +7,30 @@ may change the API, the ABI and every data format.
 
 ## [0.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.0.1...v0.1.0) (2026-10-25)
 
+Word, sentence and line segmentation can follow a language's
+conventions where locale data such as CLDR gives a character another
+class.
 
 ### Added
 
-* **line:** resolve CJ as ID on request ([#38](https://github.com/Rawframe-Project/maul-unicode/issues/38)) ([56d3e85](https://github.com/Rawframe-Project/maul-unicode/commit/56d3e85651eaac3721e0deae0eb52132726e5ec2)), closes [#16](https://github.com/Rawframe-Project/maul-unicode/issues/16)
-* **segment:** override break classes on word and sentence iterators ([#36](https://github.com/Rawframe-Project/maul-unicode/issues/36)) ([be0d183](https://github.com/Rawframe-Project/maul-unicode/commit/be0d183a954900bc013d1a54214e5939975bbebf)), closes [#15](https://github.com/Rawframe-Project/maul-unicode/issues/15)
+- Word and sentence iterators take per-code-point class overrides
+  (`muniSetBreakClassOverrides`), for conventions such as Greek, which
+  ends a sentence at U+003B and U+037E, and POSIX English, which keeps
+  the full stop out of words but not out of numbers. The table is the
+  caller's, sorted by code point and read in place.
+- Line iterators take options (`muniSetLineOptions`).
+  `muni_lineCjAsIdeographic` allows a line break before the small
+  kana, the prolonged sound mark and the other Line_Break=CJ
+  characters, as Chinese and Japanese line breaking does.
+
+### Changed
+
+- The shared library's SONAME carries the whole version before 1.0:
+  `libmaul-unicode.so.0.1.0` instead of `.so.0.0`, so a program is
+  never loaded with another 0.x release than the one it was built
+  against.
+- The README's quick start installs Git, CMake and GCC 14 first on
+  Ubuntu 24.04, whose default GCC 13 the build refuses.
 
 ## [0.0.1](https://github.com/Rawframe-Project/maul-unicode/releases/tag/v0.0.1) (2026-10-23)
 
