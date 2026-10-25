@@ -6,7 +6,8 @@
 // give exactly the boundaries the whole text gives, and those must rise
 // strictly, fall on code point starts and end at the length of the text.
 // Word and sentence iterators are also run with class overrides for some
-// of the text's own code points, each given a class the input picks.
+// of the text's own code points, each given a class the input picks, and
+// line iterators with CJ resolved as ID.
 // Word and sentence boundaries need not be grapheme boundaries: the
 // UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
 // to grapheme clusters) when punctuation follows, for example.
@@ -51,7 +52,8 @@ static muniResult FindLines(const char* text, size_t length, size_t* offsets, si
 }
 
 static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size_t overrideCount,
-                      const char* text, size_t length, size_t piece, size_t* breaks)
+                      uint32_t lineOptions, const char* text, size_t length, size_t piece,
+                      size_t* breaks)
 {
     size_t fed = piece < length ? piece : length;
     muniSegmentIterator iterator;
@@ -59,6 +61,10 @@ static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size
     if (overrideCount > 0)
     {
         Require(muniSetBreakClassOverrides(&iterator, overrides, overrideCount) == muni_success);
+    }
+    if (lineOptions != 0)
+    {
+        Require(muniSetLineOptions(&iterator, lineOptions) == muni_success);
     }
     size_t count = 0;
     for (;;)
@@ -146,6 +152,25 @@ static size_t BuildOverrides(const char* text, size_t length, uint8_t classCount
     return count;
 }
 
+// With CJ as ID: the line breaks fed in pieces equal the whole text's,
+// rise, fall on code point starts and end at the length.
+static void CheckLineOptions(const char* text, size_t length, size_t piece)
+{
+    static size_t whole[MAX_BREAKS];
+    static size_t pieces[MAX_BREAKS];
+    size_t count = Chunked(muniInitLineIterator, nullptr, 0, muni_lineCjAsIdeographic, text, length,
+                           length, whole);
+    Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
+    for (size_t i = 0; i < count; i++)
+    {
+        Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
+        Require(StartsCodePoint(text, length, whole[i]));
+    }
+    Require(Chunked(muniInitLineIterator, nullptr, 0, muni_lineCjAsIdeographic, text, length, piece,
+                    pieces) == count);
+    Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+}
+
 // With class overrides: the boundaries fed in pieces equal the whole
 // text's, rise, fall on code point starts and end at the length.
 static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const char* text,
@@ -159,14 +184,14 @@ static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const 
     {
         return;
     }
-    size_t count = Chunked(init, overrides, overrideCount, text, length, length, whole);
+    size_t count = Chunked(init, overrides, overrideCount, 0, text, length, length, whole);
     Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
     for (size_t i = 0; i < count; i++)
     {
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(init, overrides, overrideCount, text, length, piece, pieces) == count);
+    Require(Chunked(init, overrides, overrideCount, 0, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
@@ -196,11 +221,15 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(inits[kind], nullptr, 0, text, length, piece, pieces) == count);
+    Require(Chunked(inits[kind], nullptr, 0, 0, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
     if (kind == 1 || kind == 3)
     {
         CheckBreaker(inits[kind], text, length);
+    }
+    if (kind == 3)
+    {
+        CheckLineOptions(text, length, piece);
     }
     if (kind == 1 || kind == 2)
     {

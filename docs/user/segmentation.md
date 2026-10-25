@@ -43,6 +43,15 @@ if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 
 A layout engine measures the text between opportunities and ends each line at the last opportunity that fits, or at the first mandatory one. Spaces before an opportunity belong to the line before it and are not drawn at its end. `muniFindLineBreaks` fills arrays of offsets and mandatory flags.
 
+Chinese and Japanese text often allows a break before the small kana, the prolonged sound mark and similar characters (Line_Break=CJ), which the default rules keep with the character before them. CSS calls the default strict line breaking, and its normal and loose line breaking allow those breaks. A line iterator takes them as ideographs with an option, set before its first break:
+
+```c
+if (muniSetLineOptions(&lines, muni_lineCjAsIdeographic) != muni_success)
+{
+    // lines is not a line iterator, or has already started
+}
+```
+
 ## Thai, Lao, Khmer and Burmese
 
 These scripts write words without spaces (Line_Break class SA), so breaking inside them needs a dictionary, which the library does not carry. By default, as rule LB1 of UAX #14 allows, a run of SA text has no line break inside it, and word segmentation gives one word per cluster.
