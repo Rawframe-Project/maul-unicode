@@ -17,13 +17,14 @@
 #                            pass.
 #   tools/check.sh full      also every other Linux preset (ThreadSanitizer,
 #                            shared with HarfBuzz and the package test,
-#                            minimal, Clang Release, GCC Release) and
-#                            longer fuzzing.
+#                            minimal, 32-bit x86, Clang Release, GCC
+#                            Release) and longer fuzzing.
 #
 # The builds are the CI cells' CMake presets (CMakePresets.json), in
-# out/<preset>; the other trees go to out/check-*. Needs gcc-14, clang-20,
-# clang-tidy-20, ninja and the clang-format version CI pins, HarfBuzz and
-# ICU: the organization's CI image has them all. The org documentation
+# out/<preset>; the other trees go to out/check-*. Needs gcc-14 with the
+# 32-bit C libraries, clang-20, clang-tidy-20, ninja and the clang-format
+# version CI pins, HarfBuzz and ICU: the organization's CI image has them
+# all. The org documentation
 # check runs when the organization's .github checkout is at ORG_DEFAULTS
 # (default: ../../.github from the repository).
 set -euo pipefail
@@ -199,7 +200,7 @@ done
 
 [ "$tier" = full ] || exit 0
 
-for name in linux-clang-20-tsan linux-shared linux-minimal linux-clang-20 linux-gcc-14; do
+for name in linux-clang-20-tsan linux-shared linux-minimal linux-i686-gcc-14 linux-clang-20 linux-gcc-14; do
     preset "$name"
 done
 

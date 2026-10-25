@@ -7,7 +7,7 @@ How to build, debug and change Maul Unicode as a maintainer. Building and instal
 The organization's CI image, `ghcr.io/rawframe-project/ci-cpp`, has everything below; CI runs every Linux job in it, pinned by digest. On another machine:
 
 - CMake 3.25 or newer and Ninja.
-- GCC 14 and Clang 20 (`clang-20`, `clang-tidy-20`), with the sanitizer and libFuzzer runtimes (`libclang-rt-20-dev` on Debian and Ubuntu).
+- GCC 14 and Clang 20 (`clang-20`, `clang-tidy-20`), with the sanitizer and libFuzzer runtimes (`libclang-rt-20-dev` on Debian and Ubuntu), and GCC's 32-bit C libraries for `linux-i686-gcc-14` (`gcc-14-multilib`).
 - `clang-format` at the version CI pins: `pip install clang-format==22.1.5`. Another version formats differently.
 - Python 3 for the checks and the documentation site (`pip install markdown==3.6` for the site only).
 - Optional: HarfBuzz (`libharfbuzz-dev`) for the HarfBuzz functions, ICU (`libicu-dev`) for the ICU fuzz target, Emscripten for web builds.
@@ -35,6 +35,14 @@ cmake --preset linux-clang-20-asan
 cmake --build --preset linux-clang-20-asan
 ctest --preset linux-clang-20-asan -L segment
 ./out/linux-clang-20-asan/test_segment
+```
+
+On a host without the 32-bit C libraries, `linux-i686-gcc-14` runs in the CI image of `ci.yml`'s pin, on a copy of the tree:
+
+```sh
+mkdir <dir> && git archive HEAD | tar -x -C <dir>
+docker run --rm --init -v <dir>:/src -w /src ghcr.io/rawframe-project/ci-cpp:<pin> sh -c \
+  'cmake --preset linux-i686-gcc-14 && cmake --build --preset linux-i686-gcc-14 && ctest --preset linux-i686-gcc-14'
 ```
 
 `linux-shared` and `linux-harfbuzz` also run the `package` test (`MAUL_UNICODE_TEST_PACKAGE`, `cmake/PackageTest.cmake`), which installs the build and builds `samples/minimal` against it.
