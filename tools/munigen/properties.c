@@ -436,6 +436,8 @@ void WriteProperties(void)
     LoadBinary("DerivedCoreProperties.txt", "Default_Ignorable_Code_Point", values);
     WriteTable(values, "default_ignorable", "DefaultIgnorable", "Default_Ignorable_Code_Point",
                "DerivedCoreProperties.txt");
+    LoadBinary("PropList.txt", "Ideographic", values);
+    WriteTable(values, "ideographic", "Ideographic", "Ideographic", "PropList.txt");
     WriteDecimalZeros();
     LoadEnumerated("LineBreak.txt", "lb", nullptr, s_lineBreakNames, COUNT_OF(s_lineBreakNames),
                    values);

@@ -89,6 +89,11 @@ static uint8_t DefaultIgnorable(uint32_t codePoint)
     return muniIsDefaultIgnorable(codePoint) ? 1 : 0;
 }
 
+static uint8_t Ideographic(uint32_t codePoint)
+{
+    return muniIsIdeographic(codePoint) ? 1 : 0;
+}
+
 static void TestBreakPropertiesMatchTheUcdEverywhere(void)
 {
     CHECK(HashAll(GraphemeBreak) == muniGraphemeClusterBreakHash, "Grapheme_Cluster_Break hash");
@@ -99,6 +104,7 @@ static void TestBreakPropertiesMatchTheUcdEverywhere(void)
     CHECK(HashAll(WhiteSpace) == muniWhiteSpaceHash, "White_Space hash");
     CHECK(HashAll(DefaultIgnorable) == muniDefaultIgnorableHash,
           "Default_Ignorable_Code_Point hash");
+    CHECK(HashAll(Ideographic) == muniIdeographicHash, "Ideographic hash");
 }
 
 static void TestBreakPropertiesKnownValues(void)
@@ -112,8 +118,19 @@ static void TestBreakPropertiesKnownValues(void)
           "# can start a keycap");
     CHECK(muniIsEmojiModifier(0x1F3FB) && muniIsEmojiModifierBase(0x1F44D),
           "a skin tone and a thumbs up");
+    CHECK(muniIsIdeographic(0x3006) && muniIsIdeographic(0x3007) && muniIsIdeographic(0x4E00),
+          "the closing mark, number zero and a CJK ideograph are Ideographic");
+    CHECK(muniIsIdeographic(0x16FE4), "the Khitan Small Script filler, a mark, is Ideographic");
+    CHECK(muniIsIdeographic(0x17000) && muniIsIdeographic(0x18E00) && muniIsIdeographic(0x1B170) &&
+              muniIsIdeographic(0x3D000),
+          "Tangut, Jurchen, Nushu and Small Seal are Ideographic");
+    CHECK(!muniIsIdeographic(0x2E80) && !muniIsIdeographic(0x2FD5),
+          "the CJK radicals, Script Han, are not Ideographic");
+    CHECK(!muniIsIdeographic(0x3005) && !muniIsIdeographic(0x303B),
+          "the iteration marks CLDR adds by hand are not Ideographic");
     CHECK(!muniIsWhiteSpace(0x110000) && !muniIsDefaultIgnorable(0x110000) &&
-              !muniIsExtendedPictographic(0x110000),
+              !muniIsExtendedPictographic(0x110000) && !muniIsIdeographic(0x110000) &&
+              !muniIsIdeographic(UINT32_MAX),
           "past U+10FFFF has no binary property");
     CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
 }
