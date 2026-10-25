@@ -43,5 +43,13 @@ int Bad(void)
     {
         return SKIP_CODE; // expect: skip
     }
+    if (now == 2)
+    {
+        return now > 3 ? 1 : SKIP; // expect: skip
+    }
+    if (now == 4)
+    {
+        return now > 5 ? SKIP : 1; // expect: skip
+    }
     return 77; // expect: skip
 }

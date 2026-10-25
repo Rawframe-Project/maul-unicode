@@ -12,17 +12,18 @@
 #   depend on timing;
 # - wall-clock: time(), gettimeofday, timespec_get, every CLOCK_REALTIME
 #   clock and CLOCK_TAI, and the std::chrono wall clocks (system_clock,
-#   utc_clock, tai_clock, gps_clock, file_clock), whose answers differ
-#   from run to run;
+#   utc_clock, tai_clock, gps_clock, file_clock, and high_resolution_clock,
+#   which libstdc++ makes system_clock; a monotonic clock is steady_clock),
+#   whose answers differ from run to run;
 # - retry: an identifier or label with a part retry, retries, attempt,
 #   attempts or tries, or the parts try and again together (as in maxTries
 #   or try_again, not entries, against, or again alone, which tests use
 #   for a result computed a second time), the shape of a loop that runs an
 #   assertion until it passes;
-# - skip: 77 anywhere in a return or exit expression, a return of a name
-#   with SKIP in it, and macros named like SKIP (GTEST_SKIP), and in the
-#   CMake files the SKIP_RETURN_CODE, SKIP_REGULAR_EXPRESSION and DISABLED
-#   test properties.
+# - skip: 77 anywhere in a return or exit expression, a name with SKIP in
+#   it anywhere in a return expression, and macros named like SKIP
+#   (GTEST_SKIP), and in the CMake files the SKIP_RETURN_CODE,
+#   SKIP_REGULAR_EXPRESSION and DISABLED test properties.
 #
 # A use that must stay carries "// hygiene: <reason>" on its line or the
 # line before (in CMake, "# hygiene: <reason>"), in a comment, with a
@@ -60,12 +61,13 @@ C_RULES = [
      "a sleep makes the test slow and its result depend on timing"),
     ("wall-clock",
      re.compile(r"(?<![\w.>])(time|gettimeofday|timespec_get)\s*\(|\bCLOCK_REALTIME\w*|"
-                r"\bCLOCK_TAI\b|\b(system_clock|utc_clock|tai_clock|gps_clock|file_clock)\b"),
+                r"\bCLOCK_TAI\b|"
+                r"\b(system_clock|utc_clock|tai_clock|gps_clock|file_clock|high_resolution_clock)\b"),
      "the wall clock differs from run to run"),
     ("retry", None, "a test that passes on a later try hides a flaky one"),
     ("skip",
      re.compile(r"\b(exit|_Exit|quick_exit)\s*\([^;]*\b77\b|\breturn\b[^;]*\b77\b|"
-                r"\breturn\s*\(?\s*\w*SKIP\w*\b|\b\w*SKIP\w*\s*\("),
+                r"\breturn\b[^;]*\b\w*SKIP\w*\b|\b\w*SKIP\w*\s*\("),
      "a skipped test checks nothing"),
 ]
 RETRY_WORDS = {"retry", "retries", "attempt", "attempts", "tries"}
