@@ -5,6 +5,14 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.0.1...v0.1.0) (2026-10-25)
+
+
+### Added
+
+* **line:** resolve CJ as ID on request ([#38](https://github.com/Rawframe-Project/maul-unicode/issues/38)) ([56d3e85](https://github.com/Rawframe-Project/maul-unicode/commit/56d3e85651eaac3721e0deae0eb52132726e5ec2)), closes [#16](https://github.com/Rawframe-Project/maul-unicode/issues/16)
+* **segment:** override break classes on word and sentence iterators ([#36](https://github.com/Rawframe-Project/maul-unicode/issues/36)) ([be0d183](https://github.com/Rawframe-Project/maul-unicode/commit/be0d183a954900bc013d1a54214e5939975bbebf)), closes [#15](https://github.com/Rawframe-Project/maul-unicode/issues/15)
+
 ## [0.0.1](https://github.com/Rawframe-Project/maul-unicode/releases/tag/v0.0.1) (2026-10-23)
 
 The first release: Unicode algorithms and character properties from
