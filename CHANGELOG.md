@@ -5,6 +5,25 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.2.0...v0.3.0) (2026-10-25)
+
+### Added
+
+- `muniIsIdeographic` tells whether a code point has Unicode's
+  Ideographic property (PropList.txt), which a word rule over ideographs
+  such as CLDR's Japanese one needs. It is not Script=Han: Han includes
+  the CJK radicals, which are not Ideographic, and leaves out Tangut,
+  Khitan Small Script, Jurchen, Nushu and Small Seal, which are. A value
+  past U+10FFFF is false. No existing result changes
+  ([#63](https://github.com/Rawframe-Project/maul-unicode/pull/63)).
+
+### Changed
+
+- On 32-bit x86 the library is built with SSE2 (`-msse2 -mfpmath=sse`,
+  from the family's compiler flags), so it needs a processor with SSE2;
+  results are the same
+  ([#57](https://github.com/Rawframe-Project/maul-unicode/pull/57)).
+
 ## [0.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.1...v0.2.0) (2026-10-25)
 
 ### Changed
