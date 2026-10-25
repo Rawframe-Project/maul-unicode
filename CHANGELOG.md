@@ -5,6 +5,19 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.1.0...v0.1.1) (2026-10-25)
+
+### Fixed
+
+- `muniSetBreakClassOverrides` refuses a count over 0x10F800, one entry
+  per scalar value, before it reads any entry, and `segment.h`
+  documents that limit. The old check against `UINT32_MAX` never fired
+  where `size_t` is 32 bits. GCC 14 warned about it there
+  (`-Wtype-limits`), which stopped builds that treat warnings as errors
+  (`MAUL_UNICODE_WERROR`). A larger count is still `muni_errorInvalid`,
+  and valid tables behave the same
+  ([#50](https://github.com/Rawframe-Project/maul-unicode/pull/50)).
+
 ## [0.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.0.1...v0.1.0) (2026-10-25)
 
 Word, sentence and line segmentation can follow a language's
