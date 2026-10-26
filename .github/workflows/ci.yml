@@ -320,6 +320,42 @@ jobs:
             fi
             node "$t"
           done
+      - name: The quarantined tests
+        # At night and on a manual run, as the quarantine job runs the
+        # native ones, so a suite quarantined here still counts its green
+        # nights. tools/run_quarantine.sh's contract under node: a failure
+        # is a warning and a summary line, and a suite that did not run or
+        # a WebAssembly memory trap fails the step.
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          quarantined=$(ctest --test-dir out/web -N -L '^quarantine$' | sed -n 's/^ *Test *#[0-9]*: //p')
+          if [ -z "$quarantined" ]; then
+            echo "Quarantined tests in out/web: none." >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          status=0
+          for name in $quarantined; do
+            t="out/web/test_$name.js"
+            if [ ! -f "$t" ]; then
+              echo "::error::quarantined test $name was not built"
+              status=1
+              continue
+            fi
+            log=$(mktemp)
+            if node "$t" >"$log" 2>&1; then
+              echo "- \`$name\` passed" >>"$GITHUB_STEP_SUMMARY"
+            elif grep -q -E 'RuntimeError: (memory access out of bounds|null function|index out of bounds)' "$log"; then
+              cat "$log"
+              echo "::error::quarantined test $name hit a memory trap"
+              status=1
+            else
+              cat "$log"
+              echo "::warning::quarantined test $name failed"
+              echo "- \`$name\` failed (a known flake; it has an issue)" >>"$GITHUB_STEP_SUMMARY"
+            fi
+            rm -f "$log"
+          done
+          exit "$status"
       - name: Size
         # The static library in total, and each optional component's cost:
         # the library with it less the library without it. Security needs
