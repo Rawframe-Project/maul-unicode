@@ -37,7 +37,7 @@ env:
 jobs:
   # Whether anything beyond documentation changed; the builds skip when not.
   changes:
-    uses: Rawframe-Project/.github/.github/workflows/changes.yml@23883e3610442d449485b0a5ec5192709efbc33c # v0.0.23
+    uses: Rawframe-Project/.github/.github/workflows/changes.yml@56543e92d01e59abdb4299c4824a0c1facdc08ce # v0.0.25
     permissions:
       pull-requests: read
 
@@ -52,12 +52,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Rawframe-Project/.github/.github/actions/docs-check@23883e3610442d449485b0a5ec5192709efbc33c # v0.0.23
+      - uses: Rawframe-Project/.github/.github/actions/docs-check@56543e92d01e59abdb4299c4824a0c1facdc08ce # v0.0.25
         with:
           exclude: tools/ucd
 
   zizmor:
-    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@23883e3610442d449485b0a5ec5192709efbc33c # v0.0.23
+    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@56543e92d01e59abdb4299c4824a0c1facdc08ce # v0.0.25
     permissions:
       contents: read
 
@@ -147,7 +147,7 @@ jobs:
           - { preset: linux-i686-gcc-14 }
           - { preset: macos-clang, runner: macos-15 }
           - { preset: windows-clang-cl, runner: windows-2025 }
-    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@23883e3610442d449485b0a5ec5192709efbc33c # v0.0.23
+    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@56543e92d01e59abdb4299c4824a0c1facdc08ce # v0.0.25
     permissions:
       contents: read
     with:
@@ -206,6 +206,7 @@ jobs:
       # Caches are immutable: each run saves a new entry and the next run
       # restores the latest.
       - name: Restore the corpus
+        if: github.event_name != 'pull_request'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: out/corpus
@@ -213,8 +214,9 @@ jobs:
           restore-keys: fuzz-corpus-
       - name: Run
         # Four targets at a time, one per core of the runner; each keeps its
-        # full time. A target's output goes to its log, printed when it
-        # finds something.
+        # full time. tools/fuzz_target.sh keeps each target's log, seed
+        # and findings on the runner and reports a finding without its
+        # input; the reports print once every target has finished.
         #
         # A dispatch's fuzz-seconds must leave time for the minimize and
         # save, or the timeout kills the job and the corpus is lost: the
@@ -229,26 +231,22 @@ jobs:
             echo "::error::fuzz-seconds must be a whole number from 1 to 800, not $FUZZ_SECONDS"
             exit 1
           fi
-          mkdir -p out/fuzz-logs
-          fuzz_one() {
-            name=$(basename "$1")
+          # Seeds reach inputs random bytes rarely form, like Thai text;
+          # they join whatever corpus the cache brought.
+          for target in out/fuzz/fuzz_*; do
+            name=$(basename "$target")
             mkdir -p "out/corpus/$name"
-            # Seeds reach inputs random bytes rarely form, like Thai text;
-            # they join whatever corpus the cache brought.
             if [ -d "test/seeds/$name" ]; then
               cp test/seeds/"$name"/* "out/corpus/$name"/
             fi
-            if "$1" -max_total_time="$FUZZ_SECONDS" -max_len=256 "out/corpus/$name" \
-              >"out/fuzz-logs/$name.log" 2>&1; then
-              echo "$name: no finding"
-            else
-              tail -n 60 "out/fuzz-logs/$name.log"
-              echo "::error::$name found something"
-              return 1
-            fi
-          }
-          export -f fuzz_one
-          printf '%s\n' out/fuzz/fuzz_* | xargs -P 4 -I {} bash -c 'fuzz_one "$1"' _ {}
+          done
+          rm -rf out/fuzz-reports
+          status=0
+          printf '%s\n' out/fuzz/fuzz_* |
+            xargs -P 4 -I {} sh -c 'tools/fuzz_target.sh "$1" -max_total_time="$FUZZ_SECONDS" -max_len=256 "out/corpus/$(basename "$1")"' _ {} ||
+            status=$?
+          cat out/fuzz-reports/*.txt 2>/dev/null || true
+          exit "$status"
       # Each corpus is merged into a fresh directory and swapped in only
       # when the merge finished, so a failed merge leaves the old corpus.
       - name: Minimize the corpus
@@ -257,12 +255,15 @@ jobs:
           merge_one() {
             name=$(basename "$1")
             rm -rf "out/merged/$name" && mkdir -p "out/merged/$name"
-            if "$1" -merge=1 -max_len=256 "out/merged/$name" "out/corpus/$name" \
-              >"out/fuzz-logs/$name.merge.log" 2>&1; then
+            status=0
+            "$1" -merge=1 -max_len=256 "out/merged/$name" "out/corpus/$name" \
+              >"out/fuzz-logs/$name.merge.log" 2>&1 || status=$?
+            if [ "$status" -eq 0 ]; then
               rm -rf "out/corpus/$name" && mv "out/merged/$name" "out/corpus/$name"
             else
-              tail -n 30 "out/fuzz-logs/$name.merge.log"
-              echo "::error::$name: the merge failed"
+              # A merge reruns every input, so its log may hold one: it
+              # stays on the runner, and only the target and status print.
+              echo "::error::$name: the merge failed with status $status"
               return 1
             fi
           }
@@ -289,19 +290,6 @@ jobs:
         with:
           path: out/corpus
           key: fuzz-corpus-${{ github.run_id }}
-      - name: Fuzz logs and crash inputs
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: fuzz
-          path: |
-            out/fuzz-logs/
-            crash-*
-            leak-*
-            timeout-*
-            oom-*
-          if-no-files-found: ignore
-          retention-days: 7
 
   # The library and its tests under Emscripten and Node, and the size of the
   # static library in total and per optional component. The CI image has no
