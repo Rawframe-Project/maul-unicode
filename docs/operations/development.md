@@ -77,7 +77,7 @@ A new Unicode version is a new minor release of the library, made in one pull re
 
 ## Reproducing a fuzz finding
 
-A fuzz target writes the input that failed as `crash-<hash>` in its working directory, and CI uploads nothing, so run the target locally on the same seeds:
+A fuzz target writes the input that failed as `crash-<hash>` in its working directory. CI keeps that input, its seed and the target's log on the runner and prints only the report of `tools/fuzz_target.sh`: the target, the kind of each finding and the sanitizers' report. So run the target locally on the same seeds:
 
 ```sh
 cmake -B out/fuzz -G Ninja -DCMAKE_C_COMPILER=clang-20 -DMAUL_UNICODE_FUZZ=ON -DMAUL_UNICODE_BUILD_TESTS=OFF

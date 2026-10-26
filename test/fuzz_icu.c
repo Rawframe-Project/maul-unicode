@@ -35,7 +35,7 @@
 //   bracket: ICU 74 leaves such a mark out of rule N0, against
 //   BidiCharacterTest.txt.
 //
-// A difference prints the operation and the input, then aborts, so
+// A difference prints the operation, never the input, then aborts, so
 // libFuzzer keeps the input.
 
 #include "maul-unicode/bidi.h"
@@ -57,14 +57,9 @@
 #define MAX_UNITS (MAX_INPUT * 18 * 3)
 #define MAX_BYTES (MAX_UNITS * 3)
 
-static void Differ(const char* operation, const uint8_t* data, size_t size)
+static void Differ(const char* operation)
 {
-    fprintf(stderr, "%s differs from ICU for:", operation);
-    for (size_t i = 0; i < size; i++)
-    {
-        fprintf(stderr, " %02X", data[i]);
-    }
-    fprintf(stderr, "\n");
+    fprintf(stderr, "%s differs from ICU\n", operation);
     abort();
 }
 
@@ -95,7 +90,7 @@ static void CompareConversion(const char* text, size_t length)
     if (result.status != muni_success || U_FAILURE(error) || needed != (size_t)theirLength ||
         memcmp(ours, theirs, needed * sizeof(uint16_t)) != 0)
     {
-        Differ("UTF-8 to UTF-16 with replacement", (const uint8_t*)text, length);
+        Differ("UTF-8 to UTF-16 with replacement");
     }
 }
 
@@ -144,7 +139,7 @@ static void CompareNormalization(const char* text, size_t length, const UChar* u
             !IcuToUtf8(normalized, count, theirs, &theirLength) ||
             !Same(ours, needed, theirs, theirLength))
         {
-            Differ(names[form], (const uint8_t*)text, length);
+            Differ(names[form]);
         }
     }
 }
@@ -184,7 +179,7 @@ static void CompareCasefold(const char* text, size_t length, const UChar* units,
     if (result.status != muni_success || U_FAILURE(error) ||
         !IcuToUtf8(folded, count, theirs, &theirLength) || !Same(ours, needed, theirs, theirLength))
     {
-        Differ("NFKC_Casefold", (const uint8_t*)text, length);
+        Differ("NFKC_Casefold");
     }
 }
 
@@ -266,7 +261,7 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
             !IcuToUtf8(mapped, count, theirs, &theirLength) ||
             !Same(ours, needed, theirs, theirLength))
         {
-            Differ(s_cases[i].name, (const uint8_t*)text, length);
+            Differ(s_cases[i].name);
         }
     }
 }
@@ -491,7 +486,7 @@ static void CompareBreaks(const char* name, FindFn* find, UBreakIteratorType typ
     }
     if (!same || k != ourCount)
     {
-        Differ(name, (const uint8_t*)text, length);
+        Differ(name);
     }
 }
 
@@ -595,7 +590,7 @@ static void CompareBidi(const char* text, size_t length, const UChar* units, con
     }
     if (!same)
     {
-        Differ("bidi display", (const uint8_t*)text, length);
+        Differ("bidi display");
     }
 }
 
