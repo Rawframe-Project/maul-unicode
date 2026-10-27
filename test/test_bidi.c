@@ -392,6 +392,64 @@ static void TestParagraphsAndLines(void)
           "no levels");
 }
 
+// The level of the byte probe bytes into the content of an FSI that
+// follows left-to-right embeddings (each raises the level by 2) and then
+// the given extra initiator.
+static uint8_t LevelInFsi(int embeddings, const char* extra, const char* content, size_t probe)
+{
+    char text[256];
+    size_t length = 0;
+    for (int i = 0; i < embeddings; i++)
+    {
+        memcpy(text + length, "\xE2\x80\xAA", 3); // LRE
+        length += 3;
+    }
+    memcpy(text + length, extra, strlen(extra));
+    length += strlen(extra);
+    memcpy(text + length, "\xE2\x81\xA8", 3); // FSI
+    length += 3;
+    size_t at = length + probe;
+    memcpy(text + length, content, strlen(content));
+    length += strlen(content);
+    memcpy(text + length, "\xE2\x81\xA9", 3); // PDI
+    length += 3;
+    uint8_t levels[256];
+    uint8_t workspace[256];
+    size_t paragraph = 0;
+    uint8_t level = 0;
+    if (muniResolveBidi(text, length, muni_bidiLeftToRight, levels, workspace, &paragraph,
+                        &level) != muni_success ||
+        paragraph != length)
+    {
+        return 0xFF;
+    }
+    return levels[at];
+}
+
+static void TestIsolateDepth(void)
+{
+    // A Hebrew letter, then a Latin one. Inside a right-to-left isolate at
+    // 125 the Latin letter rises to 126 (I2); when the FSI overflows, it
+    // stays at the even level outside, while the Hebrew letter reaches 125
+    // either way (I1), so only the Latin letter tells the two apart.
+    const char* hebrewLatin = "\xD7\x90"
+                              "a";
+    const char* rle = "\xE2\x80\xAB";
+    // At 124 a right-to-left isolate fits at 125 and a left-to-right one
+    // at 126 does not, so the FSI's direction decides whether it takes a
+    // level.
+    CHECK(LevelInFsi(62, "", hebrewLatin, 0) == 125, "Hebrew in an FSI at 124");
+    CHECK(LevelInFsi(62, "", hebrewLatin, 2) == 126, "an FSI of Hebrew at 124 isolates at 125");
+    CHECK(LevelInFsi(62, "", "a", 0) == 124, "an FSI of Latin at 124 overflows");
+    // At 123 both fit: right to left at 125, left to right at 124.
+    CHECK(LevelInFsi(61, rle, hebrewLatin, 2) == 126, "an FSI of Hebrew at 123 isolates at 125");
+    CHECK(LevelInFsi(61, rle, "a", 0) == 124, "an FSI of Latin at 123 isolates at 124");
+    // At 125 neither fits: the FSI overflows whatever follows it.
+    CHECK(LevelInFsi(62, rle, hebrewLatin, 0) == 125, "Hebrew in an FSI at 125");
+    CHECK(LevelInFsi(62, rle, hebrewLatin, 2) == 126, "an FSI of Hebrew at 125 overflows");
+    CHECK(LevelInFsi(62, rle, "a", 0) == 126, "an FSI of Latin at 125 overflows");
+}
+
 static void TestMaps(void)
 {
     const uint8_t levels[] = {0, 0, 1, 1, 2, 1, 0};
@@ -412,6 +470,7 @@ int main(void)
     TestCharacterFile();
     TestClassFile();
     TestParagraphsAndLines();
+    TestIsolateDepth();
     TestMaps();
     return s_failures == 0 ? 0 : 1;
 }
