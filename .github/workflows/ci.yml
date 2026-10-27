@@ -308,8 +308,66 @@ jobs:
       - name: Build
         run: cmake --build out/web -j 4
       - name: Test
+        # Every suite but the quarantined ones, which the test presets
+        # leave out too; the quarantine job runs them.
         run: |
-          for t in out/web/test_*.js; do node "$t"; done
+          quarantined=$(ctest --test-dir out/web -N -L '^quarantine$' | sed -n 's/^ *Test *#[0-9]*: //p')
+          for t in out/web/test_*.js; do
+            name=$(basename "$t" .js)
+            if grep -qx "${name#test_}" <<<"$quarantined"; then
+              echo "${name#test_}: quarantined, left to the quarantine job"
+              continue
+            fi
+            node "$t"
+          done
+      - name: The quarantined tests
+        # At night and on a manual run, as the quarantine job runs the
+        # native ones, so a suite quarantined here still counts its green
+        # nights. tools/run_quarantine.sh's contract under node, with the
+        # native job's 300-second limit per suite: a failure or a timeout
+        # is a warning and a summary line, and a suite that did not run,
+        # skipped itself (exit 77) or hit a WebAssembly memory trap fails
+        # the step.
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          quarantined=$(ctest --test-dir out/web -N -L '^quarantine$' | sed -n 's/^ *Test *#[0-9]*: //p')
+          if [ -z "$quarantined" ]; then
+            echo "Quarantined tests in out/web: none." >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          status=0
+          for name in $quarantined; do
+            t="out/web/test_$name.js"
+            if [ ! -f "$t" ]; then
+              echo "::error::quarantined test $name was not built"
+              status=1
+              continue
+            fi
+            log=$(mktemp)
+            rc=0
+            timeout 300 node "$t" >"$log" 2>&1 || rc=$?
+            if [ "$rc" -eq 0 ]; then
+              echo "- \`$name\` passed" >>"$GITHUB_STEP_SUMMARY"
+            elif [ "$rc" -eq 77 ]; then
+              cat "$log"
+              echo "::error::quarantined test $name skipped itself"
+              status=1
+            elif grep -q -E 'RuntimeError: (memory access out of bounds|null function|index out of bounds)' "$log"; then
+              cat "$log"
+              echo "::error::quarantined test $name hit a memory trap"
+              status=1
+            elif [ "$rc" -eq 124 ]; then
+              cat "$log"
+              echo "::warning::quarantined test $name timed out after 300 seconds"
+              echo "- \`$name\` timed out (a known flake; it has an issue)" >>"$GITHUB_STEP_SUMMARY"
+            else
+              cat "$log"
+              echo "::warning::quarantined test $name failed"
+              echo "- \`$name\` failed (a known flake; it has an issue)" >>"$GITHUB_STEP_SUMMARY"
+            fi
+            rm -f "$log"
+          done
+          exit "$status"
       - name: Size
         # The static library in total, and each optional component's cost:
         # the library with it less the library without it. Security needs
@@ -332,12 +390,38 @@ jobs:
           echo "case                      $((all - noCase)) bytes"
           echo "normalization             $((noSecurity - noNormalization)) bytes"
 
+  # The quarantined tests (docs/operations/checks.md#quarantine), which the
+  # test presets leave out, under AddressSanitizer and UBSan: at night and
+  # on a manual run. A known flake's failure is a warning; a test that did
+  # not run, a sanitizer report or a crash fails the job. The timeout and
+  # jobs are the test presets' own.
+  quarantine:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: ghcr.io/rawframe-project/ci-cpp:2026.10.7@sha256:08c846597243dc000c83d6c008d078a8c3fabf8633d83963d46c0e6d02c2577e
+      # A PID 1 that reaps orphans, as cpp.yml's container has.
+      options: --init
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build
+        run: |
+          cmake --preset linux-clang-20-asan
+          cmake --build --preset linux-clang-20-asan
+      - name: The quarantined tests
+        run: tools/run_quarantine.sh out/linux-clang-20-asan --timeout 300 -j 4
+
   # The one check the ruleset requires: it passes when every job above
   # passed or was skipped for a documentation-only change, so adding or
   # renaming a job never touches the ruleset.
   required:
     if: always()
-    needs: [changes, docs, zizmor, checks, build, msvc-headers, fuzz, web]
+    needs: [changes, docs, zizmor, checks, build, msvc-headers, quarantine, fuzz, web]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     permissions: {}
