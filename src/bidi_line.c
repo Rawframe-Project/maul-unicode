@@ -194,13 +194,22 @@ muniResult muniReorderBidiLine(const char* line, const uint8_t* levels, size_t l
     {
         return muni_errorInvalid;
     }
+    // Every run holds at least one byte, so with a capacity of length
+    // they fit; with less, they are counted first, so that runs which do
+    // not fit leave the output as it was.
+    if (capacity < length)
+    {
+        Runs counted = {nullptr, 0, 0, 0, 0};
+        CollectRuns(&counted, (const uint8_t*)line, levels, length, paragraphLevel);
+        if (counted.count > capacity)
+        {
+            *countOut = counted.count;
+            return muni_errorCapacity;
+        }
+    }
     Runs collected = {runs, capacity, 0, 0, 0};
     CollectRuns(&collected, (const uint8_t*)line, levels, length, paragraphLevel);
     *countOut = collected.count;
-    if (collected.count > capacity)
-    {
-        return muni_errorCapacity;
-    }
     OrderRuns(runs, collected.count);
     return muni_success;
 }
