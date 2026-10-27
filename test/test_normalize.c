@@ -211,6 +211,16 @@ static void TestEdges(void)
     muniQuickCheck answer = muni_quickCheckYes;
     result = muniCheckNormalization("a\xFF", 2, muni_nfc, &answer);
     CHECK(result.status == muni_errorUtf8Lead && result.offset == 1, "the check finds the fault");
+    // U+0340 is NFC_Quick_Check=No, and U+0316 below U+0301 is out of
+    // order; either settles the answer, and the fault after it still counts.
+    result = muniCheckNormalization("a\xCD\x80"
+                                    "b\xFF",
+                                    5, muni_nfc, &answer);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 4 && answer == muni_quickCheckYes,
+          "a fault after a No code point");
+    result = muniCheckNormalization("a\xCC\x81\xCC\x96\xFF", 6, muni_nfd, &answer);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 5 && answer == muni_quickCheckYes,
+          "a fault after marks out of order");
     CHECK(muniComposePair(0xAC00, 0x11C2) == 0xAC1B, "the last trailing consonant composes");
     CHECK(muniComposePair(0xAC00, 0x11C3) == 0, "the next code point does not");
 }
