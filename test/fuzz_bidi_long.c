@@ -3,10 +3,13 @@
 //
 // libFuzzer target for the bidi algorithm on long text, which the other
 // targets, fed at most 256 bytes, never reach. The input is a pattern
-// the target repeats into a text of 4 KiB to 512 KiB; the first byte
+// the target repeats into a text of 2 KiB to 128 KiB; the first byte
 // picks the direction and the length. Every paragraph must resolve and
 // tile the text, and a run must finish within libFuzzer's -timeout, so
-// work that grows faster than the text is a finding.
+// work that grows faster than the text is a finding. Linear work may
+// still visit a byte once per open isolate, up to 125 times, so 128 KiB
+// keeps the slowest linear text within a few seconds under the fuzzing
+// instrumentation, while quadratic work on it takes minutes.
 
 #include "maul-unicode/bidi.h"
 
@@ -29,7 +32,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         return 0;
     }
     muniBidiDirection direction = (muniBidiDirection)(data[0] % 3);
-    size_t length = (size_t)4096 << (data[0] >> 2) % 8;
+    size_t length = (size_t)2048 << (data[0] >> 2) % 7;
     const uint8_t* pattern = data + 1;
     size_t patternLength = size - 1;
     // Exactly the text's length, so AddressSanitizer sees an overread.

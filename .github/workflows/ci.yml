@@ -228,8 +228,8 @@ jobs:
         # time as no limit.
         #
         # An input that runs past 30 seconds is a finding (-timeout). The
-        # longest texts, fuzz_bidi_long's 512 KiB, take about a second, so
-        # only work that grows faster than the text gets there.
+        # longest texts, fuzz_bidi_long's 128 KiB, take a few seconds at
+        # most, so only work that grows faster than the text gets there.
         run: |
           # At most three digits first: a longer number overflows test.
           if ! [[ "$FUZZ_SECONDS" =~ ^[0-9]{1,3}$ ]] || [ "$FUZZ_SECONDS" -lt 1 ] ||
