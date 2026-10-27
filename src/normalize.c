@@ -119,6 +119,12 @@ muniTextResult muniCheckNormalization(const char* text, size_t length, muniNorma
         muniQuickCheck check = QuickCheck(codePoint, form);
         if ((markClass != 0 && lastClass > markClass) || check == muni_quickCheckNo)
         {
+            // The answer is settled, but the rest must still be valid.
+            muniTextResult rest = muniValidateUtf8(text + offset, length - offset);
+            if (rest.status != muni_success)
+            {
+                return (muniTextResult){rest.status, offset + rest.offset};
+            }
             *answerOut = muni_quickCheckNo;
             return (muniTextResult){muni_success, length};
         }
