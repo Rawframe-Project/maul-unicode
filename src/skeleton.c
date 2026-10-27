@@ -383,6 +383,7 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
         muniResult status = AddParagraphs(&skeleton, length, direction, workspace);
         if (status != muni_success)
         {
+            *neededOut = 0;
             return (muniTextResult){status, 0};
         }
     }
@@ -392,11 +393,14 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
     }
     FlushDecomposed(&skeleton);
     FlushMapped(&skeleton);
-    *neededOut = skeleton.writer.needed;
+    // The skeleton follows display order, so the bytes counted before an
+    // error would tell the caller nothing.
     if (skeleton.overflow != SIZE_MAX)
     {
+        *neededOut = 0;
         return (muniTextResult){muni_errorLimit, skeleton.overflow};
     }
+    *neededOut = skeleton.writer.needed;
     return (muniTextResult){!muniWriterFits(&skeleton.writer) ? muni_errorCapacity : muni_success,
                             length};
 }
