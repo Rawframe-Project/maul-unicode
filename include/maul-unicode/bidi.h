@@ -115,9 +115,10 @@ extern "C"
     ///
     /// @param map         A permutation of 0 to count - 1.
     /// @param count       The number of entries.
-    /// @param inverseOut  Receives the inverse permutation.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
-    ///         an entry out of range.
+    /// @param inverseOut  Receives the inverse permutation. Must not overlap
+    ///                    map. On an error, its contents are unspecified.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument, an
+    ///         entry out of range or an entry that repeats an earlier one.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniInvertBidiMap(const size_t* map, size_t count,

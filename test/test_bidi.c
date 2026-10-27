@@ -500,6 +500,10 @@ static void TestMaps(void)
           "the inverse");
     const size_t broken[] = {0, 9};
     CHECK(muniInvertBidiMap(broken, 2, logical) == muni_errorInvalid, "an entry out of range");
+    const size_t repeated[] = {2, 0, 2};
+    CHECK(muniInvertBidiMap(repeated, 3, logical) == muni_errorInvalid, "a repeated entry");
+    const size_t first[] = {0, 0};
+    CHECK(muniInvertBidiMap(first, 2, logical) == muni_errorInvalid, "a repeated first entry");
 }
 
 int main(void)
