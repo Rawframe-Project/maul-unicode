@@ -392,6 +392,51 @@ static void TestParagraphsAndLines(void)
           "no levels");
 }
 
+// The level of the code point after an FSI that follows embeddings:
+// left-to-right ones to level 124, then the given extra initiator, if any.
+static uint8_t LevelAfterFsi(const char* extra, const char* content)
+{
+    char text[256];
+    size_t length = 0;
+    for (int i = 0; i < 62; i++)
+    {
+        memcpy(text + length, "\xE2\x80\xAA", 3); // LRE
+        length += 3;
+    }
+    memcpy(text + length, extra, strlen(extra));
+    length += strlen(extra);
+    memcpy(text + length, "\xE2\x81\xA8", 3); // FSI
+    length += 3;
+    size_t at = length;
+    memcpy(text + length, content, strlen(content));
+    length += strlen(content);
+    memcpy(text + length, "\xE2\x81\xA9", 3); // PDI
+    length += 3;
+    uint8_t levels[256];
+    uint8_t workspace[256];
+    size_t paragraph = 0;
+    uint8_t level = 0;
+    if (muniResolveBidi(text, length, muni_bidiLeftToRight, levels, workspace, &paragraph,
+                        &level) != muni_success ||
+        paragraph != length)
+    {
+        return 0xFF;
+    }
+    return levels[at];
+}
+
+static void TestIsolateDepth(void)
+{
+    // At level 124 a right-to-left isolate still fits at 125 and a
+    // left-to-right one at 126 does not, so the FSI's direction decides
+    // whether it takes a level.
+    CHECK(LevelAfterFsi("", "\xD7\x90") == 125, "an FSI of Hebrew at 124 isolates at 125");
+    CHECK(LevelAfterFsi("", "a") == 124, "an FSI of Latin at 124 overflows");
+    // At level 125 neither fits: the FSI overflows whatever follows it.
+    CHECK(LevelAfterFsi("\xE2\x80\xAB", "\xD7\x90") == 125, "an FSI of Hebrew at 125 overflows");
+    CHECK(LevelAfterFsi("\xE2\x80\xAB", "a") == 126, "an FSI of Latin at 125 overflows");
+}
+
 static void TestMaps(void)
 {
     const uint8_t levels[] = {0, 0, 1, 1, 2, 1, 0};
@@ -412,6 +457,7 @@ int main(void)
     TestCharacterFile();
     TestClassFile();
     TestParagraphsAndLines();
+    TestIsolateDepth();
     TestMaps();
     return s_failures == 0 ? 0 : 1;
 }

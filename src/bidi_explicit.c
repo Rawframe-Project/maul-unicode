@@ -216,9 +216,14 @@ static void Apply(Explicit* state, const muniBidiParagraph* paragraph, size_t in
     {
         paragraph->levels[index] = Top(state)->level;
         *slot = Overridden(state, type);
+        // X5c gives an FSI the direction of its first strong character, but
+        // an isolate that overflows takes no level (X5a, X5b), so the
+        // direction is looked for only while one could still be pushed.
+        bool pushable = RaisedLevel(state, true) <= MUNI_BIDI_MAX_DEPTH &&
+                        state->overflowIsolates == 0 && state->overflowEmbeddings == 0;
         bool rightToLeft =
-            type == muni_bcRli ||
-            (type == muni_bcFsi && muniBidiFirstStrongLevel(paragraph, next, true, 0) == 1);
+            type == muni_bcRli || (type == muni_bcFsi && pushable &&
+                                   muniBidiFirstStrongLevel(paragraph, next, true, 0) == 1);
         PushIsolate(state, rightToLeft);
         return;
     }
