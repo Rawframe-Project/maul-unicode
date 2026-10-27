@@ -323,9 +323,11 @@ jobs:
       - name: The quarantined tests
         # At night and on a manual run, as the quarantine job runs the
         # native ones, so a suite quarantined here still counts its green
-        # nights. tools/run_quarantine.sh's contract under node: a failure
-        # is a warning and a summary line, and a suite that did not run or
-        # a WebAssembly memory trap fails the step.
+        # nights. tools/run_quarantine.sh's contract under node, with the
+        # native job's 300-second limit per suite: a failure or a timeout
+        # is a warning and a summary line, and a suite that did not run,
+        # skipped itself (exit 77) or hit a WebAssembly memory trap fails
+        # the step.
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           quarantined=$(ctest --test-dir out/web -N -L '^quarantine$' | sed -n 's/^ *Test *#[0-9]*: //p')
@@ -342,12 +344,22 @@ jobs:
               continue
             fi
             log=$(mktemp)
-            if node "$t" >"$log" 2>&1; then
+            rc=0
+            timeout 300 node "$t" >"$log" 2>&1 || rc=$?
+            if [ "$rc" -eq 0 ]; then
               echo "- \`$name\` passed" >>"$GITHUB_STEP_SUMMARY"
+            elif [ "$rc" -eq 77 ]; then
+              cat "$log"
+              echo "::error::quarantined test $name skipped itself"
+              status=1
             elif grep -q -E 'RuntimeError: (memory access out of bounds|null function|index out of bounds)' "$log"; then
               cat "$log"
               echo "::error::quarantined test $name hit a memory trap"
               status=1
+            elif [ "$rc" -eq 124 ]; then
+              cat "$log"
+              echo "::warning::quarantined test $name timed out after 300 seconds"
+              echo "- \`$name\` timed out (a known flake; it has an issue)" >>"$GITHUB_STEP_SUMMARY"
             else
               cat "$log"
               echo "::warning::quarantined test $name failed"
