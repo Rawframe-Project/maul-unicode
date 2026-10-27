@@ -369,10 +369,13 @@ static void TestParagraphsAndLines(void)
     CHECK(runs[0].start == 0 && runs[0].length == 3 && runs[1].start == 3 && runs[1].level == 1 &&
               runs[2].start == 7 && runs[2].level == 0,
           "ab, the Hebrew word, the newline reset to the paragraph level");
+    muniBidiRun untouched[4];
+    memset(runs, 0xA5, sizeof(runs));
+    memset(untouched, 0xA5, sizeof(untouched));
     CHECK(muniReorderBidiLine(text, levels, paragraph, level, runs, 2, &count) ==
                   muni_errorCapacity &&
-              count == 3,
-          "too few runs");
+              count == 3 && memcmp(runs, untouched, sizeof(runs)) == 0,
+          "too few runs, and none written");
     CHECK(muniResolveBidi(text + paragraph, length - paragraph, muni_bidiAuto, levels, workspace,
                           &paragraph, &level) == muni_success &&
               paragraph == 4 && level == 1,
