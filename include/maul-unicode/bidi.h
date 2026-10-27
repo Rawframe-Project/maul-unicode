@@ -88,7 +88,7 @@ extern "C"
     /// @param countOut        Receives the number of runs.
     /// @return `muni_success`; `muni_errorCapacity` when the runs do not
     ///         fit, and then none is written; `muni_errorInvalid` for a
-    ///         NULL argument.
+    ///         NULL argument or a level above 126.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLine(const char* line, const uint8_t* levels,
@@ -104,7 +104,8 @@ extern "C"
     /// @param count              The number of units.
     /// @param visualToLogicalOut Receives, for each position from left to
     ///                           right, the logical index of its unit.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
+    ///         a level above 126, the highest rule L1 leaves.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count,
