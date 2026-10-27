@@ -5,6 +5,13 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.0...v0.3.1) (2026-10-27)
+
+
+### Fixed
+
+* **bidi:** resolve an isolate's direction only when it takes a level ([#79](https://github.com/Rawframe-Project/maul-unicode/issues/79)) ([d5f4f65](https://github.com/Rawframe-Project/maul-unicode/commit/d5f4f654c0957ad285c38d3208f4a600d47d4299)), closes [#80](https://github.com/Rawframe-Project/maul-unicode/issues/80)
+
 ## [0.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.2.0...v0.3.0) (2026-10-25)
 
 ### Added
