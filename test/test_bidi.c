@@ -501,6 +501,22 @@ static void TestMaps(void)
     CHECK(muniInvertBidiMap(visual, 7, logical) == muni_success && logical[5] == 2 &&
               logical[2] == 5,
           "the inverse");
+    const uint8_t deep[] = {0, 126, 127};
+    CHECK(muniReorderBidiLevels(deep, 2, visual) == muni_success, "a level of 126");
+    memset(visual, 0xA5, sizeof(visual));
+    CHECK(muniReorderBidiLevels(deep, 3, visual) == muni_errorInvalid && visual[0] != 0,
+          "a level above 126, and no map written");
+    muniBidiRun runs[3];
+    size_t count = 0;
+    CHECK(muniReorderBidiLine("abc", deep, 3, 0, runs, 3, &count) == muni_errorInvalid,
+          "a line with a level above 126");
+    const uint8_t flat[] = {0, 0};
+    CHECK(muniReorderBidiLine("a ", flat, 2, 2, runs, 3, &count) == muni_errorInvalid,
+          "a paragraph level of 2");
+    CHECK(muniReorderBidiLine("a ", flat, 2, 200, runs, 3, &count) == muni_errorInvalid,
+          "a paragraph level of 200");
+    CHECK(muniReorderBidiLine("a ", flat, 2, 1, runs, 3, &count) == muni_success,
+          "a paragraph level of 1");
     const size_t broken[] = {0, 9};
     CHECK(muniInvertBidiMap(broken, 2, logical) == muni_errorInvalid, "an entry out of range");
     const size_t repeated[] = {2, 0, 2};
