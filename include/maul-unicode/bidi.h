@@ -82,13 +82,14 @@ extern "C"
     /// @param line            The line's text within the paragraph.
     /// @param levels          The line's levels from muniResolveBidi.
     /// @param length          The line's length in bytes.
-    /// @param paragraphLevel  The paragraph embedding level.
+    /// @param paragraphLevel  The paragraph embedding level, 0 or 1.
     /// @param runs            The output. May be NULL when capacity is 0.
     /// @param capacity        The number of runs the output can hold.
     /// @param countOut        Receives the number of runs.
     /// @return `muni_success`; `muni_errorCapacity` when the runs do not
     ///         fit, and then none is written; `muni_errorInvalid` for a
-    ///         NULL argument or a level above 126.
+    ///         NULL argument, a level above 126 or a paragraph level
+    ///         above 1.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLine(const char* line, const uint8_t* levels,

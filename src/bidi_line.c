@@ -206,7 +206,8 @@ muniResult muniReorderBidiLine(const char* line, const uint8_t* levels, size_t l
                                size_t* countOut)
 {
     if (((line == nullptr || levels == nullptr) && length != 0) ||
-        (runs == nullptr && capacity != 0) || countOut == nullptr || !LevelsInRange(levels, length))
+        (runs == nullptr && capacity != 0) || countOut == nullptr || paragraphLevel > 1 ||
+        !LevelsInRange(levels, length))
     {
         return muni_errorInvalid;
     }
