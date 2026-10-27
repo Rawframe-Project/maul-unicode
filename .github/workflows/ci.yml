@@ -204,9 +204,11 @@ jobs:
             -D${PREFIX}_FUZZ_ICU=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
           cmake --build out/fuzz
       # Caches are immutable: each run saves a new entry and the next run
-      # restores the latest.
+      # restores the latest. Only main reads the corpus, as only main
+      # saves it; a pull request or a dispatch on a branch starts from the
+      # seeds.
       - name: Restore the corpus
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: out/corpus
