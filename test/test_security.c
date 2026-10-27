@@ -324,10 +324,11 @@ static void TestErrors(void)
 {
     uint8_t workspace[256];
     char output[256];
-    size_t needed = 0;
+    size_t needed = 7;
     muniTextResult result =
         muniGetSkeleton("ab\xFF", 3, muni_bidiLeftToRight, workspace, 256, output, 256, &needed);
-    CHECK(result.status == muni_errorUtf8Lead && result.offset == 2, "ill-formed text");
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 2 && needed == 0,
+          "ill-formed text");
     char marks[1 + 40 * 2];
     marks[0] = 'a';
     for (int i = 0; i < 40; i++)
@@ -335,15 +336,18 @@ static void TestErrors(void)
         marks[1 + 2 * i] = (char)0xCC;
         marks[2 + 2 * i] = (char)0x81;
     }
+    needed = 7;
     result = muniGetSkeleton(marks, sizeof(marks), muni_bidiLeftToRight, workspace, 256, output,
                              256, &needed);
-    CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks");
+    CHECK(result.status == muni_errorLimit && result.offset > 0 && needed == 0, "too many marks");
     result = muniGetSkeleton("paypal", 6, muni_bidiLeftToRight, workspace, 256, output, 2, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "pa", 2) == 0,
           "a short output");
+    needed = 7;
     CHECK(muniGetSkeleton("a", 1, 3, workspace, 256, output, 256, &needed).status ==
-              muni_errorInvalid,
-          "an unknown direction");
+                  muni_errorInvalid &&
+              needed == 7,
+          "an unknown direction, which leaves the size as it was");
     CHECK(muniGetSkeleton("a", 1, muni_bidiAuto, nullptr, 2, output, 256, &needed).status ==
               muni_errorInvalid,
           "no workspace for its size");

@@ -76,14 +76,16 @@ extern "C"
     /// @param capacity    The number of bytes output can hold.
     /// @param neededOut   Receives the number of bytes the whole skeleton
     ///                    needs, which may exceed capacity, or SIZE_MAX
-    ///                    when that does not fit in a size_t.
+    ///                    when that does not fit in a size_t. On another
+    ///                    error, 0, except that `muni_errorInvalid` leaves
+    ///                    it as it was.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the skeleton does not fit (the bytes that fit are
-    ///         written), or with offset 0 and neededOut 0 when
-    ///         workspaceSize is less than 2 * length, before the text is
-    ///         read; the first UTF-8 error and its offset;
-    ///         `muni_errorLimit` when a run of combining marks outgrows
-    ///         32, and the offset of the code point being read then;
+    ///         written), or with offset 0 when workspaceSize is less than
+    ///         2 * length, before the text is read; the first UTF-8 error
+    ///         and its offset; `muni_errorLimit` when a run of combining
+    ///         marks outgrows 32, and the offset of the code point being
+    ///         read then, with part of the skeleton possibly written;
     ///         `muni_errorInvalid` for a NULL argument or an unknown
     ///         direction.
     /// @par Thread safety
