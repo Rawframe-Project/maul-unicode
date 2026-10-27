@@ -21,7 +21,7 @@ ctest --preset linux-clang-20-asan -L segment   # one suite, by label
 cmake --build out/linux-gcc-14 --target munigen && ./out/linux-gcc-14/munigen tools/ucd src/generated   # regenerate tables
 ```
 
-Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Every CI cell is a preset in `CMakePresets.json` (configure, build and test of one name, built in `out/<preset>`); add a cell there, never as commands in a workflow. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `harfbuzz`, `guide`, `guide_harfbuzz`).
+Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Every CI cell is a preset in `CMakePresets.json` (configure, build and test of one name, built in `out/<preset>`); add a cell there, never as commands in a workflow. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `writer`, `harfbuzz`, `guide`, `guide_harfbuzz`).
 
 ## Ways to hurt yourself
 
@@ -47,7 +47,7 @@ Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the s
 Follow the [repository standard's Tests section](https://github.com/Rawframe-Project/.github/blob/main/docs/repository-standard.md#tests); in this repository:
 
 - Conformance comes from the Unicode files, not hand-written cases. A rule change is proven by the conformance suite, and the segmentation files also run fed one byte at a time.
-- Test through the public headers. The white-box suites include `src/tables.h` only for the generator's hashes; do not test internal state.
+- Test through the public headers. The white-box suites include `src/tables.h` only for the generator's hashes, and do not test internal state. The exception is `test_writer.c`, which starts the output writer near `SIZE_MAX`, a count no test can reach with real input.
 - Inputs that could be read past their end go in a heap allocation of exactly their length, so AddressSanitizer sees an overread; the bidi, case and security suites show how.
 - Every C snippet of `docs/user/` appears unchanged in `test/test_guide.c` or `test/test_guide_harfbuzz.c`; `tools/check_guide.py` enforces it.
 - A fuzz finding becomes a test in its module's suite with the minimized input.
