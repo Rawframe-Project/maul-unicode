@@ -61,7 +61,7 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
     }
     muniNormalizerFlush(&normalizer);
     *neededOut = normalizer.writer.needed;
-    return (muniTextResult){normalizer.writer.needed > capacity ? muni_errorCapacity : muni_success,
+    return (muniTextResult){!muniWriterFits(&normalizer.writer) ? muni_errorCapacity : muni_success,
                             length};
 }
 

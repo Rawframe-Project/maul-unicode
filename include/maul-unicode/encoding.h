@@ -122,7 +122,8 @@ extern "C"
     /// @param bytes        The output. May be NULL when capacity is 0.
     /// @param capacity     The number of bytes bytes can hold.
     /// @param neededOut    Receives the number of bytes the whole
-    ///                     conversion needs, which may exceed capacity. In
+    ///                     conversion needs, which may exceed capacity, or
+    ///                     SIZE_MAX when that does not fit in a size_t. In
     ///                     strict mode, on an error, the bytes before it.
     /// @return `muni_success`; `muni_errorCapacity` when the output does
     ///         not fit (the bytes that fit are written); in strict mode
