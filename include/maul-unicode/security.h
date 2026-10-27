@@ -69,7 +69,9 @@ extern "C"
     /// @param text        The text. May be NULL when length is 0.
     /// @param length      The number of bytes.
     /// @param direction   The paragraph direction.
-    /// @param workspace   Scratch memory of 2 * length bytes.
+    /// @param workspace   Scratch memory of at least 2 * length bytes. May
+    ///                    be NULL when workspaceSize is 0.
+    /// @param workspaceSize The number of bytes workspace holds.
     /// @param output      The output. May be NULL when capacity is 0.
     /// @param capacity    The number of bytes output can hold.
     /// @param neededOut   Receives the number of bytes the whole skeleton
@@ -77,7 +79,9 @@ extern "C"
     ///                    when that does not fit in a size_t.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the skeleton does not fit (the bytes that fit are
-    ///         written); the first UTF-8 error and its offset;
+    ///         written), or with offset 0 and neededOut 0 when
+    ///         workspaceSize is less than 2 * length, before the text is
+    ///         read; the first UTF-8 error and its offset;
     ///         `muni_errorLimit` when a run of combining marks outgrows
     ///         32, and the offset of the code point being read then;
     ///         `muni_errorInvalid` for a NULL argument or an unknown
@@ -87,8 +91,9 @@ extern "C"
     /// at a time.
     MUNI_NODISCARD MUNI_API muniTextResult muniGetSkeleton(const char* text, size_t length,
                                                            muniBidiDirection direction,
-                                                           uint8_t* workspace, char* output,
-                                                           size_t capacity, size_t* neededOut);
+                                                           uint8_t* workspace, size_t workspaceSize,
+                                                           char* output, size_t capacity,
+                                                           size_t* neededOut);
 
     /// Writes the resolved script set of UTF-8 text (UTS #39 section
     /// 5.1): the scripts every character can belong to, counting Han

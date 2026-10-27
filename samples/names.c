@@ -68,8 +68,8 @@ static const char* Check(const char* input, Name* taken, size_t* takenCount)
     if (muniToNfkcCasefold(name, length, muni_convertStrict, candidate.key, MAX_OUT,
                            &candidate.keyLength)
                 .status != muni_success ||
-        muniGetSkeleton(name, length, muni_bidiLeftToRight, workspace, candidate.skeleton, MAX_OUT,
-                        &candidate.skeletonLength)
+        muniGetSkeleton(name, length, muni_bidiLeftToRight, workspace, sizeof(workspace),
+                        candidate.skeleton, MAX_OUT, &candidate.skeletonLength)
                 .status != muni_success)
     {
         return "cannot be normalized";

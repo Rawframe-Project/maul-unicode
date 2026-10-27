@@ -20,7 +20,7 @@ For user names in chat, account names and the like:
 
 ## Not obvious
 
-- A skeleton follows the order in which bidi displays the string, so it takes a paragraph direction and a workspace of two bytes per byte of text. `muni_bidiLeftToRight` gives the skeleton UTS #39 calls skeleton; text without right-to-left characters has the same skeleton in automatic and left-to-right paragraphs, and skips bidi entirely.
+- A skeleton follows the order in which bidi displays the string, so it takes a paragraph direction and a workspace of two bytes per byte of text, with its size. A smaller workspace returns `muni_errorCapacity` with `neededOut` 0 for any text, even text that skips bidi. `muni_bidiLeftToRight` gives the skeleton UTS #39 calls skeleton; text without right-to-left characters has the same skeleton in automatic and left-to-right paragraphs, and skips bidi entirely.
 - A skeleton is not text to show, and it changes with the Unicode version. Recompute stored skeletons when `muniGetUnicodeVersion` changes.
 - The restriction level does not check syntax: an identifier should also pass `muniCheckIdentifier`.
 - Whole-script and mixed-script confusable detection (UTS #39 sections 4.1 and 4.2) is not provided. Done exactly, it needs the sets of strings confusable with a given one, which the Unicode security data does not include.

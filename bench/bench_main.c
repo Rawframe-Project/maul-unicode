@@ -175,8 +175,8 @@ static size_t Skeleton(InitFn unused)
     (void)unused;
     size_t needed = 0;
     muniTextResult result =
-        muniGetSkeleton(s_text, TEXT_BYTES, muni_bidiLeftToRight, s_skeletonWorkspace, s_normalized,
-                        sizeof(s_normalized), &needed);
+        muniGetSkeleton(s_text, TEXT_BYTES, muni_bidiLeftToRight, s_skeletonWorkspace,
+                        sizeof(s_skeletonWorkspace), s_normalized, sizeof(s_normalized), &needed);
     return result.status == muni_success ? needed : 0;
 }
 
