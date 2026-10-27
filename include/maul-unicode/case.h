@@ -109,7 +109,9 @@ extern "C"
     /// @param neededOut   Receives the number of bytes the whole result
     ///                    needs, which may exceed capacity, or SIZE_MAX
     ///                    when that does not fit in a size_t. On another
-    ///                    error, the bytes before it.
+    ///                    error, the bytes before it, which output holds
+    ///                    as far as they fit. `muni_errorInvalid` leaves
+    ///                    both as they were.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the result does not fit (the bytes that fit are written); in
     ///         strict mode the first UTF-8 error and its offset;
@@ -138,7 +140,9 @@ extern "C"
     /// @param neededOut   Receives the number of bytes the whole result
     ///                    needs, which may exceed capacity, or SIZE_MAX
     ///                    when that does not fit in a size_t. On another
-    ///                    error, the bytes before it.
+    ///                    error, the bytes before it, which output holds
+    ///                    as far as they fit. `muni_errorInvalid` leaves
+    ///                    both as they were.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the result does not fit (the bytes that fit are written); in
     ///         strict mode the first UTF-8 error and its offset;

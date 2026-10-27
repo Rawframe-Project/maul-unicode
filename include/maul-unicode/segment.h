@@ -215,7 +215,8 @@ extern "C"
     ///
     /// @param iterator   The iterator.
     /// @param offsetOut  Receives the boundary's byte offset from the start
-    ///                   of the whole text.
+    ///                   of the whole text. Left as it was unless the call
+    ///                   returns `muni_success`.
     /// @return `muni_success` with a boundary; `muni_done` after the last
     ///         one; `muni_needMoreText` when the next boundary depends on
     ///         text not yet fed; `muni_errorInvalid` for a NULL argument.
@@ -230,8 +231,12 @@ extern "C"
     ///
     /// @param iterator      An iterator from muniInitLineIterator.
     /// @param offsetOut     Receives the opportunity's byte offset from the
-    ///                      start of the whole text.
-    /// @param mandatoryOut  Receives true when the break is mandatory.
+    ///                      start of the whole text. Left as it was unless
+    ///                      the call returns `muni_success`.
+    /// @param mandatoryOut  Receives true when the break is mandatory. It
+    ///                      is false when the result is not `muni_success`,
+    ///                      except that `muni_errorInvalid` leaves it as it
+    ///                      was.
     /// @return As muniNextSegmentBreak; `muni_errorInvalid` also for an
     ///         iterator of another kind.
     /// @par Thread safety

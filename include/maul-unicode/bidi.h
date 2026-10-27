@@ -62,7 +62,8 @@ extern "C"
     /// @param workspace           Scratch memory of length bytes.
     /// @param paragraphLengthOut  Receives the paragraph's length in bytes.
     /// @param paragraphLevelOut   Receives the paragraph embedding level,
-    ///                            0 or 1.
+    ///                            0 or 1. On an error, levels and both
+    ///                            outputs are left as they were.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
     ///         an unknown direction.
     /// @par Thread safety
@@ -98,7 +99,8 @@ extern "C"
 
     /// Computes a visual order from levels (rule L2), for any units the
     /// caller orders: code points, clusters or glyphs of one line, each
-    /// with its level after rule L1.
+    /// with its level after rule L1. An error leaves visualToLogicalOut as
+    /// it was.
     ///
     /// @param levels             One level per unit, in logical order.
     /// @param count              The number of units.
@@ -116,7 +118,10 @@ extern "C"
     /// @param map         A permutation of 0 to count - 1.
     /// @param count       The number of entries.
     /// @param inverseOut  Receives the inverse permutation. Must not overlap
-    ///                    map. On an error, its contents are unspecified.
+    ///                    map. On an error, its contents are unspecified:
+    ///                    telling a permutation from a map that repeats an
+    ///                    entry, in linear time and without memory, takes
+    ///                    inverseOut as scratch.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument, an
     ///         entry out of range or an entry that repeats an earlier one.
     /// @par Thread safety

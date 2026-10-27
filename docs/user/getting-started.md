@@ -66,6 +66,8 @@ muniTextResult result =
 // allocate needed bytes and call again.
 ```
 
+A call that fails leaves its outputs as they were, unless its header says what the failure leaves in them, such as the size an output that is too small needs, or the text converted before an error. `muni_errorInvalid` always leaves them as they were. An output must not overlap an input.
+
 Each status a function can return is listed in its header and in the [API reference](https://rawframe-project.github.io/maul-unicode/api.html).
 
 ## Samples
