@@ -222,10 +222,14 @@ jobs:
         #
         # A dispatch's fuzz-seconds must leave time for the minimize and
         # save, or the timeout kills the job and the corpus is lost: the
-        # nine targets run in three waves of four, and the night's 50
+        # ten targets run in three waves of four, and the night's 50
         # minutes less about 10 for the build, the merge and the save leave
         # 40, so at most 800 seconds a wave. libFuzzer reads a negative
         # time as no limit.
+        #
+        # An input that runs past 30 seconds is a finding (-timeout). The
+        # longest texts, fuzz_bidi_long's 128 KiB, take a few seconds at
+        # most, so only work that grows faster than the text gets there.
         run: |
           # At most three digits first: a longer number overflows test.
           if ! [[ "$FUZZ_SECONDS" =~ ^[0-9]{1,3}$ ]] || [ "$FUZZ_SECONDS" -lt 1 ] ||
@@ -245,7 +249,7 @@ jobs:
           rm -rf out/fuzz-reports
           status=0
           printf '%s\n' out/fuzz/fuzz_* |
-            xargs -P 4 -I {} sh -c 'tools/fuzz_target.sh "$1" -max_total_time="$FUZZ_SECONDS" -max_len=256 "out/corpus/$(basename "$1")"' _ {} ||
+            xargs -P 4 -I {} sh -c 'tools/fuzz_target.sh "$1" -max_total_time="$FUZZ_SECONDS" -max_len=256 -timeout=30 "out/corpus/$(basename "$1")"' _ {} ||
             status=$?
           cat out/fuzz-reports/*.txt 2>/dev/null || true
           exit "$status"
@@ -261,7 +265,7 @@ jobs:
           status=0
           printf '%s\n' out/fuzz/fuzz_* |
             xargs -P 4 -I {} sh -c 'name=$(basename "$1") &&
-              tools/fuzz_target.sh --merge "$1" "out/merged/$name" -max_len=256 "out/corpus/$name" &&
+              tools/fuzz_target.sh --merge "$1" "out/merged/$name" -max_len=256 -timeout=30 "out/corpus/$name" &&
               rm -rf "out/corpus/$name" && mv "out/merged/$name" "out/corpus/$name"' _ {} ||
             status=$?
           cat out/fuzz-reports/*.txt 2>/dev/null || true
