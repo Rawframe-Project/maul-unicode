@@ -5,6 +5,17 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.0...v0.3.1) (2026-10-27)
+
+### Fixed
+
+- Bidi (`muniResolveBidi`, and `muniGetSkeleton` for text that needs
+  bidi) resolves an FSI's direction only when the isolate takes a
+  level, as UAX #9 rules X5a to X5c have it: an isolate past the depth
+  limit of 125 takes no level, so its direction is never used. Every
+  result is unchanged
+  ([#79](https://github.com/Rawframe-Project/maul-unicode/pull/79)).
+
 ## [0.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.2.0...v0.3.0) (2026-10-25)
 
 ### Added
