@@ -7,10 +7,14 @@ may change the API, the ABI and every data format.
 
 ## [0.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.0...v0.3.1) (2026-10-27)
 
-
 ### Fixed
 
-* **bidi:** resolve an isolate's direction only when it takes a level ([#79](https://github.com/Rawframe-Project/maul-unicode/issues/79)) ([d5f4f65](https://github.com/Rawframe-Project/maul-unicode/commit/d5f4f654c0957ad285c38d3208f4a600d47d4299)), closes [#80](https://github.com/Rawframe-Project/maul-unicode/issues/80)
+- Bidi (`muniResolveBidi`, and `muniGetSkeleton` for text that needs
+  bidi) resolves an FSI's direction only when the isolate takes a
+  level, as UAX #9 rules X5a to X5c have it: an isolate past the depth
+  limit of 125 takes no level, so its direction is never used. Every
+  result is unchanged
+  ([#79](https://github.com/Rawframe-Project/maul-unicode/pull/79)).
 
 ## [0.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.2.0...v0.3.0) (2026-10-25)
 
