@@ -260,9 +260,15 @@ muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut
     {
         return muni_errorInvalid;
     }
+    // No index reaches SIZE_MAX, so it marks a slot no entry has set yet,
+    // and an entry that finds its slot set repeats an earlier one.
     for (size_t k = 0; k < count; k++)
     {
-        if (map[k] >= count)
+        inverseOut[k] = SIZE_MAX;
+    }
+    for (size_t k = 0; k < count; k++)
+    {
+        if (map[k] >= count || inverseOut[map[k]] != SIZE_MAX)
         {
             return muni_errorInvalid;
         }
