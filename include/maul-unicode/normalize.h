@@ -100,18 +100,23 @@ extern "C"
                                                                   muniNormalForm form,
                                                                   muniQuickCheck* answerOut);
 
-    /// Returns the canonical decomposition of a code point one level deep,
-    /// as shapers such as HarfBuzz ask for it: two code points, or one
-    /// with the second 0. Hangul syllables split into LV + T or L + V.
+    /// Gives the canonical decomposition of a code point one level deep,
+    /// as shapers such as HarfBuzz ask for it: two code points, one (a
+    /// singleton), or none. Hangul syllables split into LV + T or L + V.
     ///
     /// @param codePoint  Any value.
-    /// @param firstOut   Receives the first code point.
-    /// @param secondOut  Receives the second code point, or 0.
-    /// @return true when the code point decomposes; the outputs are left
-    ///         alone when it does not, or when either is NULL.
+    /// @param firstOut   Receives the first code point, or 0 when the count
+    ///                   is 0.
+    /// @param secondOut  Receives the second code point, or 0 when the
+    ///                   count is below 2.
+    /// @param countOut   Receives 0 when the code point does not decompose,
+    ///                   1 for a singleton and 2 for a pair.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL output,
+    ///         and then every output is left as it was.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_API bool muniDecomposePair(uint32_t codePoint, uint32_t* firstOut, uint32_t* secondOut);
+    MUNI_NODISCARD MUNI_API muniResult muniDecomposePair(uint32_t codePoint, uint32_t* firstOut,
+                                                         uint32_t* secondOut, size_t* countOut);
 
     /// Returns the primary composite of two code points (UAX #15 D114),
     /// Hangul syllables included.

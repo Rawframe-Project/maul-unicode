@@ -194,11 +194,23 @@ static void TestLimitsAndErrors(void)
           "an unknown form");
     uint32_t first = 0;
     uint32_t second = 0;
-    CHECK(muniDecomposePair(0x00E9, &first, &second) && first == 'e' && second == 0x0301,
+    size_t count = 9;
+    CHECK(muniDecomposePair(0x00E9, &first, &second, &count) == muni_success && count == 2 &&
+              first == 'e' && second == 0x0301,
           "e acute decomposes");
-    CHECK(muniDecomposePair(0xAC01, &first, &second) && first == 0xAC00 && second == 0x11A8,
+    CHECK(muniDecomposePair(0xAC01, &first, &second, &count) == muni_success && count == 2 &&
+              first == 0xAC00 && second == 0x11A8,
           "a Hangul LVT syllable splits into LV and T");
-    CHECK(!muniDecomposePair('a', &first, &second), "a does not decompose");
+    CHECK(muniDecomposePair(0x212B, &first, &second, &count) == muni_success && count == 1 &&
+              first == 0x00C5 && second == 0,
+          "the angstrom sign is a singleton");
+    CHECK(muniDecomposePair('a', &first, &second, &count) == muni_success && count == 0 &&
+              first == 0 && second == 0,
+          "a does not decompose");
+    count = 9;
+    CHECK(muniDecomposePair(0x00E9, &first, nullptr, &count) == muni_errorInvalid && count == 9,
+          "a NULL output");
+    CHECK(muniDecomposePair(0x00E9, &first, &second, nullptr) == muni_errorInvalid, "no count");
     CHECK(muniComposePair('e', 0x0301) == 0x00E9, "e and acute compose");
     CHECK(muniComposePair(0x1100, 0x1161) == 0xAC00, "Hangul L and V compose");
     CHECK(muniComposePair(0x0915, 0x093C) == 0, "U+0958 is excluded from composition");
