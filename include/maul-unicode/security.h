@@ -129,7 +129,8 @@ extern "C"
     ///
     /// @param text     The text. May be NULL when length is 0.
     /// @param length   The number of bytes.
-    /// @param levelOut Receives one of the muni_restriction values.
+    /// @param levelOut Receives one of the muni_restriction values. Left as
+    ///                 it was on an error.
     /// @return `muni_success` and the length; the first UTF-8 error and
     ///         its offset; `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
@@ -143,7 +144,8 @@ extern "C"
     ///
     /// @param text     The text. May be NULL when length is 0.
     /// @param length   The number of bytes.
-    /// @param mixedOut Receives true when the digits mix systems.
+    /// @param mixedOut Receives true when the digits mix systems. Left as it
+    ///                 was on an error.
     /// @return `muni_success` and the length; the first UTF-8 error and
     ///         its offset; `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety

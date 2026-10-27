@@ -74,7 +74,8 @@ extern "C"
     /// @param runOut    Receives the run: where it ends, as a byte offset
     ///                  from the start of the whole text, and its script.
     ///                  A text of Common and Inherited characters only is
-    ///                  one run of Common.
+    ///                  one run of Common. Left as it was unless the call
+    ///                  returns `muni_success`.
     /// @return `muni_success` with a run; `muni_done` after the last one;
     ///         `muni_needMoreText` when the run's end or script depends on
     ///         text not yet fed; `muni_errorInvalid` for a NULL argument.
