@@ -175,6 +175,13 @@ static void TestLimitsAndErrors(void)
     muniTextResult result =
         muniNormalize(marks, sizeof(marks), muni_nfc, muni_convertStrict, output, 256, &needed);
     CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks is refused");
+    // A segment holds the starter and MUNI_MAX_NORMALIZATION_SEGMENT - 1
+    // marks; the next mark, at byte 1 + 2 * 31, is the first refused.
+    size_t fits = 1 + 2 * (MUNI_MAX_NORMALIZATION_SEGMENT - 1);
+    result = muniNormalize(marks, fits, muni_nfd, muni_convertStrict, output, 256, &needed);
+    CHECK(result.status == muni_success && needed == fits, "a full segment");
+    result = muniNormalize(marks, fits + 2, muni_nfd, muni_convertStrict, output, 256, &needed);
+    CHECK(result.status == muni_errorLimit && result.offset == fits, "one mark past the segment");
     result = muniNormalize("e\xCC\x81", 3, muni_nfc, muni_convertStrict, output, 1, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 2, "e and acute need two bytes");
     result = muniNormalize("a\xFF", 2, muni_nfc, muni_convertStrict, output, 256, &needed);

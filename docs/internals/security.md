@@ -8,7 +8,7 @@ UTS #39 compares strings by skeleton: NFD, default ignorables removed, each code
 
 - The code points come in display order, as rules L1 to L4 of UAX #9 arrange them. The skeleton resolves each paragraph into the caller's workspace (two bytes per byte, as [bidi.md](bidi.md) explains) and walks the levels recursively, which orders the text without a map.
 - When no character can open an odd level (R, AL, RLE, RLO, RLI) and the paragraph is not right to left, the display order is the logical order and bidi is skipped. Most names take this path.
-- Two stages of canonical ordering follow. The first gives NFD of the text, whose code points (but the default ignorables) are replaced by their prototypes; the second gives NFD of those, which is the skeleton. Each stage holds a starter and its marks, as the normalizer does, with the same limit of 32.
+- Two stages of canonical ordering follow. The first gives NFD of the text, whose code points (but the default ignorables) are replaced by their prototypes; the second gives NFD of those, which is the skeleton. Each stage holds a starter and its marks, as the normalizer does, with the same limit, `MUNI_MAX_NORMALIZATION_SEGMENT`.
 
 ## Prototype data
 

@@ -8,15 +8,21 @@
 // full-width letters, into their plain counterparts.
 //
 // Normalization writes into a caller buffer and allocates nothing. It
-// reorders at most 32 code points at once: a character followed by more
-// combining marks than that is refused with muni_errorLimit rather than
-// buffered without bound (real text carries a handful; UAX #15's
-// stream-safe text carries at most 30).
+// reorders at most MUNI_MAX_NORMALIZATION_SEGMENT code points at once, a
+// starter and the combining marks after it once fully decomposed, so 31
+// marks after a starter. A longer run is refused with muni_errorLimit
+// rather than buffered without bound (real text carries a handful;
+// UAX #15's stream-safe text carries at most 30).
 
 #ifndef MAUL_UNICODE_NORMALIZE_H
 #define MAUL_UNICODE_NORMALIZE_H
 
 #include "maul-unicode/encoding.h"
+
+// The most code points of one normalization segment: a starter and the
+// combining marks after it, after full decomposition. Normalization,
+// NFKC_Casefold and skeletons refuse a longer run with muni_errorLimit.
+#define MUNI_MAX_NORMALIZATION_SEGMENT 32
 
 #ifdef __cplusplus
 extern "C"
@@ -68,7 +74,7 @@ extern "C"
     ///         the result does not fit (the bytes that fit are written); in
     ///         strict mode the first UTF-8 error and its offset;
     ///         `muni_errorLimit` and the offset of the code point that
-    ///         makes a run of combining marks too long;
+    ///         makes a segment longer than MUNI_MAX_NORMALIZATION_SEGMENT;
     ///         `muni_errorInvalid` for a NULL argument or an unknown form.
     /// @par Thread safety
     /// Safe from any thread.

@@ -22,15 +22,15 @@
 #include "tables.h"
 #include "writer.h"
 
+#include "maul-unicode/normalize.h"
 #include "maul-unicode/security.h"
 
-#define MAX_SEGMENT 32
-#define POOLED      0x8000u
+#define POOLED 0x8000u
 
 typedef struct Stage
 {
-    uint32_t codePoints[MAX_SEGMENT];
-    uint8_t classes[MAX_SEGMENT];
+    uint32_t codePoints[MUNI_MAX_NORMALIZATION_SEGMENT];
+    uint8_t classes[MUNI_MAX_NORMALIZATION_SEGMENT];
     size_t count;
 } Stage;
 
@@ -42,7 +42,7 @@ typedef struct Skeleton
     Stage decomposed;      // NFD of the text
     Stage mapped;          // NFD of the prototypes
     size_t offset;         // where the code point being added starts
-    size_t overflow;       // where a stage first outgrew MAX_SEGMENT, or SIZE_MAX
+    size_t overflow;       // where a stage first outgrew its segment, or SIZE_MAX
     muniWriter writer;
 } Skeleton;
 
@@ -50,7 +50,7 @@ typedef struct Skeleton
 // lower class. The caller passes a starter on to an empty stage.
 static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t markClass)
 {
-    if (stage->count == MAX_SEGMENT)
+    if (stage->count == MUNI_MAX_NORMALIZATION_SEGMENT)
     {
         skeleton->overflow =
             skeleton->overflow < skeleton->offset ? skeleton->overflow : skeleton->offset;

@@ -50,7 +50,7 @@ Every answer comes from one Unicode version, 18.0.0. `muniGetUnicodeVersion` tel
 - **No allocation.** Iterators are plain structs on the caller's stack, algorithms that need scratch memory take it as an argument, and results go into caller buffers.
 - **Any thread.** The tables are constant and the library has no global state, so every function is safe from any thread. An iterator, a workspace or an output buffer is used by one thread at a time.
 - **Same results everywhere.** The library uses no floating point; identical input gives identical output on every platform and compiler.
-- **Bounded work.** Where an algorithm could need unbounded memory, a documented limit stops it with an error instead: 125 embedding levels and 63 open brackets in bidi, 32 combining marks in a row for normalization and skeletons.
+- **Bounded work.** Where an algorithm could need unbounded memory, a documented limit stops it with an error instead: 125 embedding levels and 63 open brackets in bidi, a segment of `MUNI_MAX_NORMALIZATION_SEGMENT` (32) code points, a starter and the marks after it, for normalization and skeletons.
 
 ## Results and buffers
 

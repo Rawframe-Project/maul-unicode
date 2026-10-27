@@ -53,7 +53,7 @@ Nothing allocates, which is why every algorithm is an iterator or a call over ca
 - Segmentation, line breaking and script runs are iterators: structs declared in the public headers as opaque `uint64_t` arrays, which the caller keeps on its stack. Initializing one allocates nothing and there is nothing to close. A `static_assert` beside each internal state struct keeps it within the public size.
 - Bidi cannot stream (it resolves a whole paragraph), so it takes one level byte and one workspace byte per byte of text.
 - Output that may not fit is written through `src/writer.h`, which writes what fits and counts everything, so the caller learns the size the whole result needs from one pass.
-- Where an algorithm could need unbounded memory, a named limit stops it with an error: 32 combining marks in a normalization segment, the 125 levels and 63 brackets UAX #9 itself defines.
+- Where an algorithm could need unbounded memory, a named limit stops it with an error: a normalization segment of 32 code points (`MUNI_MAX_NORMALIZATION_SEGMENT`, a starter and its marks), the 125 levels and 63 brackets UAX #9 itself defines.
 
 ## Hostile input and invariants
 

@@ -149,8 +149,8 @@ extern "C"
     ///         the result does not fit (the bytes that fit are written); in
     ///         strict mode the first UTF-8 error and its offset;
     ///         `muni_errorLimit` and the offset of the code point that
-    ///         makes a run of combining marks too long, as in
-    ///         muniNormalize; `muni_errorInvalid` for a NULL argument or
+    ///         makes a segment longer than MUNI_MAX_NORMALIZATION_SEGMENT,
+    ///         as in muniNormalize; `muni_errorInvalid` for a NULL argument or
     ///         an unknown mode.
     /// @par Thread safety
     /// Safe from any thread.
