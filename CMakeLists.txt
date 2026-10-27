@@ -207,7 +207,7 @@ if(MAUL_UNICODE_FUZZ)
     target_compile_options(maul-unicode PRIVATE -fsanitize=fuzzer-no-link,address,undefined
                            -fno-sanitize-recover=all)
     target_link_options(maul-unicode PUBLIC -fsanitize=address,undefined -fno-sanitize-recover=all)
-    set(MUNI_FUZZ_AREAS encoding segment bidi script)
+    set(MUNI_FUZZ_AREAS encoding segment bidi bidi_long script)
     if(MAUL_UNICODE_NORMALIZATION)
         list(APPEND MUNI_FUZZ_AREAS normalize)
     endif()

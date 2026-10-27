@@ -450,6 +450,43 @@ static void TestIsolateDepth(void)
     CHECK(LevelInFsi(62, rle, "a", 0) == 126, "an FSI of Latin at 125 overflows");
 }
 
+// Bidi takes work in proportion to its text. A long run of FSIs with no
+// PDI and no strong character keeps every FSI's isolate open, and each
+// FSI that can still take a level looks ahead for its direction, so
+// work that grew faster than the text would outlast the suite's timeout
+// here.
+static void TestLongIsolateRun(void)
+{
+    const size_t units = 512 * 1024; // 2 MiB of FSI, then a digit
+    size_t length = units * 4;
+    char* text = malloc(length);
+    uint8_t* levels = malloc(length);
+    uint8_t* workspace = malloc(length);
+    CHECK(text != nullptr && levels != nullptr && workspace != nullptr, "memory for a long text");
+    if (text != nullptr && levels != nullptr && workspace != nullptr)
+    {
+        for (size_t i = 0; i < units; i++)
+        {
+            memcpy(text + 4 * i,
+                   "\xE2\x81\xA8"
+                   "1",
+                   4);
+        }
+        size_t paragraph = 0;
+        uint8_t level = 0;
+        CHECK(muniResolveBidi(text, length, muni_bidiLeftToRight, levels, workspace, &paragraph,
+                              &level) == muni_success &&
+                  paragraph == length,
+              "a long run of FSIs is one paragraph");
+        // 62 left-to-right isolates reach 124 and the rest overflow; the
+        // digits, which W7 makes L after a left-to-right start, stay there.
+        CHECK(levels[length - 1] == 124, "the last digit of a long run of FSIs");
+    }
+    free(text);
+    free(levels);
+    free(workspace);
+}
+
 static void TestMaps(void)
 {
     const uint8_t levels[] = {0, 0, 1, 1, 2, 1, 0};
@@ -471,6 +508,7 @@ int main(void)
     TestClassFile();
     TestParagraphsAndLines();
     TestIsolateDepth();
+    TestLongIsolateRun();
     TestMaps();
     return s_failures == 0 ? 0 : 1;
 }

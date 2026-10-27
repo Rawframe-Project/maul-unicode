@@ -359,6 +359,37 @@ static void TestErrors(void)
           "mixed number errors");
 }
 
+// A skeleton takes work in proportion to its text, bidi included: a
+// Hebrew letter turns bidi on for a long run of FSIs with no PDI, which
+// would outlast the suite's timeout if the work grew faster.
+static void TestLongIsolateRun(void)
+{
+    const size_t units = 512 * 1024; // a Hebrew letter, then 2 MiB of FSI and a digit
+    size_t length = 2 + units * 4;
+    char* text = malloc(length);
+    uint8_t* workspace = malloc(2 * length);
+    CHECK(text != nullptr && workspace != nullptr, "memory for a long text");
+    if (text != nullptr && workspace != nullptr)
+    {
+        memcpy(text, "\xD7\x90", 2);
+        for (size_t i = 0; i < units; i++)
+        {
+            memcpy(text + 2 + 4 * i,
+                   "\xE2\x81\xA8"
+                   "1",
+                   4);
+        }
+        size_t needed = 0;
+        muniTextResult result =
+            muniGetSkeleton(text, length, muni_bidiAuto, workspace, nullptr, 0, &needed);
+        // The FSIs are default ignorables, so the alef and the digits remain.
+        CHECK(result.status == muni_errorCapacity && needed == 2 + units,
+              "the skeleton of a long run of FSIs");
+    }
+    free(text);
+    free(workspace);
+}
+
 int main(void)
 {
     CHECK(HashSecurity() == muniSecurityHash, "the Security table matches the generator");
@@ -368,5 +399,6 @@ int main(void)
     TestLevels();
     TestNumbers();
     TestErrors();
+    TestLongIsolateRun();
     return s_failures == 0 ? 0 : 1;
 }

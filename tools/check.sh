@@ -190,7 +190,7 @@ for target in "$out"/check-fuzz/fuzz_*; do
     corpus=$out/corpus/$name
     mkdir -p "$corpus"
     [ -d "test/seeds/$name" ] && cp test/seeds/"$name"/* "$corpus"/
-    "$target" -max_total_time=$fuzz_seconds -max_len=256 "$corpus" >"$out/$name.log" 2>&1 ||
+    "$target" -max_total_time=$fuzz_seconds -max_len=256 -timeout=30 "$corpus" >"$out/$name.log" 2>&1 ||
         {
             tail -30 "$out/$name.log"
             exit 1
