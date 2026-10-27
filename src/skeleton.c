@@ -354,13 +354,21 @@ static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirec
 }
 
 muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirection direction,
-                               uint8_t* workspace, char* output, size_t capacity, size_t* neededOut)
+                               uint8_t* workspace, size_t workspaceSize, char* output,
+                               size_t capacity, size_t* neededOut)
 {
-    if ((text == nullptr && length != 0) || (workspace == nullptr && length != 0) ||
+    if ((text == nullptr && length != 0) || (workspace == nullptr && workspaceSize != 0) ||
         (output == nullptr && capacity != 0) || neededOut == nullptr ||
         direction > muni_bidiRightToLeft)
     {
         return (muniTextResult){muni_errorInvalid, 0};
+    }
+    // Checked for all text, not only text that needs bidi, so a short
+    // workspace shows up whatever the text is. Halving cannot overflow.
+    if (workspaceSize / 2 < length)
+    {
+        *neededOut = 0;
+        return (muniTextResult){muni_errorCapacity, 0};
     }
     muniTextResult valid = muniValidateUtf8(text, length);
     if (valid.status != muni_success)

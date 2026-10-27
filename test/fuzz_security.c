@@ -51,8 +51,8 @@ static void CheckSkeleton(const char* text, size_t length, muniBidiDirection dir
     static char once[MAX_OUTPUT];
     static char twice[MAX_OUTPUT];
     size_t first = 0;
-    muniTextResult result =
-        muniGetSkeleton(text, length, direction, workspace, once, MAX_OUTPUT, &first);
+    muniTextResult result = muniGetSkeleton(text, length, direction, workspace, sizeof(workspace),
+                                            once, MAX_OUTPUT, &first);
     if (result.status == muni_errorLimit)
     {
         return;
@@ -61,13 +61,15 @@ static void CheckSkeleton(const char* text, size_t length, muniBidiDirection dir
     Require(muniValidateUtf8(once, first).status == muni_success);
     size_t capacity = first / 2;
     size_t needed = 0;
-    result = muniGetSkeleton(text, length, direction, workspace, twice, capacity, &needed);
+    result = muniGetSkeleton(text, length, direction, workspace, sizeof(workspace), twice, capacity,
+                             &needed);
     Require(needed == first && memcmp(twice, once, capacity) == 0);
     Require(result.status == (capacity < first ? muni_errorCapacity : muni_success));
     if (direction != muni_bidiRightToLeft && IsLeftToRight(text, length) &&
         IsLeftToRight(once, first))
     {
-        result = muniGetSkeleton(once, first, direction, workspace, twice, MAX_OUTPUT, &needed);
+        result = muniGetSkeleton(once, first, direction, workspace, sizeof(workspace), twice,
+                                 MAX_OUTPUT, &needed);
         Require(result.status == muni_success && needed == first &&
                 memcmp(once, twice, first) == 0);
     }

@@ -33,8 +33,8 @@ static bool Skeleton(const char* text, size_t length, muniBidiDirection directio
 {
     static uint8_t workspace[2 * MAX_TEXT * 4];
     size_t needed = 0;
-    muniTextResult result =
-        muniGetSkeleton(text, length, direction, workspace, out, MAX_TEXT * 4 - 1, &needed);
+    muniTextResult result = muniGetSkeleton(text, length, direction, workspace, sizeof(workspace),
+                                            out, MAX_TEXT * 4 - 1, &needed);
     if (result.status != muni_success)
     {
         return false;
@@ -326,7 +326,7 @@ static void TestErrors(void)
     char output[256];
     size_t needed = 0;
     muniTextResult result =
-        muniGetSkeleton("ab\xFF", 3, muni_bidiLeftToRight, workspace, output, 256, &needed);
+        muniGetSkeleton("ab\xFF", 3, muni_bidiLeftToRight, workspace, 256, output, 256, &needed);
     CHECK(result.status == muni_errorUtf8Lead && result.offset == 2, "ill-formed text");
     char marks[1 + 40 * 2];
     marks[0] = 'a';
@@ -335,18 +335,35 @@ static void TestErrors(void)
         marks[1 + 2 * i] = (char)0xCC;
         marks[2 + 2 * i] = (char)0x81;
     }
-    result = muniGetSkeleton(marks, sizeof(marks), muni_bidiLeftToRight, workspace, output, 256,
-                             &needed);
+    result = muniGetSkeleton(marks, sizeof(marks), muni_bidiLeftToRight, workspace, 256, output,
+                             256, &needed);
     CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks");
-    result = muniGetSkeleton("paypal", 6, muni_bidiLeftToRight, workspace, output, 2, &needed);
+    result = muniGetSkeleton("paypal", 6, muni_bidiLeftToRight, workspace, 256, output, 2, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "pa", 2) == 0,
           "a short output");
-    CHECK(muniGetSkeleton("a", 1, 3, workspace, output, 256, &needed).status == muni_errorInvalid,
-          "an unknown direction");
-    CHECK(muniGetSkeleton("a", 1, muni_bidiAuto, nullptr, output, 256, &needed).status ==
+    CHECK(muniGetSkeleton("a", 1, 3, workspace, 256, output, 256, &needed).status ==
               muni_errorInvalid,
-          "no workspace");
-    CHECK(muniGetSkeleton(nullptr, 0, muni_bidiAuto, nullptr, nullptr, 0, &needed).status ==
+          "an unknown direction");
+    CHECK(muniGetSkeleton("a", 1, muni_bidiAuto, nullptr, 2, output, 256, &needed).status ==
+              muni_errorInvalid,
+          "no workspace for its size");
+    needed = 1;
+    result = muniGetSkeleton("a", 1, muni_bidiAuto, nullptr, 0, output, 256, &needed);
+    CHECK(result.status == muni_errorCapacity && result.offset == 0 && needed == 0, "no workspace");
+    // Latin text skips bidi, and still needs the whole workspace.
+    needed = 1;
+    result = muniGetSkeleton("paypal", 6, muni_bidiAuto, workspace, 11, output, 256, &needed);
+    CHECK(result.status == muni_errorCapacity && result.offset == 0 && needed == 0,
+          "a workspace one byte short");
+    needed = 1;
+    result =
+        muniGetSkeleton("\xD7\x90\xD7\x91", 4, muni_bidiAuto, workspace, 7, output, 256, &needed);
+    CHECK(result.status == muni_errorCapacity && result.offset == 0 && needed == 0,
+          "a workspace one byte short for bidi");
+    result =
+        muniGetSkeleton("\xD7\x90\xD7\x91", 4, muni_bidiAuto, workspace, 8, output, 256, &needed);
+    CHECK(result.status == muni_success && needed > 0, "a workspace of exactly two bytes a byte");
+    CHECK(muniGetSkeleton(nullptr, 0, muni_bidiAuto, nullptr, 0, nullptr, 0, &needed).status ==
                   muni_success &&
               needed == 0,
           "empty text");
@@ -380,8 +397,8 @@ static void TestLongIsolateRun(void)
                    4);
         }
         size_t needed = 0;
-        muniTextResult result =
-            muniGetSkeleton(text, length, muni_bidiAuto, workspace, nullptr, 0, &needed);
+        muniTextResult result = muniGetSkeleton(text, length, muni_bidiAuto, workspace, 2 * length,
+                                                nullptr, 0, &needed);
         // The FSIs are default ignorables, so the alef and the digits remain.
         CHECK(result.status == muni_errorCapacity && needed == 2 + units,
               "the skeleton of a long run of FSIs");
