@@ -389,6 +389,6 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
     {
         return (muniTextResult){muni_errorLimit, skeleton.overflow};
     }
-    return (muniTextResult){skeleton.writer.needed > capacity ? muni_errorCapacity : muni_success,
+    return (muniTextResult){!muniWriterFits(&skeleton.writer) ? muni_errorCapacity : muni_success,
                             length};
 }

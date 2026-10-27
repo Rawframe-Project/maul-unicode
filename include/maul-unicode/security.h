@@ -73,7 +73,8 @@ extern "C"
     /// @param output      The output. May be NULL when capacity is 0.
     /// @param capacity    The number of bytes output can hold.
     /// @param neededOut   Receives the number of bytes the whole skeleton
-    ///                    needs, which may exceed capacity.
+    ///                    needs, which may exceed capacity, or SIZE_MAX
+    ///                    when that does not fit in a size_t.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the skeleton does not fit (the bytes that fit are
     ///         written); the first UTF-8 error and its offset;

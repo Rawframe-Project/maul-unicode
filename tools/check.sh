@@ -88,6 +88,7 @@ labels_for() {
     src/harfbuzz.c | include/maul-unicode/harfbuzz.h | test/test_harfbuzz.c | test/test_guide_harfbuzz.c)
         echo "harfbuzz guide_harfbuzz" ;;
     test/test_guide.c) echo guide ;;
+    test/test_writer.c) echo writer ;;
     test/fuzz_* | test/seeds/* | bench/* | samples/*) ;;
     *) echo all ;;
     esac
