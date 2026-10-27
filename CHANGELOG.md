@@ -5,6 +5,23 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.4.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.1...v0.4.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **security:** `muniGetSkeleton` takes the workspace size as a new argument after `workspace`. For text that is not empty, a NULL workspace with a size of 0 now returns `muni_errorCapacity` instead of `muni_errorInvalid`.
+
+### Fixed
+
+* **bidi:** refuse a map that repeats an entry in muniInvertBidiMap ([#89](https://github.com/Rawframe-Project/maul-unicode/issues/89)) ([7f28b7a](https://github.com/Rawframe-Project/maul-unicode/commit/7f28b7a9b99a1fd55409309c4fa33a0d393f11ee)), closes [#88](https://github.com/Rawframe-Project/maul-unicode/issues/88)
+* **bidi:** refuse levels above 126 in the reorder functions ([#100](https://github.com/Rawframe-Project/maul-unicode/issues/100)) ([72d915f](https://github.com/Rawframe-Project/maul-unicode/commit/72d915fc95fb65c74f6ba5ec06690d6332c07ffb)), closes [#96](https://github.com/Rawframe-Project/maul-unicode/issues/96)
+* **bidi:** write no runs when they do not fit in muniReorderBidiLine ([#99](https://github.com/Rawframe-Project/maul-unicode/issues/99)) ([69e97ee](https://github.com/Rawframe-Project/maul-unicode/commit/69e97ee1c26c68aac677e58d15065fbdef68a937)), closes [#95](https://github.com/Rawframe-Project/maul-unicode/issues/95)
+* **normalize:** validate the whole text in muniCheckNormalization ([#106](https://github.com/Rawframe-Project/maul-unicode/issues/106)) ([d47bfee](https://github.com/Rawframe-Project/maul-unicode/commit/d47bfee0cf4e72c3b72eb3042c29bb8162b3c6ff)), closes [#104](https://github.com/Rawframe-Project/maul-unicode/issues/104)
+* report a result too long for size_t as a capacity error ([#87](https://github.com/Rawframe-Project/maul-unicode/issues/87)) ([f50ff71](https://github.com/Rawframe-Project/maul-unicode/commit/f50ff71072b6c3b70285a6ce0591210bbc75437b)), closes [#86](https://github.com/Rawframe-Project/maul-unicode/issues/86)
+* **security:** report 0 needed bytes on every muniGetSkeleton error ([#101](https://github.com/Rawframe-Project/maul-unicode/issues/101)) ([7429f97](https://github.com/Rawframe-Project/maul-unicode/commit/7429f97f29542b8d0015bdbdca80d7006d63603c)), closes [#97](https://github.com/Rawframe-Project/maul-unicode/issues/97)
+* **security:** take the size of the skeleton workspace ([#92](https://github.com/Rawframe-Project/maul-unicode/issues/92)) ([a09973f](https://github.com/Rawframe-Project/maul-unicode/commit/a09973fac785b17e0bf9b7ff68d5e79cef03af83)), closes [#91](https://github.com/Rawframe-Project/maul-unicode/issues/91)
+
 ## [0.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.0...v0.3.1) (2026-10-27)
 
 ### Fixed
