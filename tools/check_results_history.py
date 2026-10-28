@@ -19,7 +19,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY = "test/test_results.c"
 FIXTURES = os.path.join(ROOT, "tools", "results_history")
-ENTRY = re.compile(r"^-\s*\{\s*\d+\s*,\s*0x[0-9A-Fa-f]+ull\s*\},")
+# A removed history line: the comma after the last entry is optional,
+# and the suffix may be written in any case.
+ENTRY = re.compile(r"^-\s*\{\s*\d+\s*,\s*0x[0-9A-Fa-f]+(?i:ull)\s*\},?")
 
 
 def removed_entries(diff):
