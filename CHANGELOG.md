@@ -5,6 +5,32 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.6.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.5.0...v0.6.0) (2026-10-28)
+
+### Changed
+
+- **Breaking:** the word segmenter callback type `muniComplexBreakFn`
+  is renamed `muniComplexBreakFunction`, the name the Maul family gives
+  its callback types. Its parameters and contract and
+  `muniSetComplexBreaker` are unchanged: code that names the type
+  changes the name, and code that only passes a function changes
+  nothing
+  ([#130](https://github.com/Rawframe-Project/maul-unicode/pull/130)).
+
+### Fixed
+
+- **Breaking:** `muniEncodeUtf8` takes the output's capacity after
+  `bytes`: `muniEncodeUtf8(codePoint, bytes, capacity, sizeOut)`.
+  Before, it wrote up to four bytes without knowing the array's size,
+  so a caller encoding into the rest of its own buffer that checked the
+  room wrongly had bytes written past its end. Now a capacity below the
+  encoding's length returns `muni_errorCapacity`, writes no byte and
+  puts the length needed, 1 to 4, in `sizeOut`; a NULL `bytes` with
+  capacity 0 measures. A surrogate, a value past U+10FFFF, a NULL
+  `sizeOut`, or a NULL `bytes` with a nonzero capacity returns
+  `muni_errorInvalid` and leaves both outputs as they were
+  ([#129](https://github.com/Rawframe-Project/maul-unicode/pull/129)).
+
 ## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
 
 ### Added
