@@ -72,9 +72,13 @@ muniResult muniSetComplexBreaker(muniSegmentIterator* iterator, muniComplexBreak
     }
     muniSegmenter segmenter = Load(iterator);
     bool supported = segmenter.kind == muni_segmentLine || segmenter.kind == muni_segmentWord;
-    if (!supported || segmenter.started || segmenter.waiting)
+    if (!supported)
     {
         return muni_errorInvalid;
+    }
+    if (segmenter.started || segmenter.waiting)
+    {
+        return muni_errorState;
     }
     segmenter.complex.breaker = breaker;
     segmenter.complex.context = context;
@@ -111,10 +115,6 @@ muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
         return muni_errorInvalid;
     }
     muniSegmenter segmenter = Load(iterator);
-    if (segmenter.started || segmenter.waiting)
-    {
-        return muni_errorInvalid;
-    }
     uint32_t* countField = nullptr;
     uint8_t classCount = 0;
     if (segmenter.kind == muni_segmentWord)
@@ -131,6 +131,10 @@ muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
     {
         return muni_errorInvalid;
     }
+    if (segmenter.started || segmenter.waiting)
+    {
+        return muni_errorState;
+    }
     segmenter.overrides = count == 0 ? nullptr : overrides;
     *countField = (uint32_t)count;
     Store(iterator, &segmenter);
@@ -144,9 +148,13 @@ muniResult muniSetLineOptions(muniSegmentIterator* iterator, uint32_t options)
         return muni_errorInvalid;
     }
     muniSegmenter segmenter = Load(iterator);
-    if (segmenter.kind != muni_segmentLine || segmenter.started || segmenter.waiting)
+    if (segmenter.kind != muni_segmentLine)
     {
         return muni_errorInvalid;
+    }
+    if (segmenter.started || segmenter.waiting)
+    {
+        return muni_errorState;
     }
     segmenter.options = (uint8_t)options;
     Store(iterator, &segmenter);
@@ -163,7 +171,7 @@ muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* te
     muniSegmenter segmenter = Load(iterator);
     if (!segmenter.waiting)
     {
-        return muni_errorInvalid;
+        return muni_errorState;
     }
     muniCursorFeed(&segmenter.cursor, text, length, moreFollows);
     segmenter.waiting = false;

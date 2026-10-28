@@ -125,8 +125,9 @@ extern "C"
     /// @param iterator  A line or word iterator not yet asked for a break.
     /// @param breaker   The segmenter, or NULL for the default rules.
     /// @param context   Passed to the segmenter unchanged.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
-    ///         another kind of iterator or one already started.
+    /// @return `muni_success`; `muni_errorState` for an iterator already
+    ///         asked for a break; `muni_errorInvalid` for a NULL iterator or
+    ///         another kind of iterator.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time,
     /// and calls the segmenter on that thread.
@@ -160,12 +161,13 @@ extern "C"
     /// @param count      The number of overrides, at most 0x10F800 (one
     ///                   per scalar value); 0 restores the classes Unicode
     ///                   assigns.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
-    ///         NULL overrides with a nonzero count, another kind of
-    ///         iterator or one already started, a count over 0x10F800, a
-    ///         code point past U+10FFFF or a surrogate, code points out of
-    ///         order or repeated, or a value that is not a class of the
-    ///         iterator's property.
+    /// @return `muni_success`; `muni_errorState` for an iterator already
+    ///         asked for a boundary; `muni_errorInvalid` for a NULL
+    ///         iterator, NULL overrides with a nonzero count, another kind
+    ///         of iterator, a count over 0x10F800, a code point past
+    ///         U+10FFFF or a surrogate, code points out of order or
+    ///         repeated, or a value that is not a class of the iterator's
+    ///         property.
     /// @par Thread safety
     /// Safe from any thread; an iterator and its overrides are used by one
     /// thread at a time.
@@ -187,9 +189,9 @@ extern "C"
     ///
     /// @param iterator  A line iterator not yet asked for a break.
     /// @param options   A combination of muni_line options, or 0.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL iterator,
-    ///         another kind of iterator or one already started, or an
-    ///         unknown option.
+    /// @return `muni_success`; `muni_errorState` for an iterator already
+    ///         asked for a break; `muni_errorInvalid` for a NULL iterator,
+    ///         another kind of iterator or an unknown option.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniSetLineOptions(muniSegmentIterator* iterator,
@@ -202,9 +204,10 @@ extern "C"
     /// @param text         The next piece. May be NULL when length is 0.
     /// @param length       The number of bytes.
     /// @param moreFollows  true when still more pieces will be fed.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument,
-    ///         an iterator never initialized, one initialized without more
-    ///         text to follow, or a piece fed before the iterator asked.
+    /// @return `muni_success`; `muni_errorState` for an iterator that did
+    ///         not ask for more text, such as one initialized without more
+    ///         text to follow or one fed before it asked; `muni_errorInvalid`
+    ///         for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator,

@@ -86,6 +86,10 @@ extern "C"
         // A caller buffer or workspace is too small for the result. More
         // room would succeed.
         muni_errorCapacity = -2,
+        // The call is not allowed in the iterator's current state, which
+        // only another call changes: a setting after the iterator was
+        // asked for a result, or a piece of text it did not ask for.
+        muni_errorState = -6,
         // The text goes past a fixed bound of the library, published as a
         // named constant: MUNI_MAX_NORMALIZATION_SEGMENT. More room would
         // not help.

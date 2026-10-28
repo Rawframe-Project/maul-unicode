@@ -30,6 +30,8 @@ const char* muniResultName(muniResult result)
         return "muni_errorInvalid";
     case muni_errorCapacity:
         return "muni_errorCapacity";
+    case muni_errorState:
+        return "muni_errorState";
     case muni_errorUtf8Lead:
         return "muni_errorUtf8Lead";
     case muni_errorUtf8Continuation:
