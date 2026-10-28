@@ -6,9 +6,10 @@
 // value above U+10FFFF gets the value of an unassigned code point.
 //
 // Each property's values are numbered in the library's own order. A
-// number never changes, and a value that a new Unicode version adds gets
-// the next number after the last, so programs and stored data may rely
-// on the numbers.
+// value that a new Unicode version adds is appended after the last, and
+// the existing values keep their numbers. From 1.0 this is part of the
+// API under the 1.x rules; before 1.0, data that must outlive a breaking
+// release stores the UCD's short names instead of the numbers.
 
 #ifndef MAUL_UNICODE_PROPERTIES_H
 #define MAUL_UNICODE_PROPERTIES_H
