@@ -5,6 +5,23 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.6.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.5.0...v0.6.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **segment:** muniComplexBreakFn is renamed muniComplexBreakFunction.
+* **encoding:** muniEncodeUtf8 takes a capacity after bytes and returns muni_errorCapacity when the encoding does not fit.
+
+### Fixed
+
+* **encoding:** take the output's capacity in muniEncodeUtf8 ([#129](https://github.com/Rawframe-Project/maul-unicode/issues/129)) ([b30a58b](https://github.com/Rawframe-Project/maul-unicode/commit/b30a58b01a5c871353eb56cda74dfa55bc967320)), closes [#126](https://github.com/Rawframe-Project/maul-unicode/issues/126)
+
+
+### Changed
+
+* **segment:** call the segmenter type muniComplexBreakFunction ([#130](https://github.com/Rawframe-Project/maul-unicode/issues/130)) ([b5d30f5](https://github.com/Rawframe-Project/maul-unicode/commit/b5d30f56470beb6510e52e0dab9e8005885c2701)), closes [#127](https://github.com/Rawframe-Project/maul-unicode/issues/127)
+
 ## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
 
 ### Added
