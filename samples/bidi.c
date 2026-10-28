@@ -28,7 +28,7 @@ static void PutCodePoint(uint32_t codePoint)
 {
     char bytes[4];
     size_t size = 0;
-    if (muniEncodeUtf8(codePoint, bytes, &size) == muni_success)
+    if (muniEncodeUtf8(codePoint, bytes, sizeof(bytes), &size) == muni_success)
     {
         fwrite(bytes, 1, size, stdout);
     }

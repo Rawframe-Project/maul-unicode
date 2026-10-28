@@ -57,7 +57,8 @@ static int ParseCase(const char* line, Case* out)
             unsigned long codePoint = strtoul(cursor, &end, 16);
             size_t size = 0;
             if (end == cursor ||
-                muniEncodeUtf8((uint32_t)codePoint, out->text + out->length, &size) != muni_success)
+                muniEncodeUtf8((uint32_t)codePoint, out->text + out->length,
+                               sizeof(out->text) - out->length, &size) != muni_success)
             {
                 return 0;
             }

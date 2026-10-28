@@ -82,8 +82,9 @@ static size_t CodePoints(const char* text)
     return count;
 }
 
-// Reads the code points of a field into UTF-8.
-static void ParseField(const char* field, char* out)
+// Reads the code points of a field into UTF-8, as many as fit in
+// capacity with a NUL after them.
+static void ParseField(const char* field, char* out, size_t capacity)
 {
     size_t length = 0;
     const char* cursor = field;
@@ -98,7 +99,11 @@ static void ParseField(const char* field, char* out)
             continue;
         }
         size_t size = 0;
-        (void)muniEncodeUtf8((uint32_t)codePoint, out + length, &size);
+        if (muniEncodeUtf8((uint32_t)codePoint, out + length, capacity - 1 - length, &size) !=
+            muni_success)
+        {
+            break;
+        }
         length += size;
         cursor = end;
     }
@@ -132,8 +137,8 @@ static void TestConfusables(void)
         char prototype[MAX_TEXT];
         char skeleton[MAX_TEXT * 4];
         char again[MAX_TEXT * 4];
-        ParseField(line, source);
-        ParseField(semicolon + 1, prototype);
+        ParseField(line, source, sizeof(source));
+        ParseField(semicolon + 1, prototype, sizeof(prototype));
         bool single = CodePoints(source) == 1 && CodePoints(prototype) == 1;
         if (!single && (!IsLeftToRight(source) || !IsLeftToRight(prototype)))
         {
@@ -252,7 +257,7 @@ static void TestScripts(void)
     {
         char text[4];
         size_t size = 0;
-        if (muniEncodeUtf8(codePoint, text, &size) == muni_success &&
+        if (muniEncodeUtf8(codePoint, text, sizeof(text), &size) == muni_success &&
             muniGetResolvedScripts(text, size, scripts, 64, &count).status == muni_success &&
             count > most)
         {
@@ -281,7 +286,7 @@ static void TestResolvedScriptsBound(void)
         char text[4];
         size_t length = 0;
         size_t count = 0;
-        if (muniEncodeUtf8(codePoint, text, &length) == muni_success &&
+        if (muniEncodeUtf8(codePoint, text, sizeof(text), &length) == muni_success &&
             muniGetResolvedScripts(text, length, nullptr, 0, &count).status == muni_errorCapacity &&
             count > most)
         {

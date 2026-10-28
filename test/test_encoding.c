@@ -11,6 +11,7 @@
 
 #include "maul-unicode/encoding.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 // The reference: 1 when bytes[0..length) is exactly one well-formed
@@ -307,13 +308,81 @@ static void TestEncode(void)
 {
     char bytes[4];
     size_t size = 0;
-    CHECK(muniEncodeUtf8(0x1F600, bytes, &size) == muni_success && size == 4, "four bytes");
+    CHECK(muniEncodeUtf8(0x1F600, bytes, sizeof(bytes), &size) == muni_success && size == 4,
+          "four bytes");
     CHECK(memcmp(bytes, "\xF0\x9F\x98\x80", 4) == 0, "U+1F600");
-    CHECK(muniEncodeUtf8(0xD800, bytes, &size) == muni_errorInvalid, "a surrogate is refused");
-    CHECK(muniEncodeUtf8(0x110000, bytes, &size) == muni_errorInvalid, "past U+10FFFF");
-    CHECK(muniEncodeUtf8(0xDFFF, bytes, &size) == muni_errorInvalid, "the last surrogate");
-    CHECK(muniEncodeUtf8(0xE000, bytes, &size) == muni_success && size == 3,
+    CHECK(muniEncodeUtf8(0xD800, bytes, sizeof(bytes), &size) == muni_errorInvalid,
+          "a surrogate is refused");
+    CHECK(muniEncodeUtf8(0x110000, bytes, sizeof(bytes), &size) == muni_errorInvalid,
+          "past U+10FFFF");
+    CHECK(muniEncodeUtf8(0xDFFF, bytes, sizeof(bytes), &size) == muni_errorInvalid,
+          "the last surrogate");
+    CHECK(muniEncodeUtf8(0xE000, bytes, sizeof(bytes), &size) == muni_success && size == 3,
           "the first code point after the surrogates");
+}
+
+// The output's capacity bounds every write: an encoding that does not
+// fit writes nothing and reports its length, and a NULL output with
+// capacity 0 measures. The outputs are heap allocations of exactly their
+// capacity, so AddressSanitizer sees a byte written past it.
+static void TestEncodeCapacity(void)
+{
+    static const struct
+    {
+        uint32_t codePoint;
+        size_t size;
+    } cases[] = {{0x41, 1}, {0xE9, 2}, {0x20AC, 3}, {0x1F600, 4}};
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i)
+    {
+        size_t size = 0;
+        CHECK(muniEncodeUtf8(cases[i].codePoint, nullptr, 0, &size) == muni_errorCapacity &&
+                  size == cases[i].size,
+              "a NULL output with capacity 0 measures");
+        char* exact = malloc(cases[i].size);
+        CHECK(exact != nullptr, "allocation");
+        if (exact == nullptr)
+        {
+            continue;
+        }
+        size = 0;
+        CHECK(muniEncodeUtf8(cases[i].codePoint, exact, cases[i].size, &size) == muni_success &&
+                  size == cases[i].size,
+              "an output of exactly the encoding's length");
+        free(exact);
+        if (cases[i].size == 1)
+        {
+            continue;
+        }
+        size_t room = cases[i].size - 1;
+        char* shorter = malloc(room);
+        CHECK(shorter != nullptr, "allocation");
+        if (shorter == nullptr)
+        {
+            continue;
+        }
+        memset(shorter, 'x', room);
+        size = 0;
+        CHECK(muniEncodeUtf8(cases[i].codePoint, shorter, room, &size) == muni_errorCapacity &&
+                  size == cases[i].size,
+              "one byte short is refused with the length it needs");
+        bool untouched = true;
+        for (size_t j = 0; j < room; ++j)
+        {
+            untouched = untouched && shorter[j] == 'x';
+        }
+        CHECK(untouched, "nothing is written when the encoding does not fit");
+        free(shorter);
+    }
+    char bytes[4] = {'x', 'x', 'x', 'x'};
+    size_t size = 7;
+    CHECK(muniEncodeUtf8(0x41, nullptr, 1, &size) == muni_errorInvalid && size == 7,
+          "a NULL output with a capacity is invalid and leaves the size");
+    CHECK(muniEncodeUtf8(0x41, bytes, sizeof(bytes), nullptr) == muni_errorInvalid &&
+              bytes[0] == 'x',
+          "a NULL size is invalid and writes nothing");
+    CHECK(muniEncodeUtf8(0xD800, bytes, sizeof(bytes), &size) == muni_errorInvalid && size == 7 &&
+              bytes[0] == 'x',
+          "a surrogate leaves both outputs");
 }
 
 // Output that fits exactly: every conversion succeeds and writes all of
@@ -392,6 +461,7 @@ int main(void)
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
     TestEncode();
+    TestEncodeCapacity();
     TestExactFit();
     return s_failures == 0 ? 0 : 1;
 }
