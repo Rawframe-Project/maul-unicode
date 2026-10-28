@@ -20,7 +20,7 @@ Identifier properties are in `identifier.h` and case properties in `case.h`; see
 ## Not obvious
 
 - Every function accepts any `uint32_t`. Values past U+10FFFF answer as unassigned code points do, so a lookup never needs a range check first.
-- The enumeration values (`muni_gcLu`, `muni_lbSa`, `muni_bcRli`) are the library's own numbering, stable within a major version. Store the UCD's short names, not the numbers, in data that outlives a version.
+- The enumeration values (`muni_gcLu`, `muni_lbSa`, `muni_bcRli`) are the library's own numbering. A number never changes, and a value that a new Unicode version adds, as Unicode 15.1 added five Line_Break classes, gets the next number after the last. Stored data may keep the numbers; the UCD's short names are for data other libraries read.
 - Scripts are ISO 15924 tags packed into a `uint32_t` by `MUNI_SCRIPT('L', 'a', 't', 'n')`, the same values as HarfBuzz's `hb_script_t`. Unassigned code points are `MUNI_SCRIPT_UNKNOWN`; characters many scripts share are `MUNI_SCRIPT_COMMON`; combining marks that take their base's script are `MUNI_SCRIPT_INHERITED`.
 - `muniGetScriptExtensions` always writes at least one script: a code point without listed extensions has its Script alone. 32 entries always suffice.
 - Bidi_Class gives unassigned code points in right-to-left blocks the UCD's defaults (R or AL), as the bidi algorithm requires.

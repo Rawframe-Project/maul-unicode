@@ -4,6 +4,11 @@
 // Character properties from the Unicode Character Database. Every lookup
 // takes a code point, cannot fail and returns the property's value; a
 // value above U+10FFFF gets the value of an unassigned code point.
+//
+// Each property's values are numbered in the library's own order. A
+// number never changes, and a value that a new Unicode version adds gets
+// the next number after the last, so programs and stored data may rely
+// on the numbers.
 
 #ifndef MAUL_UNICODE_PROPERTIES_H
 #define MAUL_UNICODE_PROPERTIES_H
@@ -15,8 +20,7 @@ extern "C"
 {
 #endif
 
-    // General_Category, one value per UCD short name. The numbering is the
-    // library's own and stable within a major version.
+    // General_Category, one value per UCD short name.
     typedef uint8_t muniGeneralCategory;
 
     enum
