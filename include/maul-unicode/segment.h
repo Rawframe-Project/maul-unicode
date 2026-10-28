@@ -128,6 +128,7 @@ extern "C"
     /// @return `muni_success`; `muni_errorState` for an iterator already
     ///         asked for a break; `muni_errorInvalid` for a NULL iterator or
     ///         another kind of iterator.
+    ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time,
     /// and calls the segmenter on that thread.
@@ -168,6 +169,7 @@ extern "C"
     ///         U+10FFFF or a surrogate, code points out of order or
     ///         repeated, or a value that is not a class of the iterator's
     ///         property.
+    ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator and its overrides are used by one
     /// thread at a time.
@@ -192,6 +194,7 @@ extern "C"
     /// @return `muni_success`; `muni_errorState` for an iterator already
     ///         asked for a break; `muni_errorInvalid` for a NULL iterator,
     ///         another kind of iterator or an unknown option.
+    ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniSetLineOptions(muniSegmentIterator* iterator,
@@ -208,6 +211,7 @@ extern "C"
     ///         not ask for more text, such as one initialized without more
     ///         text to follow or one fed before it asked; `muni_errorInvalid`
     ///         for a NULL argument.
+    ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator,

@@ -62,6 +62,7 @@ extern "C"
     /// @return `muni_success`; `muni_errorState` for an iterator that did
     ///         not ask for more text, such as one initialized without more
     ///         text to follow; `muni_errorInvalid` for a NULL argument.
+    ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniFeedScriptIterator(muniScriptIterator* iterator,
