@@ -18,7 +18,7 @@ Mappings are one level deep, as the UCD gives them, and applied recursively with
 
 [`src/normalizer.h`](../../src/normalizer.h) normalizes in one pass. The caller decomposes each code point fully and feeds the parts; they collect in a segment, a starter and the marks after it, kept in canonical order by insertion. A new starter ends the segment. In the composing forms the segment is composed first, and when it composed into a lone starter, that starter may compose with the new one too (Hangul LV + T, U+0B47 + U+0B3E). Then the segment is written out.
 
-A segment holds at most 32 code points. A longer run of marks is refused with `muni_errorLimit` instead of being buffered without bound; UAX #15's stream-safe format allows 30 marks, and real text carries a handful.
+A segment holds at most `MUNI_MAX_NORMALIZATION_SEGMENT` (32) code points, a starter and the marks after it. A longer run of marks is refused with `muni_errorLimit` instead of being buffered without bound; UAX #15's stream-safe format allows 30 marks, and real text carries a handful.
 
 ## Case data
 

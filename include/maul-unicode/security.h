@@ -85,9 +85,10 @@ extern "C"
     ///         written), or with offset 0 and neededOut 0 when
     ///         workspaceSize is less than 2 * length, before the text is
     ///         read; the first UTF-8 error and its offset;
-    ///         `muni_errorLimit` when a run of combining marks outgrows
-    ///         32, and the offset of the code point being read then, with
-    ///         part of the skeleton possibly written;
+    ///         `muni_errorLimit` when a segment outgrows
+    ///         MUNI_MAX_NORMALIZATION_SEGMENT, and the offset of the code
+    ///         point being read then, with part of the skeleton possibly
+    ///         written;
     ///         `muni_errorInvalid` for a NULL argument or an unknown
     ///         direction.
     /// @par Thread safety

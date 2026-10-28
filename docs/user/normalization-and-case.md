@@ -33,7 +33,7 @@ muniTextResult result =
 
 ## Not obvious
 
-- Normalization reorders at most 32 combining marks after one character. Longer runs are refused with `muni_errorLimit` and the offset of the mark that makes the run too long; real text carries a handful, and UAX #15's stream-safe text at most 30. Skeletons and NFKC_Casefold share the limit.
+- Normalization reorders at most `MUNI_MAX_NORMALIZATION_SEGMENT` (32) code points at once: a starter and the combining marks after it, once fully decomposed. That leaves 31 marks after a starter, and fewer when the starter itself decomposes (U+01D8 is u and two marks). Longer runs are refused with `muni_errorLimit` and the offset of the mark that makes the run too long; real text carries a handful, and UAX #15's stream-safe text at most 30. Skeletons and NFKC_Casefold share the limit.
 - Titlecasing is not idempotent when a combining mark titlecases to a letter (U+0345 to capital iota): the word boundaries move. The standard's definitions give this result.
 - Lithuanian uppercasing drops one dot above after a soft-dotted letter, so uppercasing twice can drop a second dot.
 - NFKC_Casefold is defined per code point, so it is not invariant under canonical equivalence where U+0345 is involved: U+1FB3 U+0301 and its NFD get different results, as in ICU.
