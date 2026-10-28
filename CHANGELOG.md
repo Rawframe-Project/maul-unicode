@@ -7,20 +7,29 @@ may change the API, the ABI and every data format.
 
 ## [0.6.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.5.0...v0.6.0) (2026-10-28)
 
+### Changed
 
-### ⚠ BREAKING CHANGES
-
-* **segment:** muniComplexBreakFn is renamed muniComplexBreakFunction.
-* **encoding:** muniEncodeUtf8 takes a capacity after bytes and returns muni_errorCapacity when the encoding does not fit.
+- **Breaking:** the word segmenter callback type `muniComplexBreakFn`
+  is renamed `muniComplexBreakFunction`, the name the Maul family gives
+  its callback types. Its parameters and contract and
+  `muniSetComplexBreaker` are unchanged: code that names the type
+  changes the name, and code that only passes a function changes
+  nothing
+  ([#130](https://github.com/Rawframe-Project/maul-unicode/pull/130)).
 
 ### Fixed
 
-* **encoding:** take the output's capacity in muniEncodeUtf8 ([#129](https://github.com/Rawframe-Project/maul-unicode/issues/129)) ([b30a58b](https://github.com/Rawframe-Project/maul-unicode/commit/b30a58b01a5c871353eb56cda74dfa55bc967320)), closes [#126](https://github.com/Rawframe-Project/maul-unicode/issues/126)
-
-
-### Changed
-
-* **segment:** call the segmenter type muniComplexBreakFunction ([#130](https://github.com/Rawframe-Project/maul-unicode/issues/130)) ([b5d30f5](https://github.com/Rawframe-Project/maul-unicode/commit/b5d30f56470beb6510e52e0dab9e8005885c2701)), closes [#127](https://github.com/Rawframe-Project/maul-unicode/issues/127)
+- **Breaking:** `muniEncodeUtf8` takes the output's capacity after
+  `bytes`: `muniEncodeUtf8(codePoint, bytes, capacity, sizeOut)`.
+  Before, it wrote up to four bytes without knowing the array's size,
+  so a caller encoding into the rest of its own buffer that checked the
+  room wrongly had bytes written past its end. Now a capacity below the
+  encoding's length returns `muni_errorCapacity`, writes no byte and
+  puts the length needed, 1 to 4, in `sizeOut`; a NULL `bytes` with
+  capacity 0 measures. A surrogate, a value past U+10FFFF, a NULL
+  `sizeOut`, or a NULL `bytes` with a nonzero capacity returns
+  `muni_errorInvalid` and leaves both outputs as they were
+  ([#129](https://github.com/Rawframe-Project/maul-unicode/pull/129)).
 
 ## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
 
