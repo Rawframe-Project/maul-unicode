@@ -16,6 +16,11 @@ muniVersion muniGetUnicodeVersion(void)
                          MUNI_UNICODE_VERSION_PATCH};
 }
 
+uint32_t muniGetResultsVersion(void)
+{
+    return MUNI_RESULTS_VERSION;
+}
+
 const char* muniResultName(muniResult result)
 {
     switch (result)

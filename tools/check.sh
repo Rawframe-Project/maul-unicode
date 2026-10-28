@@ -72,23 +72,24 @@ preset() {
 # suite (shared code, the build, the tables).
 labels_for() {
     case "$1" in
-    *.md | LICENSE | .github/* | tools/check_*.py | tools/build_docs.py | tools/gen_api.py) ;;
+    *.md | LICENSE | .github/* | tools/check_*.py | tools/results_history/* | tools/build_docs.py | tools/gen_api.py) ;;
     docs/user/*) echo guide ;;
-    src/base.c | include/maul-unicode/base.h | test/test_base.c) echo base ;;
+    src/base.c | include/maul-unicode/base.h | test/test_base.c) echo "base results" ;;
     src/properties.c | include/maul-unicode/properties.h | test/test_properties.c) echo properties ;;
     src/identifier.c | include/maul-unicode/identifier.h | test/test_identifier.c) echo identifier ;;
     src/grapheme.c | src/word.c | src/sentence.c | src/line.c | src/complex.* | src/segment* | \
         include/maul-unicode/segment.h | test/test_segment.c) echo "segment guide" ;;
     src/script_runs.c | include/maul-unicode/script.h | test/test_script.c) echo "script guide" ;;
-    src/bidi* | include/maul-unicode/bidi.h | test/test_bidi.c) echo "bidi security guide" ;;
+    src/bidi* | include/maul-unicode/bidi.h | test/test_bidi.c) echo "bidi security results guide" ;;
     src/normalize.c | src/normalizer.h | src/decompose.* | include/maul-unicode/normalize.h | \
-        test/test_normalize.c) echo "normalize case security harfbuzz guide" ;;
-    src/case* | src/nfkc_casefold.c | include/maul-unicode/case.h | test/test_case.c) echo "case guide" ;;
-    src/security.c | src/skeleton.c | include/maul-unicode/security.h | test/test_security.c) echo security ;;
+        test/test_normalize.c) echo "normalize case security results harfbuzz guide" ;;
+    src/case* | src/nfkc_casefold.c | include/maul-unicode/case.h | test/test_case.c) echo "case results guide" ;;
+    src/security.c | src/skeleton.c | include/maul-unicode/security.h | test/test_security.c) echo "security results" ;;
     src/harfbuzz.c | include/maul-unicode/harfbuzz.h | test/test_harfbuzz.c | test/test_guide_harfbuzz.c)
         echo "harfbuzz guide_harfbuzz" ;;
     test/test_guide.c) echo guide ;;
     test/test_writer.c) echo writer ;;
+    test/test_results.c) echo results ;;
     test/fuzz_* | test/seeds/* | bench/* | samples/*) ;;
     *) echo all ;;
     esac
@@ -104,6 +105,7 @@ source_checks() {
     python3 tools/check_ucd.py
     python3 tools/check_test_hygiene.py --self-test
     python3 tools/check_test_hygiene.py
+    python3 tools/check_results_history.py --self-test
     if [ -f "$org/scripts/docs_check.py" ]; then
         python3 "$org/scripts/docs_check.py" --exclude tools/ucd
     else
@@ -124,6 +126,8 @@ if [ "$tier" = changed ]; then
         exit 0
     fi
     source_checks
+    step "the results history only grows"
+    python3 tools/check_results_history.py "$base"
     mapfile -t c_files < <(printf '%s\n' "${changed[@]}" | grep -E '\.[ch]$' | grep -v '^src/generated/' || true)
     present=()
     for f in "${c_files[@]+"${c_files[@]}"}"; do [ -f "$f" ] && present+=("$f"); done

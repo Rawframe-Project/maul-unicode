@@ -23,6 +23,11 @@ static void TestUnicodeVersionIsEighteen(void)
     CHECK(version.major == 18 && version.minor == 0 && version.patch == 0, "Unicode 18.0.0");
 }
 
+static void TestResultsVersionMatchesHeader(void)
+{
+    CHECK(muniGetResultsVersion() == MUNI_RESULTS_VERSION, "the linked results version");
+}
+
 static void TestResultNames(void)
 {
     static const struct
@@ -74,6 +79,7 @@ int main(void)
 {
     TestVersionMatchesHeader();
     TestUnicodeVersionIsEighteen();
+    TestResultsVersionMatchesHeader();
     TestResultNames();
     TestResultValues();
     return s_failures == 0 ? 0 : 1;

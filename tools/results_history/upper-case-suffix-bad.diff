@@ -1,0 +1,7 @@
+--- a/test/test_results.c
++++ b/test/test_results.c
+@@ -27,4 +27,4 @@ static const struct
+ } s_history[] = {
+-    {1, 0x73db1792c2cc9cabULL},
++    {1, 0x1b2c3d4e5f607182ULL},
+ };
