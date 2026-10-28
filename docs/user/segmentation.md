@@ -98,7 +98,7 @@ The entries are in strictly increasing order of code point, and their values are
 
 ## Text in pieces
 
-An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniFeedSegmentIterator` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked is refused, since the unread rest of the piece would be lost.
+An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniFeedSegmentIterator` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked, or after the last piece, returns `muni_errorState`, since the unread rest of the piece would be lost; so does a setting such as `muniSetLineOptions` once the iterator was asked for a break.
 
 ## Not obvious
 

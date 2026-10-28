@@ -25,10 +25,32 @@ static void TestUnicodeVersionIsEighteen(void)
 
 static void TestResultNames(void)
 {
-    CHECK(strcmp(muniResultName(muni_success), "muni_success") == 0, "success name");
-    CHECK(strcmp(muniResultName(muni_errorUtf32Value), "muni_errorUtf32Value") == 0,
-          "the last error's name");
-    CHECK(strcmp(muniResultName(muni_needMoreText), "muni_needMoreText") == 0, "more text name");
+    static const struct
+    {
+        muniResult result;
+        const char* name;
+    } names[] = {
+        {muni_success, "muni_success"},
+        {muni_done, "muni_done"},
+        {muni_needMoreText, "muni_needMoreText"},
+        {muni_errorInvalid, "muni_errorInvalid"},
+        {muni_errorCapacity, "muni_errorCapacity"},
+        {muni_errorState, "muni_errorState"},
+        {muni_errorLimit, "muni_errorLimit"},
+        {muni_errorUtf8Lead, "muni_errorUtf8Lead"},
+        {muni_errorUtf8Continuation, "muni_errorUtf8Continuation"},
+        {muni_errorUtf8Truncated, "muni_errorUtf8Truncated"},
+        {muni_errorUtf8Overlong, "muni_errorUtf8Overlong"},
+        {muni_errorUtf8Surrogate, "muni_errorUtf8Surrogate"},
+        {muni_errorUtf8TooLarge, "muni_errorUtf8TooLarge"},
+        {muni_errorUtf16Surrogate, "muni_errorUtf16Surrogate"},
+        {muni_errorUtf32Value, "muni_errorUtf32Value"},
+        {muni_errorIdentifier, "muni_errorIdentifier"},
+    };
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+    {
+        CHECK(strcmp(muniResultName(names[i].result), names[i].name) == 0, names[i].name);
+    }
     CHECK(strcmp(muniResultName(12345), "unknown result") == 0, "unknown name");
 }
 
@@ -36,7 +58,8 @@ static void TestResultNames(void)
 // library's own errors start at -32.
 static void TestResultValues(void)
 {
-    CHECK(muni_errorInvalid == -1 && muni_errorCapacity == -2 && muni_errorLimit == -9,
+    CHECK(muni_errorInvalid == -1 && muni_errorCapacity == -2 && muni_errorState == -6 &&
+              muni_errorLimit == -9,
           "the family's errors");
     CHECK(muni_errorUtf8Lead == -32 && muni_errorUtf8Continuation == -33 &&
               muni_errorUtf8Truncated == -34 && muni_errorUtf8Overlong == -35 &&

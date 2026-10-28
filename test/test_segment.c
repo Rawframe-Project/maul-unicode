@@ -336,8 +336,12 @@ static void TestComplexBreaker(void)
     size_t offset;
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
               muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorState,
           "no breaker after the first break");
+    CHECK(muniInitGraphemeIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+          "the wrong kind is invalid in any state");
 }
 
 // The run length the breaker was last given.
@@ -533,12 +537,16 @@ static void TestClassOverrideArguments(void)
     size_t offset;
     CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
               muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
           "no overrides after the first boundary");
     CHECK(muniInitWordIterator(&iterator, nullptr, 0, true) == muni_success &&
               muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
           "no overrides once asked for a boundary");
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetBreakClassOverrides(&iterator, unordered, 2) == muni_errorInvalid,
+          "a bad table is invalid in any state");
 }
 
 static void TestLineOptions(void)
@@ -571,8 +579,12 @@ static void TestLineOptions(void)
           "word iterators take no line options");
     CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
               muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorInvalid,
+              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorState,
           "no options after the first break");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
+              muniSetLineOptions(&iterator, 1u << 1) == muni_errorInvalid,
+          "an unknown option is invalid in any state");
 }
 
 static void TestFeedingRules(void)
@@ -580,11 +592,13 @@ static void TestFeedingRules(void)
     muniSegmentIterator iterator;
     size_t offset;
     CHECK(muniInitWordIterator(&iterator, "ab", 2, false) == muni_success, "init");
-    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorInvalid,
+    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorState,
           "no piece was announced");
     CHECK(muniInitWordIterator(&iterator, "ab", 2, true) == muni_success, "init with more");
-    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorInvalid,
+    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorState,
           "a piece before the iterator asked");
+    CHECK(muniFeedSegmentIterator(&iterator, nullptr, 1, false) == muni_errorInvalid,
+          "a NULL piece is invalid in any state");
     CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText, "the word may go on");
     CHECK(muniFeedSegmentIterator(&iterator, " d", 2, false) == muni_success, "feed");
     CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_success && offset == 2, "after ab");
