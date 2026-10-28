@@ -132,12 +132,17 @@ jobs:
           diff -r src/generated out/regenerated
       - name: Tables within their ceilings
         run: python3 tools/table_budget.py out/table-sizes.txt
+      # On the Release preset, where the assertions compile out, and with
+      # them live: each build hides findings the other shows.
       - name: clang-tidy
         run: |
-          cmake -B out/tidy -G Ninja -DCMAKE_C_COMPILER=clang-20 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_HARFBUZZ=ON
-          for f in src/*.c; do
-            clang-tidy-20 -p out/tidy --quiet --warnings-as-errors='*' "$f"
+          for build in Release Debug; do
+            echo "clang-tidy, $build"
+            cmake --preset linux-clang-20 -B "out/tidy-$build" -DCMAKE_BUILD_TYPE=$build \
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_HARFBUZZ=ON
+            for f in src/*.c; do
+              clang-tidy-20 -p "out/tidy-$build" --quiet --warnings-as-errors='*' "$f"
+            done
           done
 
   # Every cell builds with warnings as errors and runs the whole suite, the

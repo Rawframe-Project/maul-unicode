@@ -12,7 +12,8 @@
 #                            push.
 #   tools/check.sh pr        what the pull request check runs on this
 #                            machine: every check, the generated tables, the
-#                            table budget, clang-tidy, the linux-harfbuzz and
+#                            table budget, clang-tidy on a Release and a
+#                            Debug build, the linux-harfbuzz and
 #                            linux-clang-20-asan presets, and a short fuzzing
 #                            pass.
 #   tools/check.sh full      also every other Linux preset (ThreadSanitizer,
@@ -47,7 +48,7 @@ jobs=${JOBS:-8}
 
 step() { printf '\n== %s\n' "$*"; }
 
-# A tree outside the presets (the generator, clang-tidy, fuzzing).
+# A tree outside the presets (the generator, fuzzing).
 configure() { # name, then cmake arguments
     local name=check-$1
     shift
@@ -173,11 +174,15 @@ python3 tools/table_budget.py "$out/table-sizes.txt"
 
 preset linux-harfbuzz
 
-step "clang-tidy"
-configure tidy -DCMAKE_C_COMPILER=clang-20 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMAUL_UNICODE_BUILD_TESTS=OFF \
-    -DMAUL_UNICODE_HARFBUZZ=ON
-for f in src/*.c; do
-    clang-tidy-20 -p "$out/check-tidy" --quiet --warnings-as-errors='*' "$f" 2>/dev/null
+# As CI's checks job: on the Release preset, where the assertions compile
+# out, and with them live. Each hides findings the other shows.
+for build in Release Debug; do
+    step "clang-tidy, $build"
+    cmake --preset linux-clang-20 -B "$out/check-tidy-$build" -DCMAKE_BUILD_TYPE=$build \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMAUL_UNICODE_BUILD_TESTS=OFF -DMAUL_UNICODE_HARFBUZZ=ON \
+        >"$out/check-tidy-$build.log"
+    printf '%s\n' src/*.c | xargs -P "$jobs" -n 1 clang-tidy-20 -p "$out/check-tidy-$build" --quiet \
+        --warnings-as-errors='*' 2>/dev/null
 done
 
 preset linux-clang-20-asan
