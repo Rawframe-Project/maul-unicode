@@ -5,6 +5,56 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.4.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.1...v0.4.0) (2026-10-27)
+
+### Changed
+
+- **Breaking:** `muniGetSkeleton` takes the workspace's size as a new
+  argument after `workspace`. A workspace smaller than 2 * length
+  returns `muni_errorCapacity` with offset 0 and `neededOut` 0, before
+  the text is read, for all text: before, a short workspace was written
+  past its end only when the text needed bidi, so the mistake passed
+  tests with Latin text. A too-small output always has `neededOut`
+  above its capacity, so the two errors can be told apart. `workspace`
+  may be NULL only when `workspaceSize` is 0; for text that is not
+  empty, that returns `muni_errorCapacity` instead of
+  `muni_errorInvalid`
+  ([#92](https://github.com/Rawframe-Project/maul-unicode/pull/92)).
+- `muniReorderBidiLevels` and `muniReorderBidiLine` return
+  `muni_errorInvalid` for a level above 126, the most rules I1 and I2
+  leave, and `muniReorderBidiLine` for a paragraph level above 1, before
+  writing anything. Before, a level such as 200 was ordered and
+  returned `muni_success`
+  ([#100](https://github.com/Rawframe-Project/maul-unicode/pull/100)).
+
+### Fixed
+
+- A result too long to count in a `size_t`, which a 32-bit target can
+  reach through UTF-16 to UTF-8 conversion, case mapping,
+  normalization, NFKC_Casefold or skeletons, returns
+  `muni_errorCapacity` with `neededOut` set to `SIZE_MAX`. Before, the
+  count wrapped and the call reported a size too small or returned
+  `muni_success` with only part of the result written
+  ([#87](https://github.com/Rawframe-Project/maul-unicode/pull/87)).
+- `muniInvertBidiMap` returns `muni_errorInvalid` for a map that
+  repeats an entry, such as `{2, 0, 2}`. Before, it returned
+  `muni_success` with one slot of `inverseOut` never written
+  ([#89](https://github.com/Rawframe-Project/maul-unicode/pull/89)).
+- `muniReorderBidiLine` writes no runs when they do not fit, as
+  documented. Before, it returned `muni_errorCapacity` with the runs
+  that fit left in the output in logical order
+  ([#99](https://github.com/Rawframe-Project/maul-unicode/pull/99)).
+- `muniGetSkeleton` sets `neededOut` to 0 on every error except an
+  output too small, which reports the size the skeleton needs, and
+  `muni_errorInvalid`, which leaves it as it was. Before,
+  `muni_errorLimit` left the bytes counted before the limit, which
+  tells a caller nothing since the skeleton follows display order
+  ([#101](https://github.com/Rawframe-Project/maul-unicode/pull/101)).
+- `muniCheckNormalization` validates the whole text and reports a UTF-8
+  error after the point where the answer became No. Before, it stopped
+  there and returned `muni_success`
+  ([#106](https://github.com/Rawframe-Project/maul-unicode/pull/106)).
+
 ## [0.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.0...v0.3.1) (2026-10-27)
 
 ### Fixed
