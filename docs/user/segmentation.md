@@ -75,7 +75,7 @@ if (muniSetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
 }
 ```
 
-The iterator then never breaks before a combining mark, whatever the segmenter answers, and a word iterator reports whole words. The segmenter must give the same answer for the same run and offset each time.
+The iterator then never breaks before a combining mark, whatever the segmenter answers, and a word iterator reports whole words. The segmenter must give the same answer for the same run and offset each time. It may not use its own iterator: while it runs, the setters, `muniFeedSegmentIterator` and the `muniNext` calls on that iterator return `muni_errorBusy` and change nothing, and it must not initialize the iterator again.
 
 ## Language conventions
 

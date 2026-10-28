@@ -94,6 +94,10 @@ extern "C"
         // named constant: MUNI_MAX_NORMALIZATION_SEGMENT. More room would
         // not help.
         muni_errorLimit = -9,
+        // The iterator is inside a call that is running the caller's
+        // code, such as a word segmenter, and that code called it again.
+        // The same call succeeds once the outer call returns.
+        muni_errorBusy = -10,
 
         // The errors of Maul Unicode alone, from -32 down.
 

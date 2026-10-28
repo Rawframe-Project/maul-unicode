@@ -344,6 +344,84 @@ static void TestComplexBreaker(void)
           "the wrong kind is invalid in any state");
 }
 
+// A segmenter that calls its own iterator back before it answers as
+// ToyBreaker does, and counts the calls that were not refused as busy.
+typedef struct Reentry
+{
+    muniSegmentIterator* iterator;
+    const size_t* stops;
+    size_t calls;
+    size_t notBusy;
+} Reentry;
+
+static void ExpectBusy(Reentry* reentry, muniResult status)
+{
+    reentry->calls++;
+    reentry->notBusy += status != muni_errorBusy;
+}
+
+static size_t ReentrantBreaker(void* context, const char* run, size_t length, size_t from)
+{
+    static const muniBreakClassOverride posix[] = {{0x002E, muni_wbMidNum}};
+    static const size_t noStops[] = {0};
+    Reentry* reentry = context;
+    muniSegmentIterator* iterator = reentry->iterator;
+    size_t offset;
+    bool mandatory;
+    ExpectBusy(reentry, muniSetComplexBreaker(iterator, ToyBreaker, (void*)noStops));
+    ExpectBusy(reentry, muniFeedSegmentIterator(iterator, "a", 1, false));
+    ExpectBusy(reentry, muniNextSegmentBreak(iterator, &offset));
+    if (muniSetLineOptions(iterator, muni_lineCjAsIdeographic) != muni_errorInvalid)
+    {
+        // A line iterator: the line calls are busy.
+        ExpectBusy(reentry, muniSetLineOptions(iterator, muni_lineCjAsIdeographic));
+        ExpectBusy(reentry, muniNextLineBreak(iterator, &offset, &mandatory));
+    }
+    else
+    {
+        ExpectBusy(reentry, muniSetBreakClassOverrides(iterator, posix, 1));
+    }
+    return ToyBreaker((void*)reentry->stops, run, length, from);
+}
+
+// A segmenter that calls its iterator back is refused with
+// muni_errorBusy, and the outer call finds the breaks it would without
+// those calls.
+static void TestReentrantBreaker(void)
+{
+    static const size_t words[] = {18, 0};
+    size_t expected[16];
+    size_t offsets[16];
+    muniSegmentIterator iterator;
+    Reentry reentry = {&iterator, words, 0, 0};
+    CHECK(muniInitLineIterator(&iterator, s_thai, 30, true) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+          "a plain line iterator");
+    size_t count = CollectBreaks(&iterator, expected);
+    CHECK(muniInitLineIterator(&iterator, s_thai, 30, true) == muni_success &&
+              muniSetComplexBreaker(&iterator, ReentrantBreaker, &reentry) == muni_success,
+          "a reentrant line iterator");
+    CHECK(CollectBreaks(&iterator, offsets) == count &&
+              memcmp(offsets, expected, count * sizeof(size_t)) == 0,
+          "a line iterator finds the same breaks");
+    CHECK(reentry.calls >= 5 && reentry.notBusy == 0, "every line call back is busy");
+    CHECK(muniFeedSegmentIterator(&iterator, "", 0, false) == muni_success,
+          "no longer busy once the outer call returned");
+
+    reentry = (Reentry){&iterator, words, 0, 0};
+    CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+          "a plain word iterator");
+    count = CollectBreaks(&iterator, expected);
+    CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
+              muniSetComplexBreaker(&iterator, ReentrantBreaker, &reentry) == muni_success,
+          "a reentrant word iterator");
+    CHECK(CollectBreaks(&iterator, offsets) == count &&
+              memcmp(offsets, expected, count * sizeof(size_t)) == 0,
+          "a word iterator finds the same breaks");
+    CHECK(reentry.calls >= 4 && reentry.notBusy == 0, "every word call back is busy");
+}
+
 // The run length the breaker was last given.
 static size_t s_runLength;
 
@@ -614,6 +692,7 @@ int main(void)
     TestLineBreaks();
     TestComplexBreaker();
     TestComplexBreakerRuns();
+    TestReentrantBreaker();
     TestClassOverrides();
     TestClassOverrideArguments();
     TestLineOptions();

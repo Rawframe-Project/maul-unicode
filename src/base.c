@@ -48,6 +48,8 @@ const char* muniResultName(muniResult result)
         return "muni_errorUtf16Surrogate";
     case muni_errorLimit:
         return "muni_errorLimit";
+    case muni_errorBusy:
+        return "muni_errorBusy";
     case muni_errorIdentifier:
         return "muni_errorIdentifier";
     case muni_errorUtf32Value:
