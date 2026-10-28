@@ -5,6 +5,29 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **normalize:** muniDecomposePair returns muniResult and takes a countOut after secondOut; a NULL output returns muni_errorInvalid.
+* **segment:** muniSetComplexBreaker, muniSetBreakClassOverrides, muniSetLineOptions, muniFeedSegmentIterator, muniNextSegmentBreak and muniNextLineBreak return muni_errorBusy (-10) when the iterator's word segmenter calls them.
+* muniSetComplexBreaker, muniSetBreakClassOverrides, muniSetLineOptions, muniFeedSegmentIterator and muniFeedScriptIterator return muni_errorState (-6) for a call in the wrong state, where they returned muni_errorInvalid.
+* muni_errorLimit is -9, and the UTF-8, UTF-16, UTF-32 and identifier errors are -32 to -40.
+
+### Added
+
+* add muniGetResultsVersion, moved by every change of results ([#121](https://github.com/Rawframe-Project/maul-unicode/issues/121)) ([6443ee4](https://github.com/Rawframe-Project/maul-unicode/commit/6443ee42a1734630615a63869d7674900fd5689a)), closes [#120](https://github.com/Rawframe-Project/maul-unicode/issues/120)
+* number result codes by the family table and take .github v0.0.32 ([#108](https://github.com/Rawframe-Project/maul-unicode/issues/108)) ([bce69d2](https://github.com/Rawframe-Project/maul-unicode/commit/bce69d2c2bad3f824a67d813961c15e99089380f)), closes [#107](https://github.com/Rawframe-Project/maul-unicode/issues/107) [#105](https://github.com/Rawframe-Project/maul-unicode/issues/105)
+* publish the script array bounds as MUNI_MAX_* macros ([#119](https://github.com/Rawframe-Project/maul-unicode/issues/119)) ([a4c73e7](https://github.com/Rawframe-Project/maul-unicode/commit/a4c73e7f8d8937f4437127da80eb18a69e46e1d7)), closes [#118](https://github.com/Rawframe-Project/maul-unicode/issues/118)
+* return muni_errorState for a call in the wrong iterator state ([#111](https://github.com/Rawframe-Project/maul-unicode/issues/111)) ([faf55ec](https://github.com/Rawframe-Project/maul-unicode/commit/faf55ec69360b4a09949b19aa3f3a080af740959)), closes [#110](https://github.com/Rawframe-Project/maul-unicode/issues/110)
+
+
+### Fixed
+
+* **normalize:** return a status and a count from muniDecomposePair ([#117](https://github.com/Rawframe-Project/maul-unicode/issues/117)) ([2822aaa](https://github.com/Rawframe-Project/maul-unicode/commit/2822aaab673876c90e5557ab6c1e37c32ecef242)), closes [#116](https://github.com/Rawframe-Project/maul-unicode/issues/116)
+* **segment:** refuse a call from the word segmenter into its iterator ([#115](https://github.com/Rawframe-Project/maul-unicode/issues/115)) ([11e21b1](https://github.com/Rawframe-Project/maul-unicode/commit/11e21b1fae178e1f8f77cfe07ce651e9b998aa6e)), closes [#112](https://github.com/Rawframe-Project/maul-unicode/issues/112)
+
 ## [0.4.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.1...v0.4.0) (2026-10-27)
 
 ### Changed
