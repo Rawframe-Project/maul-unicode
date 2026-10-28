@@ -37,4 +37,4 @@ muniTextResult result =
 - Titlecasing is not idempotent when a combining mark titlecases to a letter (U+0345 to capital iota): the word boundaries move. The standard's definitions give this result.
 - Lithuanian uppercasing drops one dot above after a soft-dotted letter, so uppercasing twice can drop a second dot.
 - NFKC_Casefold is defined per code point, so it is not invariant under canonical equivalence where U+0345 is involved: U+1FB3 U+0301 and its NFD get different results, as in ICU.
-- Normalized keys depend on the Unicode version for unassigned code points and new characters; recompute stored keys when `muniGetUnicodeVersion` changes.
+- Normalized and case-folded keys change with the Unicode version, for new characters, and may change when a release fixes a rule; store `muniGetResultsVersion` beside them and recompute them when it changes.

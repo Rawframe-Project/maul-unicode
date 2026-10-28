@@ -163,6 +163,12 @@ if(MAUL_UNICODE_BUILD_TESTS)
             list(APPEND MUNI_DATA_SUITES security)
         endif()
     endif()
+    # What normalization, case and skeletons give, against the results
+    # version.
+    if(MAUL_UNICODE_NORMALIZATION AND MAUL_UNICODE_CASE AND MAUL_UNICODE_SECURITY)
+        maul_add_test(results)
+        list(APPEND MUNI_DATA_SUITES results)
+    endif()
     if(MAUL_UNICODE_HARFBUZZ)
         maul_add_test(harfbuzz)
         target_link_libraries(test_harfbuzz PRIVATE maul-unicode-harfbuzz)

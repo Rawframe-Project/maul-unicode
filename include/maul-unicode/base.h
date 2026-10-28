@@ -34,6 +34,13 @@ extern "C"
 #define MUNI_UNICODE_VERSION_MINOR 0
 #define MUNI_UNICODE_VERSION_PATCH 0
 
+// The results version: it moves up with every change to what
+// muniNormalize, muniToNfkcCasefold, muniConvertCase or muniGetSkeleton
+// give for some text, a new Unicode version included, and with nothing
+// else. Store it beside normalized keys and skeletons, and recompute them
+// when muniGetResultsVersion differs from the stored value.
+#define MUNI_RESULTS_VERSION 1
+
 // MUNI_API marks the public functions: dllexport or dllimport in a
 // shared Windows build (maul_unicode_EXPORTS is defined while building
 // the library), default visibility in a shared build elsewhere.
@@ -144,6 +151,18 @@ extern "C"
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_API muniVersion muniGetUnicodeVersion(void);
+
+    /// Returns the results version of the library that was linked: it
+    /// moves up with every change to what muniNormalize,
+    /// muniToNfkcCasefold, muniConvertCase or muniGetSkeleton give for
+    /// some text, in any release, and stays the same otherwise. A program
+    /// that stores their results stores it beside them and recomputes
+    /// them when it changes.
+    ///
+    /// @return The results version, MUNI_RESULTS_VERSION of the library.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_API uint32_t muniGetResultsVersion(void);
 
     /// Returns the name of a result code, for diagnostics.
     ///

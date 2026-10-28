@@ -21,7 +21,7 @@ ctest --preset linux-clang-20-asan -L segment   # one suite, by label
 cmake --build out/linux-gcc-14 --target munigen && ./out/linux-gcc-14/munigen tools/ucd src/generated   # regenerate tables
 ```
 
-Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Every CI cell is a preset in `CMakePresets.json` (configure, build and test of one name, built in `out/<preset>`); add a cell there, never as commands in a workflow. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `writer`, `harfbuzz`, `guide`, `guide_harfbuzz`).
+Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the shared machine. Every CI cell is a preset in `CMakePresets.json` (configure, build and test of one name, built in `out/<preset>`); add a cell there, never as commands in a workflow. Each suite is `test/test_<label>.c`; the labels are the suite names (`base`, `encoding`, `properties`, `segment`, `bidi`, `script`, `identifier`, `normalize`, `case`, `security`, `writer`, `results`, `harfbuzz`, `guide`, `guide_harfbuzz`).
 
 ## Ways to hurt yourself
 
@@ -34,6 +34,7 @@ Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the s
 
 - **Generated sources:** `src/generated/*.c`, from `tools/ucd/` by `tools/munigen`. CI regenerates them and fails on any byte of difference. `src/tables.h` declares their lookups and hashes.
 - **Unicode version:** `MUNI_UNICODE_VERSION_*` in `include/maul-unicode/base.h` must name the version of `tools/ucd/`. A new version is a minor release.
+- **Results version:** `MUNI_RESULTS_VERSION` in `base.h` moves up by one with every change to what `muniNormalize`, `muniToNfkcCasefold`, `muniConvertCase` or `muniGetSkeleton` give, a new Unicode version included. `test/test_results.c` hashes their outputs and keeps each version's hash; a change of output adds a line there with the next version, and a released line never changes.
 - **Library version:** `MUNI_VERSION_*` between the release-please markers in `base.h`; CMake reads it from there. Only release-please changes it.
 - **Public headers** are the common subset of C17 and C++17 and declare only the API; every public function has a `///` block with `@param`, `@return` and a thread safety paragraph from the list in `tools/check_docs.py`. Iterator structs are opaque `uint64_t` arrays whose size is ABI; a `static_assert` beside each internal state keeps it within them.
 - **Modules:** `tools/modules.txt` lists which module may include which. A new include needs a line there.
@@ -61,4 +62,4 @@ Follow the [repository standard's Documentation section](https://github.com/Rawf
 
 Titles are conventional commits. Scopes: `encoding`, `properties`, `segment`, `line`, `bidi`, `script`, `normalize`, `case`, `identifier`, `security`, `harfbuzz`, `generator`, `tables`, `build`, `bench`, `family`. Example: `fix(line): keep a quotation mark with the word after it`.
 
-A change to `src/generated/` names the generator change or data that caused it; a change of results (a table, a rule) also names who sees it, since callers may store skeletons and keys.
+A change to `src/generated/` names the generator change or data that caused it; a change of results (a table, a rule) also names who sees it, since callers may store skeletons and keys, and moves the results version up.

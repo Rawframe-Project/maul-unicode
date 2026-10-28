@@ -8,7 +8,7 @@
 // Two strings are confusable when their skeletons are equal: "paypal"
 // written with a Cyrillic "а" has the skeleton of the Latin one. A
 // skeleton is not text to show; store it next to a name, compare it as
-// bytes, and recompute it when the library's Unicode version changes.
+// bytes, and recompute it when muniGetResultsVersion changes.
 // Skeletons follow the reading order bidi gives each string, so the
 // caller supplies bidi's workspace, and nothing allocates.
 //
