@@ -189,12 +189,14 @@ static void TestLayoutPropertiesMatchTheUcdEverywhere(void)
 
 static void TestLayoutPropertiesKnownValues(void)
 {
-    muniScript scripts[32];
+    muniScript scripts[MUNI_MAX_SCRIPT_EXTENSIONS];
     size_t count = 0;
-    CHECK(muniGetScriptExtensions('a', scripts, 32, &count) == muni_success && count == 1 &&
-              scripts[0] == MUNI_SCRIPT('L', 'a', 't', 'n'),
+    CHECK(muniGetScriptExtensions('a', scripts, MUNI_MAX_SCRIPT_EXTENSIONS, &count) ==
+                  muni_success &&
+              count == 1 && scripts[0] == MUNI_SCRIPT('L', 'a', 't', 'n'),
           "a is Latin only");
-    CHECK(muniGetScriptExtensions(0x060C, scripts, 32, &count) == muni_success &&
+    CHECK(muniGetScriptExtensions(0x060C, scripts, MUNI_MAX_SCRIPT_EXTENSIONS, &count) ==
+                  muni_success &&
               scripts[0] == MUNI_SCRIPT('A', 'r', 'a', 'b'),
           "the Arabic comma lists Arabic first");
     CHECK(muniGetMirroringGlyph('(') == ')' && muniGetMirroringGlyph(')') == '(', "( and )");
@@ -216,6 +218,23 @@ static void TestLayoutPropertiesKnownValues(void)
 
 // Every decimal digit has a value from 0 to 9 and its system's zero
 // before it; nothing else has one.
+// No code point has more Script_Extensions than an array of
+// MUNI_MAX_SCRIPT_EXTENSIONS holds.
+static void TestScriptExtensionsBound(void)
+{
+    size_t most = 0;
+    for (uint32_t codePoint = 0; codePoint <= 0x10FFFF; ++codePoint)
+    {
+        size_t count = 0;
+        muniResult status = muniGetScriptExtensions(codePoint, nullptr, 0, &count);
+        if (status == muni_errorCapacity && count > most)
+        {
+            most = count;
+        }
+    }
+    CHECK(most > 1 && most <= MUNI_MAX_SCRIPT_EXTENSIONS, "the bound holds for every code point");
+}
+
 static void TestDecimalDigits(void)
 {
     int failures = 0;
@@ -246,6 +265,7 @@ int main(void)
     TestGeneralCategoryKnownValues();
     TestBreakPropertiesMatchTheUcdEverywhere();
     TestBreakPropertiesKnownValues();
+    TestScriptExtensionsBound();
     TestDecimalDigits();
     return s_failures == 0 ? 0 : 1;
 }

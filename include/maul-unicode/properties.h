@@ -10,6 +10,12 @@
 
 #include "maul-unicode/base.h"
 
+// An array of this many scripts holds the Script_Extensions of any code
+// point, for the Unicode version of this release. A release with a new
+// Unicode version may raise it; muniGetScriptExtensions still reports the
+// count it needs.
+#define MUNI_MAX_SCRIPT_EXTENSIONS 32
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -466,8 +472,8 @@ extern "C"
     ///
     /// @param codePoint  Any value.
     /// @param scripts    The output. May be NULL when capacity is 0.
-    /// @param capacity   The number of scripts the output can hold; 32
-    ///                   always suffice.
+    /// @param capacity   The number of scripts the output can hold;
+    ///                   MUNI_MAX_SCRIPT_EXTENSIONS always suffice.
     /// @param countOut   Receives the number of scripts.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit (the ones that fit are written), or `muni_errorInvalid`

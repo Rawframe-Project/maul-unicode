@@ -25,6 +25,12 @@
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/properties.h"
 
+// An array of this many scripts holds the resolved script set of any
+// text, for the Unicode version of this release. A release with a new
+// Unicode version may raise it; muniGetResolvedScripts still reports the
+// count it needs.
+#define MUNI_MAX_RESOLVED_SCRIPTS 64
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -112,8 +118,8 @@ extern "C"
     /// @param length    The number of bytes.
     /// @param scripts   The output, in ascending tag order. May be NULL
     ///                  when capacity is 0.
-    /// @param capacity  The number of scripts the output can hold; 64 is
-    ///                  always enough.
+    /// @param capacity  The number of scripts the output can hold;
+    ///                  MUNI_MAX_RESOLVED_SCRIPTS always suffice.
     /// @param countOut  Receives the number of scripts.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the scripts do not fit, and then none is written; the
