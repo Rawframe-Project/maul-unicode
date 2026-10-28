@@ -100,9 +100,11 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     Require((level == muni_restrictionAsciiOnly) ==
             (ascii && level != muni_restrictionUnrestricted));
-    muniScript scripts[64];
+    muniScript scripts[MUNI_MAX_RESOLVED_SCRIPTS];
     size_t count = 0;
-    Require(muniGetResolvedScripts(text, length, scripts, 64, &count).status == muni_success);
+    Require(
+        muniGetResolvedScripts(text, length, scripts, MUNI_MAX_RESOLVED_SCRIPTS, &count).status ==
+        muni_success);
     Require(level == muni_restrictionUnrestricted ||
             (count > 0) == (level <= muni_restrictionSingleScript));
     bool mixed = false;

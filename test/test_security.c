@@ -212,9 +212,10 @@ static void TestSkeletons(void)
 
 static bool Resolves(const char* text, const muniScript* expected, size_t expectedCount)
 {
-    muniScript scripts[64];
+    muniScript scripts[MUNI_MAX_RESOLVED_SCRIPTS];
     size_t count = 0;
-    muniTextResult result = muniGetResolvedScripts(text, strlen(text), scripts, 64, &count);
+    muniTextResult result =
+        muniGetResolvedScripts(text, strlen(text), scripts, MUNI_MAX_RESOLVED_SCRIPTS, &count);
     return result.status == muni_success && count == expectedCount &&
            (count == 0 || memcmp(scripts, expected, sizeof(muniScript) * count) == 0);
 }
@@ -267,6 +268,27 @@ static muniRestrictionLevel Level(const char* text)
     muniRestrictionLevel level = 0;
     muniTextResult result = muniGetRestrictionLevel(text, strlen(text), &level);
     return result.status == muni_success ? level : 0;
+}
+
+// A resolved script set is the intersection of its characters' sets, so
+// no text has more scripts than its largest single character; none of
+// those has more than an array of MUNI_MAX_RESOLVED_SCRIPTS holds.
+static void TestResolvedScriptsBound(void)
+{
+    size_t most = 0;
+    for (uint32_t codePoint = 0; codePoint <= 0x10FFFF; ++codePoint)
+    {
+        char text[4];
+        size_t length = 0;
+        size_t count = 0;
+        if (muniEncodeUtf8(codePoint, text, &length) == muni_success &&
+            muniGetResolvedScripts(text, length, nullptr, 0, &count).status == muni_errorCapacity &&
+            count > most)
+        {
+            most = count;
+        }
+    }
+    CHECK(most > 1 && most <= MUNI_MAX_RESOLVED_SCRIPTS, "the bound holds for every character");
 }
 
 static void TestLevels(void)
@@ -417,6 +439,7 @@ int main(void)
     TestConfusables();
     TestSkeletons();
     TestScripts();
+    TestResolvedScriptsBound();
     TestLevels();
     TestNumbers();
     TestErrors();
