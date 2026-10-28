@@ -20,7 +20,7 @@ Validation treats its input as hostile. It accepts exactly the well-formed seque
 - `muni_convertStrict` stops at the first error and reports it with its offset; `neededOut` then counts the units before it.
 - `muni_convertReplace` writes U+FFFD for each maximal ill-formed subpart and goes on. This is the practice the Unicode Standard recommends, so two programs that repair the same bytes agree.
 
-`muniValidateUtf16` checks that every surrogate is half of a pair. `muniDecodeUtf8` and `muniEncodeUtf8` handle one code point; on an error the decoder reports the length of the maximal subpart, at least one byte, so a loop that skips it always makes progress.
+`muniValidateUtf16` checks that every surrogate is half of a pair. `muniDecodeUtf8` and `muniEncodeUtf8` handle one code point; on an error the decoder reports the length of the maximal subpart, at least one byte, so a loop that skips it always makes progress. The encoder takes the room left in its output and writes nothing when the code point does not fit, reporting the 1 to 4 bytes it needs, so a loop that encodes into the rest of a buffer cannot write past its end.
 
 ## Not obvious
 

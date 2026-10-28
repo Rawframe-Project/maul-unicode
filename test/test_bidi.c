@@ -35,7 +35,8 @@ static bool AddCodePoint(Case* c, uint32_t codePoint)
 {
     size_t size = 0;
     if (c->count == MAX_CODE_POINTS ||
-        muniEncodeUtf8(codePoint, c->text + c->length, &size) != muni_success)
+        muniEncodeUtf8(codePoint, c->text + c->length, sizeof(c->text) - c->length, &size) !=
+            muni_success)
     {
         return false;
     }

@@ -149,7 +149,7 @@ static void HashCodePoints(void)
     {
         char text[4];
         size_t length = 0;
-        if (muniEncodeUtf8(codePoint, text, &length) == muni_success)
+        if (muniEncodeUtf8(codePoint, text, sizeof(text), &length) == muni_success)
         {
             HashOutputs(text, length, false);
         }
@@ -181,8 +181,8 @@ static bool HashNormalizationTest(void)
             char* end = nullptr;
             uint32_t codePoint = (uint32_t)strtoul(field, &end, 16);
             size_t size = 0;
-            if (end == field || length + 4 > sizeof(text) ||
-                muniEncodeUtf8(codePoint, text + length, &size) != muni_success)
+            if (end == field || muniEncodeUtf8(codePoint, text + length, sizeof(text) - length,
+                                               &size) != muni_success)
             {
                 fclose(file);
                 return false;

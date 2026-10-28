@@ -237,7 +237,7 @@ static void ParseCasefold(const char* line, size_t* poolUsed)
         {
             return;
         }
-        (void)muniEncodeUtf8(codePoint, s_pool + *poolUsed, &size);
+        (void)muniEncodeUtf8(codePoint, s_pool + *poolUsed, POOL_SIZE - *poolUsed, &size);
         *poolUsed += size;
         value = end;
     }
@@ -284,7 +284,7 @@ static void TestCasefoldEverywhere(void)
         listed += s_offsets[codePoint] != NONE ? 1 : 0;
         char input[4];
         size_t inputSize = 0;
-        (void)muniEncodeUtf8(codePoint, input, &inputSize);
+        (void)muniEncodeUtf8(codePoint, input, sizeof(input), &inputSize);
         char output[128];
         size_t needed = 0;
         bool inFile = s_offsets[codePoint] != NONE;

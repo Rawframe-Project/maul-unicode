@@ -37,8 +37,8 @@ static bool ParseColumn(const char* field, Text* out)
             continue;
         }
         size_t size = 0;
-        if (out->length + 4 > MAX_TEXT ||
-            muniEncodeUtf8((uint32_t)codePoint, out->bytes + out->length, &size) != muni_success)
+        if (muniEncodeUtf8((uint32_t)codePoint, out->bytes + out->length, MAX_TEXT - out->length,
+                           &size) != muni_success)
         {
             return false;
         }
@@ -145,7 +145,7 @@ static void TestConformance(void)
             continue;
         }
         Text single;
-        (void)muniEncodeUtf8(codePoint, single.bytes, &single.length);
+        (void)muniEncodeUtf8(codePoint, single.bytes, sizeof(single.bytes), &single.length);
         bool same = true;
         for (muniNormalForm form = 0; form < 4 && same; form++)
         {
@@ -298,7 +298,7 @@ static void TestQuickCheckEverywhere(void)
     {
         char text[4];
         size_t size = 0;
-        if (muniEncodeUtf8(codePoint, text, &size) != muni_success)
+        if (muniEncodeUtf8(codePoint, text, sizeof(text), &size) != muni_success)
         {
             continue;
         }
