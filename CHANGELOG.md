@@ -5,6 +5,76 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
+
+### Added
+
+- `MUNI_MAX_NORMALIZATION_SEGMENT` (32) in `normalize.h` names the
+  bound behind every `muni_errorLimit`: a normalization segment, a
+  starter and the marks after it, has at most 32 code points, so 31
+  marks may follow a starter. `muniNormalize`, `muniToNfkcCasefold` and
+  `muniGetSkeleton` refuse a longer one, as before
+  ([#108](https://github.com/Rawframe-Project/maul-unicode/pull/108)).
+- `MUNI_MAX_SCRIPT_EXTENSIONS` (32) in `properties.h` and
+  `MUNI_MAX_RESOLVED_SCRIPTS` (64) in `security.h`: an array of that
+  size always holds what `muniGetScriptExtensions` and
+  `muniGetResolvedScripts` write for this release's Unicode version. A
+  later Unicode version may raise them; the calls still report the
+  count they need and return `muni_errorCapacity` instead of writing
+  past a smaller array
+  ([#119](https://github.com/Rawframe-Project/maul-unicode/pull/119)).
+- `MUNI_RESULTS_VERSION` and `muniGetResultsVersion`. The version moves
+  up with every change to what `muniNormalize`, `muniToNfkcCasefold`,
+  `muniConvertCase` or `muniGetSkeleton` give, or to the verdict of
+  `muniCheckIdentifier`, `muniGetRestrictionLevel`,
+  `muniCheckMixedNumbers` or `muniGetResolvedScripts`, a new Unicode
+  version included. Store it beside normalized keys and skeletons, and
+  recompute them when it changes: a fixed rule within one Unicode
+  version changes results without changing `muniGetUnicodeVersion`.
+  It starts at 1, and no result changed in this release
+  ([#121](https://github.com/Rawframe-Project/maul-unicode/pull/121)).
+
+### Changed
+
+- **Breaking:** the result codes follow the Maul family's table.
+  `muni_errorInvalid` (-1) and `muni_errorCapacity` (-2) keep their
+  values, `muni_errorLimit` moves from -10 to -9, and the library's own
+  errors move to -32 to -40: the six UTF-8 errors at -32 to -37 in
+  their old order, then `muni_errorUtf16Surrogate` -38,
+  `muni_errorUtf32Value` -39 and `muni_errorIdentifier` -40. Code that
+  uses the names needs only a rebuild; code or data that stores the
+  numbers must change them
+  ([#108](https://github.com/Rawframe-Project/maul-unicode/pull/108)).
+- **Breaking:** a call made at the wrong time returns the new
+  `muni_errorState` (-6) instead of `muni_errorInvalid`:
+  `muniSetComplexBreaker`, `muniSetBreakClassOverrides` and
+  `muniSetLineOptions` on an iterator already asked for a break or
+  boundary, and `muniFeedSegmentIterator` and `muniFeedScriptIterator`
+  on an iterator that did not ask for more text. A wrong argument stays
+  `muni_errorInvalid` in any state, and is reported first
+  ([#111](https://github.com/Rawframe-Project/maul-unicode/pull/111)).
+- **Breaking:** `muniDecomposePair` returns a `muniResult` and takes a
+  `countOut` after `secondOut`, which receives 0 when the code point
+  does not decompose, 1 for a singleton and 2 for a pair. A NULL output
+  returns `muni_errorInvalid` and writes nothing. Before, it returned
+  `false` both for a code point without a decomposition and for a NULL
+  output, and a singleton was told from a pair only by a second code
+  point of 0
+  ([#117](https://github.com/Rawframe-Project/maul-unicode/pull/117)).
+
+### Fixed
+
+- **Breaking:** a word segmenter set with `muniSetComplexBreaker` that
+  calls back into its own iterator gets the new `muni_errorBusy` (-10)
+  from the three setters, `muniFeedSegmentIterator`,
+  `muniNextSegmentBreak` and `muniNextLineBreak`, and the call changes
+  nothing. Before, such a call worked on the iterator's state from
+  before the outer `muniNextSegmentBreak` or `muniNextLineBreak`, which
+  then overwrote it, so a change was lost without notice or a break
+  came from stale state. The segmenter must not initialize its own
+  iterator
+  ([#115](https://github.com/Rawframe-Project/maul-unicode/pull/115)).
+
 ## [0.4.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.1...v0.4.0) (2026-10-27)
 
 ### Changed
