@@ -42,6 +42,7 @@ Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the s
 - **Assertions:** `MUNI_ASSERT` (`src/invariant.h`) checks internal invariants only. It traps in builds without `NDEBUG` (Debug, sanitizers, fuzzing) and compiles out of Release, whose per-code-point loops must not pay for it. Never assert on caller input or text; validate and return a status. Library code never calls `assert` or `abort`.
 - **Workflows:** every action is pinned by commit SHA with its version in a comment, and each workflow and job declares the least `permissions` it needs; Dependabot moves the pins.
 - **Limits:** 32 code points per normalization segment, a starter and its marks (`MUNI_MAX_NORMALIZATION_SEGMENT`, `muni_errorLimit`), and the 125 levels and 63 brackets of UAX #9. A limit is part of the API, and every bound a call refuses with `muni_errorLimit` is a named constant in a public header.
+- **Property values:** a value of a property enumeration in `properties.h` never changes its number, and a value a new Unicode version adds is appended after the last. Code that counts a property's values (the override classes in `src/segment.c`, the categories in `src/harfbuzz.c`) names the last value and moves with it.
 
 ## Testing
 
