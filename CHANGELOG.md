@@ -7,26 +7,73 @@ may change the API, the ABI and every data format.
 
 ## [0.5.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.4.0...v0.5.0) (2026-10-28)
 
-
-### ⚠ BREAKING CHANGES
-
-* **normalize:** muniDecomposePair returns muniResult and takes a countOut after secondOut; a NULL output returns muni_errorInvalid.
-* **segment:** muniSetComplexBreaker, muniSetBreakClassOverrides, muniSetLineOptions, muniFeedSegmentIterator, muniNextSegmentBreak and muniNextLineBreak return muni_errorBusy (-10) when the iterator's word segmenter calls them.
-* muniSetComplexBreaker, muniSetBreakClassOverrides, muniSetLineOptions, muniFeedSegmentIterator and muniFeedScriptIterator return muni_errorState (-6) for a call in the wrong state, where they returned muni_errorInvalid.
-* muni_errorLimit is -9, and the UTF-8, UTF-16, UTF-32 and identifier errors are -32 to -40.
-
 ### Added
 
-* add muniGetResultsVersion, moved by every change of results ([#121](https://github.com/Rawframe-Project/maul-unicode/issues/121)) ([6443ee4](https://github.com/Rawframe-Project/maul-unicode/commit/6443ee42a1734630615a63869d7674900fd5689a)), closes [#120](https://github.com/Rawframe-Project/maul-unicode/issues/120)
-* number result codes by the family table and take .github v0.0.32 ([#108](https://github.com/Rawframe-Project/maul-unicode/issues/108)) ([bce69d2](https://github.com/Rawframe-Project/maul-unicode/commit/bce69d2c2bad3f824a67d813961c15e99089380f)), closes [#107](https://github.com/Rawframe-Project/maul-unicode/issues/107) [#105](https://github.com/Rawframe-Project/maul-unicode/issues/105)
-* publish the script array bounds as MUNI_MAX_* macros ([#119](https://github.com/Rawframe-Project/maul-unicode/issues/119)) ([a4c73e7](https://github.com/Rawframe-Project/maul-unicode/commit/a4c73e7f8d8937f4437127da80eb18a69e46e1d7)), closes [#118](https://github.com/Rawframe-Project/maul-unicode/issues/118)
-* return muni_errorState for a call in the wrong iterator state ([#111](https://github.com/Rawframe-Project/maul-unicode/issues/111)) ([faf55ec](https://github.com/Rawframe-Project/maul-unicode/commit/faf55ec69360b4a09949b19aa3f3a080af740959)), closes [#110](https://github.com/Rawframe-Project/maul-unicode/issues/110)
+- `MUNI_MAX_NORMALIZATION_SEGMENT` (32) in `normalize.h` names the
+  bound behind every `muni_errorLimit`: a normalization segment, a
+  starter and the marks after it, has at most 32 code points, so 31
+  marks may follow a starter. `muniNormalize`, `muniToNfkcCasefold` and
+  `muniGetSkeleton` refuse a longer one, as before
+  ([#108](https://github.com/Rawframe-Project/maul-unicode/pull/108)).
+- `MUNI_MAX_SCRIPT_EXTENSIONS` (32) in `properties.h` and
+  `MUNI_MAX_RESOLVED_SCRIPTS` (64) in `security.h`: an array of that
+  size always holds what `muniGetScriptExtensions` and
+  `muniGetResolvedScripts` write for this release's Unicode version. A
+  later Unicode version may raise them; the calls still report the
+  count they need and return `muni_errorCapacity` instead of writing
+  past a smaller array
+  ([#119](https://github.com/Rawframe-Project/maul-unicode/pull/119)).
+- `MUNI_RESULTS_VERSION` and `muniGetResultsVersion`. The version moves
+  up with every change to what `muniNormalize`, `muniToNfkcCasefold`,
+  `muniConvertCase` or `muniGetSkeleton` give, or to the verdict of
+  `muniCheckIdentifier`, `muniGetRestrictionLevel`,
+  `muniCheckMixedNumbers` or `muniGetResolvedScripts`, a new Unicode
+  version included. Store it beside normalized keys and skeletons, and
+  recompute them when it changes: a fixed rule within one Unicode
+  version changes results without changing `muniGetUnicodeVersion`.
+  It starts at 1, and no result changed in this release
+  ([#121](https://github.com/Rawframe-Project/maul-unicode/pull/121)).
 
+### Changed
+
+- **Breaking:** the result codes follow the Maul family's table.
+  `muni_errorInvalid` (-1) and `muni_errorCapacity` (-2) keep their
+  values, `muni_errorLimit` moves from -10 to -9, and the library's own
+  errors move to -32 to -40: the six UTF-8 errors at -32 to -37 in
+  their old order, then `muni_errorUtf16Surrogate` -38,
+  `muni_errorUtf32Value` -39 and `muni_errorIdentifier` -40. Code that
+  uses the names needs only a rebuild; code or data that stores the
+  numbers must change them
+  ([#108](https://github.com/Rawframe-Project/maul-unicode/pull/108)).
+- **Breaking:** a call made at the wrong time returns the new
+  `muni_errorState` (-6) instead of `muni_errorInvalid`:
+  `muniSetComplexBreaker`, `muniSetBreakClassOverrides` and
+  `muniSetLineOptions` on an iterator already asked for a break or
+  boundary, and `muniFeedSegmentIterator` and `muniFeedScriptIterator`
+  on an iterator that did not ask for more text. A wrong argument stays
+  `muni_errorInvalid` in any state, and is reported first
+  ([#111](https://github.com/Rawframe-Project/maul-unicode/pull/111)).
+- **Breaking:** `muniDecomposePair` returns a `muniResult` and takes a
+  `countOut` after `secondOut`, which receives 0 when the code point
+  does not decompose, 1 for a singleton and 2 for a pair. A NULL output
+  returns `muni_errorInvalid` and writes nothing. Before, it returned
+  `false` both for a code point without a decomposition and for a NULL
+  output, and a singleton was told from a pair only by a second code
+  point of 0
+  ([#117](https://github.com/Rawframe-Project/maul-unicode/pull/117)).
 
 ### Fixed
 
-* **normalize:** return a status and a count from muniDecomposePair ([#117](https://github.com/Rawframe-Project/maul-unicode/issues/117)) ([2822aaa](https://github.com/Rawframe-Project/maul-unicode/commit/2822aaab673876c90e5557ab6c1e37c32ecef242)), closes [#116](https://github.com/Rawframe-Project/maul-unicode/issues/116)
-* **segment:** refuse a call from the word segmenter into its iterator ([#115](https://github.com/Rawframe-Project/maul-unicode/issues/115)) ([11e21b1](https://github.com/Rawframe-Project/maul-unicode/commit/11e21b1fae178e1f8f77cfe07ce651e9b998aa6e)), closes [#112](https://github.com/Rawframe-Project/maul-unicode/issues/112)
+- **Breaking:** a word segmenter set with `muniSetComplexBreaker` that
+  calls back into its own iterator gets the new `muni_errorBusy` (-10)
+  from the three setters, `muniFeedSegmentIterator`,
+  `muniNextSegmentBreak` and `muniNextLineBreak`, and the call changes
+  nothing. Before, such a call worked on the iterator's state from
+  before the outer `muniNextSegmentBreak` or `muniNextLineBreak`, which
+  then overwrote it, so a change was lost without notice or a break
+  came from stale state. The segmenter must not initialize its own
+  iterator
+  ([#115](https://github.com/Rawframe-Project/maul-unicode/pull/115)).
 
 ## [0.4.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.3.1...v0.4.0) (2026-10-27)
 
