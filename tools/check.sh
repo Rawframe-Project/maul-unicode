@@ -72,7 +72,7 @@ preset() {
 # suite (shared code, the build, the tables).
 labels_for() {
     case "$1" in
-    *.md | LICENSE | .github/* | tools/check_*.py | tools/build_docs.py | tools/gen_api.py) ;;
+    *.md | LICENSE | .github/* | tools/check_*.py | tools/results_history/* | tools/build_docs.py | tools/gen_api.py) ;;
     docs/user/*) echo guide ;;
     src/base.c | include/maul-unicode/base.h | test/test_base.c) echo "base results" ;;
     src/properties.c | include/maul-unicode/properties.h | test/test_properties.c) echo properties ;;
@@ -105,6 +105,7 @@ source_checks() {
     python3 tools/check_ucd.py
     python3 tools/check_test_hygiene.py --self-test
     python3 tools/check_test_hygiene.py
+    python3 tools/check_results_history.py --self-test
     if [ -f "$org/scripts/docs_check.py" ]; then
         python3 "$org/scripts/docs_check.py" --exclude tools/ucd
     else
@@ -125,6 +126,8 @@ if [ "$tier" = changed ]; then
         exit 0
     fi
     source_checks
+    step "the results history only grows"
+    python3 tools/check_results_history.py "$base"
     mapfile -t c_files < <(printf '%s\n' "${changed[@]}" | grep -E '\.[ch]$' | grep -v '^src/generated/' || true)
     present=()
     for f in "${c_files[@]+"${c_files[@]}"}"; do [ -f "$f" ] && present+=("$f"); done

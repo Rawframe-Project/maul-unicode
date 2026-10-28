@@ -2,15 +2,19 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // The results version: a hash of what muniNormalize, muniToNfkcCasefold,
-// muniConvertCase and muniGetSkeleton give for every code point, every
-// source sequence of NormalizationTest.txt and a few strings whose
-// results depend on context, against the hash each results version gave.
+// muniConvertCase and muniGetSkeleton give, and of the verdicts a program
+// may store beside a skeleton (muniCheckIdentifier,
+// muniGetRestrictionLevel, muniCheckMixedNumbers and
+// muniGetResolvedScripts), for every code point, every source sequence
+// of NormalizationTest.txt and a few strings whose results depend on
+// context, against the hash each results version gave.
 // A change of any of those outputs, a new Unicode version included,
 // fails here until MUNI_RESULTS_VERSION moves up and its hash is added.
 
 #include "test_harness.h"
 
 #include "maul-unicode/case.h"
+#include "maul-unicode/identifier.h"
 #include "maul-unicode/normalize.h"
 #include "maul-unicode/security.h"
 
@@ -26,7 +30,7 @@ static const struct
     uint32_t version;
     uint64_t hash;
 } s_history[] = {
-    {1, 0x93f4ac57a88cd032ull},
+    {1, 0x73db1792c2cc9cabull},
 };
 
 static uint64_t s_hash = 0xcbf29ce484222325ull;
@@ -70,6 +74,34 @@ static void HashResult(muniTextResult result, const char* output, size_t needed)
 static char s_output[1 << 14];
 static uint8_t s_workspace[1 << 12];
 
+// Hashes a verdict: its status and offset, then what it says.
+static void HashVerdict(muniTextResult result, uint64_t value)
+{
+    HashNumber((uint64_t)(int64_t)result.status);
+    HashNumber(result.offset);
+    HashNumber(value);
+}
+
+static void HashVerdicts(const char* text, size_t length)
+{
+    HashVerdict(muniCheckIdentifier(text, length), 0);
+    muniRestrictionLevel level = 0;
+    muniTextResult result = muniGetRestrictionLevel(text, length, &level);
+    HashVerdict(result, level);
+    bool mixed = false;
+    result = muniCheckMixedNumbers(text, length, &mixed);
+    HashVerdict(result, mixed);
+    muniScript scripts[64];
+    size_t count = 0;
+    result =
+        muniGetResolvedScripts(text, length, scripts, sizeof(scripts) / sizeof(scripts[0]), &count);
+    HashVerdict(result, count);
+    for (size_t i = 0; result.status == muni_success && i < count; ++i)
+    {
+        HashNumber(scripts[i]);
+    }
+}
+
 static void HashOutputs(const char* text, size_t length, bool everyVariant)
 {
     static const muniNormalForm forms[] = {muni_nfc, muni_nfd, muni_nfkc, muni_nfkd};
@@ -108,6 +140,7 @@ static void HashOutputs(const char* text, size_t length, bool everyVariant)
                             sizeof(s_output), &needed);
         HashResult(result, s_output, needed);
     }
+    HashVerdicts(text, length);
 }
 
 static void HashCodePoints(void)

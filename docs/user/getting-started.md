@@ -44,7 +44,7 @@ A component left out keeps its header, so a call into it fails to link instead o
 
 ## The model
 
-Every answer comes from one Unicode version, 18.0.0. `muniGetUnicodeVersion` tells a program which version it linked. Stored results (skeletons, normalized and case-folded keys) depend on more than the Unicode version, since a release may also fix a rule: store `muniGetResultsVersion` beside them, and recompute them when it changes. It moves up with every change to what normalization, NFKC_Casefold, case conversion or skeletons give, and with nothing else.
+Every answer comes from one Unicode version, 18.0.0. `muniGetUnicodeVersion` tells a program which version it linked. Stored results (skeletons, normalized and case-folded keys) depend on more than the Unicode version, since a release may also fix a rule: store `muniGetResultsVersion` beside them, and recompute them when it changes. It moves up with every change to what normalization, NFKC_Casefold, case conversion or skeletons give, or to the verdicts of `muniCheckIdentifier`, `muniGetRestrictionLevel`, `muniCheckMixedNumbers` and `muniGetResolvedScripts`, and with nothing else.
 
 - **UTF-8 and byte offsets.** Functions take UTF-8 with an explicit length and report positions as byte offsets into it. UTF-16 and UTF-32 conversions exist for the edges of a program.
 - **No allocation.** Iterators are plain structs on the caller's stack, algorithms that need scratch memory take it as an argument, and results go into caller buffers.
