@@ -9,6 +9,7 @@
 
 #include "segmenter.h"
 
+#include <stddef.h>
 #include <string.h>
 
 static muniSegmenter Load(const muniSegmentIterator* iterator)
@@ -21,6 +22,19 @@ static muniSegmenter Load(const muniSegmentIterator* iterator)
 static void Store(muniSegmentIterator* iterator, const muniSegmenter* segmenter)
 {
     memcpy(iterator, segmenter, sizeof(*segmenter));
+}
+
+// Marks the iterator in caller memory busy before a call that may run the
+// caller's word segmenter, so a call the segmenter makes on it is refused
+// instead of working on the state the outer call will overwrite. The
+// outer call's Store clears the mark.
+static void MarkBusy(muniSegmentIterator* iterator, const muniSegmenter* segmenter)
+{
+    if (segmenter->complex.breaker != nullptr)
+    {
+        uint8_t busy = muni_phaseBusy;
+        memcpy((unsigned char*)iterator + offsetof(muniSegmenter, phase), &busy, sizeof(busy));
+    }
 }
 
 static muniResult Init(muniSegmentIterator* iterator, uint8_t kind, const char* text, size_t length,
@@ -76,7 +90,11 @@ muniResult muniSetComplexBreaker(muniSegmentIterator* iterator, muniComplexBreak
     {
         return muni_errorInvalid;
     }
-    if (segmenter.started || segmenter.waiting)
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    if (segmenter.started || segmenter.phase == muni_phaseWaiting)
     {
         return muni_errorState;
     }
@@ -131,7 +149,11 @@ muniResult muniSetBreakClassOverrides(muniSegmentIterator* iterator,
     {
         return muni_errorInvalid;
     }
-    if (segmenter.started || segmenter.waiting)
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    if (segmenter.started || segmenter.phase == muni_phaseWaiting)
     {
         return muni_errorState;
     }
@@ -152,7 +174,11 @@ muniResult muniSetLineOptions(muniSegmentIterator* iterator, uint32_t options)
     {
         return muni_errorInvalid;
     }
-    if (segmenter.started || segmenter.waiting)
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    if (segmenter.started || segmenter.phase == muni_phaseWaiting)
     {
         return muni_errorState;
     }
@@ -169,12 +195,16 @@ muniResult muniFeedSegmentIterator(muniSegmentIterator* iterator, const char* te
         return muni_errorInvalid;
     }
     muniSegmenter segmenter = Load(iterator);
-    if (!segmenter.waiting)
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    if (segmenter.phase != muni_phaseWaiting)
     {
         return muni_errorState;
     }
     muniCursorFeed(&segmenter.cursor, text, length, moreFollows);
-    segmenter.waiting = false;
+    segmenter.phase = muni_phaseReady;
     Store(iterator, &segmenter);
     return muni_success;
 }
@@ -203,8 +233,13 @@ muniResult muniNextSegmentBreak(muniSegmentIterator* iterator, size_t* offsetOut
         return muni_errorInvalid;
     }
     muniSegmenter segmenter = Load(iterator);
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    MarkBusy(iterator, &segmenter);
     muniResult status = Next(&segmenter, offsetOut);
-    segmenter.waiting = status == muni_needMoreText;
+    segmenter.phase = status == muni_needMoreText ? muni_phaseWaiting : muni_phaseReady;
     Store(iterator, &segmenter);
     return status;
 }
@@ -220,8 +255,13 @@ muniResult muniNextLineBreak(muniSegmentIterator* iterator, size_t* offsetOut, b
     {
         return muni_errorInvalid;
     }
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    MarkBusy(iterator, &segmenter);
     muniResult status = Next(&segmenter, offsetOut);
-    segmenter.waiting = status == muni_needMoreText;
+    segmenter.phase = status == muni_needMoreText ? muni_phaseWaiting : muni_phaseReady;
     *mandatoryOut = status == muni_success && segmenter.mandatory;
     Store(iterator, &segmenter);
     return status;

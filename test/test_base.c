@@ -37,6 +37,7 @@ static void TestResultNames(void)
         {muni_errorCapacity, "muni_errorCapacity"},
         {muni_errorState, "muni_errorState"},
         {muni_errorLimit, "muni_errorLimit"},
+        {muni_errorBusy, "muni_errorBusy"},
         {muni_errorUtf8Lead, "muni_errorUtf8Lead"},
         {muni_errorUtf8Continuation, "muni_errorUtf8Continuation"},
         {muni_errorUtf8Truncated, "muni_errorUtf8Truncated"},
@@ -59,7 +60,7 @@ static void TestResultNames(void)
 static void TestResultValues(void)
 {
     CHECK(muni_errorInvalid == -1 && muni_errorCapacity == -2 && muni_errorState == -6 &&
-              muni_errorLimit == -9,
+              muni_errorLimit == -9 && muni_errorBusy == -10,
           "the family's errors");
     CHECK(muni_errorUtf8Lead == -32 && muni_errorUtf8Continuation == -33 &&
               muni_errorUtf8Truncated == -34 && muni_errorUtf8Overlong == -35 &&

@@ -28,6 +28,15 @@ enum
     muni_segmentLine = 4,
 };
 
+// What an iterator in caller memory is doing between calls, and during a
+// call that hands a run to the caller's word segmenter.
+enum
+{
+    muni_phaseReady = 0,   // it can be asked for a boundary
+    muni_phaseWaiting = 1, // the last call returned muni_needMoreText
+    muni_phaseBusy = 2,    // a call is inside the word segmenter
+};
+
 // A rule set's answer about the position before a code point. A hold
 // may carry a kind, muni_decideHold plus a small number, which the engine
 // keeps in holdKind for the resolve rule.
@@ -111,7 +120,7 @@ typedef struct muniSegmenter
     bool started;      // a code point has been read
     bool endReported;  // the boundary at the end has been reported
     bool holding;      // a boundary at heldOffset is undecided
-    bool waiting;      // the last call returned muni_needMoreText
+    uint8_t phase;     // a muni_phase value
     bool mandatory;    // the last boundary reported must be taken
     uint8_t holdKind;  // the kind of the open hold
     uint8_t options;   // a line iterator's muni_line options
