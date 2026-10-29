@@ -401,6 +401,22 @@ static void TestErrors(void)
     muniRestrictionLevel level = 0;
     result = muniGetRestrictionLevel("a\xC0", 2, &level);
     CHECK(result.status != muni_success && result.offset == 1, "ill-formed text has no level");
+    // A truncated euro sign after Latin and Cyrillic, alone in a heap
+    // allocation of its length so that AddressSanitizer sees a read past it.
+    static const char cut[] = "a\xD0\xA1\xE2\x82";
+    char* text = malloc(sizeof(cut) - 1);
+    CHECK(text != nullptr, "allocation");
+    if (text != nullptr)
+    {
+        memcpy(text, cut, sizeof(cut) - 1);
+        muniScript scripts[2] = {MUNI_SCRIPT_COMMON, MUNI_SCRIPT_COMMON};
+        size_t count = 7;
+        result = muniGetResolvedScripts(text, sizeof(cut) - 1, scripts, 2, &count);
+        CHECK(result.status == muni_errorUtf8Truncated && result.offset == 3 && count == 7 &&
+                  scripts[0] == MUNI_SCRIPT_COMMON && scripts[1] == MUNI_SCRIPT_COMMON,
+              "ill-formed text has no scripts, and nothing is written");
+        free(text);
+    }
     bool mixed = false;
     CHECK(muniCheckMixedNumbers("1", 1, nullptr).status == muni_errorInvalid &&
               muniCheckMixedNumbers("\xFF", 1, &mixed).status == muni_errorUtf8Lead,
