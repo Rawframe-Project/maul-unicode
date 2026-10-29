@@ -7,14 +7,15 @@
 // strictly, fall on code point starts and end at the length of the text.
 // Word and sentence iterators are also run with class overrides for some
 // of the text's own code points, each given a class the input picks, and
-// line iterators with CJ resolved as ID. Line breaks and their mandatory
-// flags from muniFindLineBreaks must equal muniNextLineBreak's fed in
-// pieces.
+// line iterators with CJ resolved as ID. Line breaks must be mandatory
+// exactly at the end and after BK, CR, LF and NL, and muniNextLineBreak fed
+// in pieces must give the breaks and flags muniFindLineBreaks gives.
 // Word and sentence boundaries need not be grapheme boundaries: the
 // UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
 // to grapheme clusters) when punctuation follows, for example.
 
 #include "maul-unicode/encoding.h"
+#include "maul-unicode/properties.h"
 #include "maul-unicode/segment.h"
 
 #include <stdlib.h>
@@ -173,8 +174,45 @@ static void CheckLineOptions(const char* text, size_t length, size_t piece)
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
+// The mandatory flags follow segment.h's rule, worked out here from the
+// classes alone: a break is mandatory exactly at the end of the text and
+// after a BK, CR, LF or NL (UAX #14 LB3 to LB5), and each of those ends a
+// break. A CR before an LF ends none, since the pair breaks only after the
+// LF. An ill-formed sequence has no class of its own and forces no break.
+static void CheckMandatoryRule(const char* text, size_t length, const size_t* breaks,
+                               const bool* mandatory, size_t count)
+{
+    size_t index = 0;
+    size_t offset = 0;
+    while (offset < length)
+    {
+        uint32_t codePoint;
+        size_t size;
+        bool valid =
+            muniDecodeUtf8(text + offset, length - offset, &codePoint, &size) == muni_success;
+        offset += size;
+        muniLineBreak value = valid ? muniGetLineBreak(codePoint) : muni_lbXx;
+        bool crBeforeLf = value == muni_lbCr && offset < length && text[offset] == '\n';
+        bool hard = !crBeforeLf && (value == muni_lbBk || value == muni_lbCr ||
+                                    value == muni_lbLf || value == muni_lbNl);
+        bool isBreak = index < count && breaks[index] == offset;
+        Require(!crBeforeLf || !isBreak);
+        if (hard || offset == length)
+        {
+            Require(isBreak && mandatory[index]);
+        }
+        else if (isBreak)
+        {
+            Require(!mandatory[index]);
+        }
+        index += isBreak ? 1 : 0;
+    }
+    Require(index == count);
+}
+
 // The line breaks and their mandatory flags muniFindLineBreaks gives for
-// the whole text equal those muniNextLineBreak gives fed in pieces.
+// the whole text follow the rule above, and equal those muniNextLineBreak
+// gives fed in pieces.
 static void CheckMandatory(const char* text, size_t length, size_t piece)
 {
     static size_t whole[MAX_BREAKS];
@@ -182,6 +220,7 @@ static void CheckMandatory(const char* text, size_t length, size_t piece)
     size_t count = 0;
     Require(muniFindLineBreaks(text, length, whole, wholeMandatory, MAX_BREAKS, &count) ==
             muni_success);
+    CheckMandatoryRule(text, length, whole, wholeMandatory, count);
     size_t fed = piece < length ? piece : length;
     muniSegmentIterator iterator;
     Require(muniInitLineIterator(&iterator, text, fed, fed < length) == muni_success);
