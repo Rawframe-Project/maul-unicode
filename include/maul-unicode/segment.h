@@ -273,77 +273,77 @@ extern "C"
     /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.
     ///
-    /// @param text         The text. May be NULL when length is 0.
-    /// @param length       The number of bytes.
-    /// @param offsets      The output. May be NULL when capacity is 0.
-    /// @param capacity     The number of offsets the output can hold.
-    /// @param countOut     Receives the number of boundaries, which may
-    ///                     exceed capacity; the ones that fit are written.
-    ///                     `muni_errorInvalid` leaves both as they were.
+    /// @param text        The text. May be NULL when length is 0.
+    /// @param length      The number of bytes.
+    /// @param offsetsOut  The output. May be NULL when capacity is 0.
+    /// @param capacity    The number of offsets the output can hold.
+    /// @param countOut    Receives the number of boundaries, which may exceed
+    ///                    capacity; the ones that fit are written.
+    ///                    `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindGraphemeBreaks(const char* text, size_t length,
-                                                              size_t* offsets, size_t capacity,
+                                                              size_t* offsetsOut, size_t capacity,
                                                               size_t* countOut);
 
     /// Writes the word boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.
     ///
-    /// @param text         The text. May be NULL when length is 0.
-    /// @param length       The number of bytes.
-    /// @param offsets      The output. May be NULL when capacity is 0.
-    /// @param capacity     The number of offsets the output can hold.
-    /// @param countOut     Receives the number of boundaries, which may
-    ///                     exceed capacity; the ones that fit are written.
-    ///                     `muni_errorInvalid` leaves both as they were.
+    /// @param text        The text. May be NULL when length is 0.
+    /// @param length      The number of bytes.
+    /// @param offsetsOut  The output. May be NULL when capacity is 0.
+    /// @param capacity    The number of offsets the output can hold.
+    /// @param countOut    Receives the number of boundaries, which may exceed
+    ///                    capacity; the ones that fit are written.
+    ///                    `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindWordBreaks(const char* text, size_t length,
-                                                          size_t* offsets, size_t capacity,
+                                                          size_t* offsetsOut, size_t capacity,
                                                           size_t* countOut);
 
     /// Writes the sentence boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.
     ///
-    /// @param text         The text. May be NULL when length is 0.
-    /// @param length       The number of bytes.
-    /// @param offsets      The output. May be NULL when capacity is 0.
-    /// @param capacity     The number of offsets the output can hold.
-    /// @param countOut     Receives the number of boundaries, which may
-    ///                     exceed capacity; the ones that fit are written.
-    ///                     `muni_errorInvalid` leaves both as they were.
+    /// @param text        The text. May be NULL when length is 0.
+    /// @param length      The number of bytes.
+    /// @param offsetsOut  The output. May be NULL when capacity is 0.
+    /// @param capacity    The number of offsets the output can hold.
+    /// @param countOut    Receives the number of boundaries, which may exceed
+    ///                    capacity; the ones that fit are written.
+    ///                    `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindSentenceBreaks(const char* text, size_t length,
-                                                              size_t* offsets, size_t capacity,
+                                                              size_t* offsetsOut, size_t capacity,
                                                               size_t* countOut);
 
     /// Writes the line break opportunities of a whole UTF-8 text into
     /// caller arrays: every opportunity after the start, the end included,
     /// and optionally whether each is mandatory.
     ///
-    /// @param text         The text. May be NULL when length is 0.
-    /// @param length       The number of bytes.
-    /// @param offsets      The output. May be NULL when capacity is 0.
-    /// @param mandatory    NULL, or an array of capacity flags that receive
-    ///                     true for each mandatory break.
-    /// @param capacity     The number of entries the outputs can hold.
-    /// @param countOut     Receives the number of opportunities, which may
-    ///                     exceed capacity; the ones that fit are written.
-    ///                     `muni_errorInvalid` leaves the offsets, the
-    ///                     flags and the count as they were.
+    /// @param text          The text. May be NULL when length is 0.
+    /// @param length        The number of bytes.
+    /// @param offsetsOut    The output. May be NULL when capacity is 0.
+    /// @param mandatoryOut  NULL, or an array of capacity flags that receive
+    ///                      true for each mandatory break.
+    /// @param capacity      The number of entries the outputs can hold.
+    /// @param countOut      Receives the number of opportunities, which may
+    ///                      exceed capacity; the ones that fit are written.
+    ///                      `muni_errorInvalid` leaves the offsets, the flags
+    ///                      and the count as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindLineBreaks(const char* text, size_t length,
-                                                          size_t* offsets, bool* mandatory,
+                                                          size_t* offsetsOut, bool* mandatoryOut,
                                                           size_t capacity, size_t* countOut);
 
 #ifdef __cplusplus

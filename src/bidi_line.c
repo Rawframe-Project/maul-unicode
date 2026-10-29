@@ -202,17 +202,17 @@ static void OrderRuns(muniBidiRun* runs, size_t count)
 }
 
 muniResult muniReorderBidiLine(const char* line, const uint8_t* levels, size_t length,
-                               uint8_t paragraphLevel, muniBidiRun* runs, size_t capacity,
+                               uint8_t paragraphLevel, muniBidiRun* runsOut, size_t capacity,
                                size_t* countOut)
 {
     if (((line == nullptr || levels == nullptr) && length != 0) ||
-        (runs == nullptr && capacity != 0) || countOut == nullptr || paragraphLevel > 1 ||
+        (runsOut == nullptr && capacity != 0) || countOut == nullptr || paragraphLevel > 1 ||
         !LevelsInRange(levels, length))
     {
         return muni_errorInvalid;
     }
     // Every run holds at least one byte, so with a capacity of length
-    // they fit; with less, they are counted first, so that runs which do
+    // they fit; with less, they are counted first, so that runsOut which do
     // not fit leave the output as it was.
     if (capacity < length)
     {
@@ -224,10 +224,10 @@ muniResult muniReorderBidiLine(const char* line, const uint8_t* levels, size_t l
             return muni_errorCapacity;
         }
     }
-    Runs collected = {runs, capacity, 0, 0, 0};
+    Runs collected = {runsOut, capacity, 0, 0, 0};
     CollectRuns(&collected, (const uint8_t*)line, levels, length, paragraphLevel);
     *countOut = collected.count;
-    OrderRuns(runs, collected.count);
+    OrderRuns(runsOut, collected.count);
     return muni_success;
 }
 
@@ -243,9 +243,9 @@ static void ReverseIndexes(size_t* map, size_t first, size_t end)
     }
 }
 
-muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* visualToLogical)
+muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* visualToLogicalOut)
 {
-    if (((levels == nullptr || visualToLogical == nullptr) && count != 0) ||
+    if (((levels == nullptr || visualToLogicalOut == nullptr) && count != 0) ||
         !LevelsInRange(levels, count))
     {
         return muni_errorInvalid;
@@ -254,11 +254,11 @@ muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* vi
     uint8_t lowest = UINT8_MAX;
     for (size_t k = 0; k < count; k++)
     {
-        visualToLogical[k] = k;
+        visualToLogicalOut[k] = k;
         highest = levels[k] > highest ? levels[k] : highest;
         lowest = levels[k] < lowest ? levels[k] : lowest;
     }
-    size_t* map = visualToLogical;
+    size_t* map = visualToLogicalOut;
     for (unsigned level = highest; level >= (unsigned)(lowest | 1) && level > 0; level--)
     {
         size_t k = 0;
@@ -281,9 +281,9 @@ muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* vi
     return muni_success;
 }
 
-muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverse)
+muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut)
 {
-    if ((map == nullptr || inverse == nullptr) && count != 0)
+    if ((map == nullptr || inverseOut == nullptr) && count != 0)
     {
         return muni_errorInvalid;
     }
@@ -291,15 +291,15 @@ muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverse)
     // and an entry that finds its slot set repeats an earlier one.
     for (size_t k = 0; k < count; k++)
     {
-        inverse[k] = SIZE_MAX;
+        inverseOut[k] = SIZE_MAX;
     }
     for (size_t k = 0; k < count; k++)
     {
-        if (map[k] >= count || inverse[map[k]] != SIZE_MAX)
+        if (map[k] >= count || inverseOut[map[k]] != SIZE_MAX)
         {
             return muni_errorInvalid;
         }
-        inverse[map[k]] = k;
+        inverseOut[map[k]] = k;
     }
     return muni_success;
 }

@@ -309,26 +309,26 @@ static muniResult Find(uint8_t kind, const char* text, size_t length, size_t* of
     return count > capacity ? muni_errorCapacity : muni_success;
 }
 
-muniResult muniFindGraphemeBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
-                                  size_t* countOut)
+muniResult muniFindGraphemeBreaks(const char* text, size_t length, size_t* offsetsOut,
+                                  size_t capacity, size_t* countOut)
 {
-    return Find(muni_segmentGrapheme, text, length, offsets, nullptr, capacity, countOut);
+    return Find(muni_segmentGrapheme, text, length, offsetsOut, nullptr, capacity, countOut);
 }
 
-muniResult muniFindWordBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
+muniResult muniFindWordBreaks(const char* text, size_t length, size_t* offsetsOut, size_t capacity,
                               size_t* countOut)
 {
-    return Find(muni_segmentWord, text, length, offsets, nullptr, capacity, countOut);
+    return Find(muni_segmentWord, text, length, offsetsOut, nullptr, capacity, countOut);
 }
 
-muniResult muniFindSentenceBreaks(const char* text, size_t length, size_t* offsets, size_t capacity,
-                                  size_t* countOut)
+muniResult muniFindSentenceBreaks(const char* text, size_t length, size_t* offsetsOut,
+                                  size_t capacity, size_t* countOut)
 {
-    return Find(muni_segmentSentence, text, length, offsets, nullptr, capacity, countOut);
+    return Find(muni_segmentSentence, text, length, offsetsOut, nullptr, capacity, countOut);
 }
 
-muniResult muniFindLineBreaks(const char* text, size_t length, size_t* offsets, bool* mandatory,
-                              size_t capacity, size_t* countOut)
+muniResult muniFindLineBreaks(const char* text, size_t length, size_t* offsetsOut,
+                              bool* mandatoryOut, size_t capacity, size_t* countOut)
 {
-    return Find(muni_segmentLine, text, length, offsets, mandatory, capacity, countOut);
+    return Find(muni_segmentLine, text, length, offsetsOut, mandatoryOut, capacity, countOut);
 }
