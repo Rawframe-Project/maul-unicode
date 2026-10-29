@@ -17,16 +17,16 @@ The same text can be encoded more than one way, and text that differs only in ca
 - `muni_caseTurkic` for Turkish and Azerbaijani: dotted and dotless i.
 - `muni_caseLithuanian`: the dot of an i is kept under other accents.
 
-`muniToLower`, `muniToUpper`, `muniToTitle` and `muniFoldCase` are the simple mappings of one code point; `muniIsCased` tells whether a code point has case.
+`muniGetLowercase`, `muniGetUppercase`, `muniGetTitlecase` and `muniFoldCase` are the simple mappings of one code point; `muniIsCased` tells whether a code point has case.
 
 ## Comparing strings
 
-To compare strings without regard to case, fold both and compare the results. To compare them as users see them, as UAX #31 compares identifiers, use `muniToNfkcCasefold`: it folds case, turns compatibility forms into their plain selves, drops default ignorables such as a soft hyphen or a zero width space, and puts the result in NFC. It needs both components.
+To compare strings without regard to case, fold both and compare the results. To compare them as users see them, as UAX #31 compares identifiers, use `muniGetNfkcCasefold`: it folds case, turns compatibility forms into their plain selves, drops default ignorables such as a soft hyphen or a zero width space, and puts the result in NFC. It needs both components.
 
 ```c
 size_t keyLength = 0;
 muniTextResult result =
-    muniToNfkcCasefold(name, length, muni_convertStrict, key, sizeof(key), &keyLength);
+    muniGetNfkcCasefold(name, length, muni_convertStrict, key, sizeof(key), &keyLength);
 // "Alice", "ALICE", a full-width "ALICE" and "Al" + soft hyphen + "ice"
 // all get the key "alice".
 ```

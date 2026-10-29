@@ -40,7 +40,7 @@ or through pkg-config, `pkg-config --cflags --libs maul-unicode`. A project can 
 | `MAUL_UNICODE_SECURITY` | `ON` | Confusable skeletons and restriction levels, with about 36 KB of tables. Needs normalization. |
 | `MAUL_UNICODE_HARFBUZZ` | `OFF` | The separate library `maul-unicode-harfbuzz`, see [Script runs and shaping](shaping.md). |
 
-A component left out keeps its header, so a call into it fails to link instead of failing at run time. `muniToNfkcCasefold` needs both normalization and case.
+A component left out keeps its header, so a call into it fails to link instead of failing at run time. `muniGetNfkcCasefold` needs both normalization and case.
 
 ## The model
 

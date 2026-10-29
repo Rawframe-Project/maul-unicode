@@ -165,8 +165,8 @@ static size_t NfkcCasefold(InitFn unused)
 {
     (void)unused;
     size_t needed = 0;
-    muniTextResult result = muniToNfkcCasefold(s_text, TEXT_BYTES, muni_convertReplace,
-                                               s_normalized, sizeof(s_normalized), &needed);
+    muniTextResult result = muniGetNfkcCasefold(s_text, TEXT_BYTES, muni_convertReplace,
+                                                s_normalized, sizeof(s_normalized), &needed);
     return result.status == muni_success ? needed : 0;
 }
 

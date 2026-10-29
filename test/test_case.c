@@ -32,15 +32,15 @@ static uint64_t HashRecords(void)
 static void TestSimple(void)
 {
     CHECK(HashRecords() == muniCaseHash, "case records match the generator");
-    CHECK(muniToLower('A') == 'a' && muniToUpper('a') == 'A', "ASCII");
-    CHECK(muniToUpper(0x00DF) == 0x00DF, "sharp s has no simple uppercase");
-    CHECK(muniToLower(0x1E9E) == 0x00DF, "capital sharp s lowercases to sharp s");
-    CHECK(muniToTitle(0x01C6) == 0x01C5 && muniToUpper(0x01C6) == 0x01C4, "dz digraph");
+    CHECK(muniGetLowercase('A') == 'a' && muniGetUppercase('a') == 'A', "ASCII");
+    CHECK(muniGetUppercase(0x00DF) == 0x00DF, "sharp s has no simple uppercase");
+    CHECK(muniGetLowercase(0x1E9E) == 0x00DF, "capital sharp s lowercases to sharp s");
+    CHECK(muniGetTitlecase(0x01C6) == 0x01C5 && muniGetUppercase(0x01C6) == 0x01C4, "dz digraph");
     CHECK(muniFoldCase(0x1E9E) == 0x00DF, "simple folding of capital sharp s");
     CHECK(muniFoldCase(0x03C2) == 0x03C3, "final sigma folds to sigma");
-    CHECK(muniToLower(0x10400) == 0x10428, "Deseret, outside the BMP");
+    CHECK(muniGetLowercase(0x10400) == 0x10428, "Deseret, outside the BMP");
     CHECK(muniIsCased('a') && !muniIsCased('1'), "cased");
-    CHECK(muniToLower(0x110000) == 0x110000, "past U+10FFFF");
+    CHECK(muniGetLowercase(0x110000) == 0x110000, "past U+10FFFF");
 }
 
 // Converts text held alone in a heap allocation of its length, so that
@@ -156,7 +156,7 @@ static void TestNfkcCasefoldLimit(void)
     char output[256];
     size_t needed = 0;
     muniTextResult result =
-        muniToNfkcCasefold(marks, sizeof(marks), muni_convertStrict, output, 256, &needed);
+        muniGetNfkcCasefold(marks, sizeof(marks), muni_convertStrict, output, 256, &needed);
     CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks is refused");
 }
 
@@ -299,8 +299,8 @@ static void TestCasefoldEverywhere(void)
         bool inFile = s_offsets[codePoint] != NONE;
         const char* expected = inFile ? s_pool + s_offsets[codePoint] : input;
         size_t expectedSize = inFile ? strlen(expected) : inputSize;
-        muniTextResult result = muniToNfkcCasefold(input, inputSize, muni_convertStrict, output,
-                                                   sizeof(output), &needed);
+        muniTextResult result = muniGetNfkcCasefold(input, inputSize, muni_convertStrict, output,
+                                                    sizeof(output), &needed);
         if ((result.status != muni_success || needed != expectedSize ||
              memcmp(output, expected, needed) != 0) &&
             failures++ < 10)
@@ -316,8 +316,8 @@ static bool Casefolds(const char* text, const char* expected)
 {
     char output[128];
     size_t needed = 0;
-    muniTextResult result =
-        muniToNfkcCasefold(text, strlen(text), muni_convertStrict, output, sizeof(output), &needed);
+    muniTextResult result = muniGetNfkcCasefold(text, strlen(text), muni_convertStrict, output,
+                                                sizeof(output), &needed);
     return result.status == muni_success && needed == strlen(expected) &&
            memcmp(output, expected, needed) == 0;
 }
@@ -338,16 +338,16 @@ static void TestCasefoldText(void)
     char output[4];
     size_t needed = 0;
     muniTextResult result =
-        muniToNfkcCasefold("ABCDEF", 6, muni_convertStrict, output, sizeof(output), &needed);
+        muniGetNfkcCasefold("ABCDEF", 6, muni_convertStrict, output, sizeof(output), &needed);
     CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "abcd", 4) == 0,
           "capacity: the bytes that fit, the size needed");
-    result = muniToNfkcCasefold("A\xFF", 2, muni_convertStrict, output, sizeof(output), &needed);
+    result = muniGetNfkcCasefold("A\xFF", 2, muni_convertStrict, output, sizeof(output), &needed);
     CHECK(result.status == muni_errorUtf8Lead && result.offset == 1 && needed == 1,
           "strict mode stops at ill-formed input");
-    result = muniToNfkcCasefold("A\xFF", 2, muni_convertReplace, output, sizeof(output), &needed);
+    result = muniGetNfkcCasefold("A\xFF", 2, muni_convertReplace, output, sizeof(output), &needed);
     CHECK(result.status == muni_success && needed == 4 && memcmp(output, "a\xEF\xBF\xBD", 4) == 0,
           "replace mode");
-    CHECK(muniToNfkcCasefold("a", 1, 7, output, sizeof(output), &needed).status ==
+    CHECK(muniGetNfkcCasefold("a", 1, 7, output, sizeof(output), &needed).status ==
               muni_errorInvalid,
           "an unknown mode");
 }

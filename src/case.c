@@ -40,17 +40,17 @@ static uint32_t Simple(uint32_t codePoint, int kind)
     return (uint32_t)((int32_t)codePoint + muniCaseDeltas[muniCaseRecord(codePoint)[kind]]);
 }
 
-uint32_t muniToLower(uint32_t codePoint)
+uint32_t muniGetLowercase(uint32_t codePoint)
 {
     return Simple(codePoint, muni_caseKindLower);
 }
 
-uint32_t muniToUpper(uint32_t codePoint)
+uint32_t muniGetUppercase(uint32_t codePoint)
 {
     return Simple(codePoint, muni_caseKindUpper);
 }
 
-uint32_t muniToTitle(uint32_t codePoint)
+uint32_t muniGetTitlecase(uint32_t codePoint)
 {
     return Simple(codePoint, muni_caseKindTitle);
 }
@@ -196,7 +196,7 @@ static bool PutLithuanianLower(Converter* converter, uint32_t codePoint, size_t 
     if ((codePoint == CAPITAL_I || codePoint == CAPITAL_J || codePoint == CAPITAL_I_OGONEK) &&
         MoreAbove(converter, next))
     {
-        muniWriterPut(&converter->writer, muniToLower(codePoint));
+        muniWriterPut(&converter->writer, muniGetLowercase(codePoint));
         muniWriterPut(&converter->writer, COMBINING_DOT);
         return true;
     }

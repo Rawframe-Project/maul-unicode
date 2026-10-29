@@ -35,7 +35,7 @@ static void Require(bool condition)
 static bool Casefold(const char* text, size_t length, char* out, size_t* lengthOut)
 {
     muniTextResult result =
-        muniToNfkcCasefold(text, length, muni_convertReplace, out, MAX_OUTPUT, lengthOut);
+        muniGetNfkcCasefold(text, length, muni_convertReplace, out, MAX_OUTPUT, lengthOut);
     Require(result.status == muni_success || result.status == muni_errorLimit);
     return result.status == muni_success;
 }
@@ -110,7 +110,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     size_t capacity = first / 2;
     size_t needed = 0;
     muniTextResult result =
-        muniToNfkcCasefold(text, size, muni_convertReplace, twice, capacity, &needed);
+        muniGetNfkcCasefold(text, size, muni_convertReplace, twice, capacity, &needed);
     Require(needed == first);
     Require(result.status == (capacity < first ? muni_errorCapacity : muni_success));
     Require(memcmp(twice, once, capacity) == 0);

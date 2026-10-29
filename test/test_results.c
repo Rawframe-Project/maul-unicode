@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Sirac Ozmen
 //
-// The results version: a hash of what muniNormalize, muniToNfkcCasefold,
+// The results version: a hash of what muniNormalize, muniGetNfkcCasefold,
 // muniConvertCase and muniGetSkeleton give, and of the verdicts a program
 // may store beside a skeleton (muniCheckIdentifier,
 // muniGetRestrictionLevel, muniCheckMixedNumbers and
@@ -119,7 +119,7 @@ static void HashOutputs(const char* text, size_t length, bool everyVariant)
         HashResult(result, s_output, needed);
     }
     muniTextResult folded =
-        muniToNfkcCasefold(text, length, muni_convertStrict, s_output, sizeof(s_output), &needed);
+        muniGetNfkcCasefold(text, length, muni_convertStrict, s_output, sizeof(s_output), &needed);
     HashResult(folded, s_output, needed);
     size_t languageCount = everyVariant ? sizeof(languages) / sizeof(languages[0]) : 1;
     for (size_t o = 0; o < sizeof(operations) / sizeof(operations[0]); ++o)

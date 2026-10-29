@@ -35,7 +35,7 @@ extern "C"
 #define MUNI_UNICODE_VERSION_PATCH 0
 
 // The results version: it moves up with every change to what
-// muniNormalize, muniToNfkcCasefold, muniConvertCase or muniGetSkeleton
+// muniNormalize, muniGetNfkcCasefold, muniConvertCase or muniGetSkeleton
 // give for some text, or to the verdict of muniCheckIdentifier,
 // muniGetRestrictionLevel, muniCheckMixedNumbers or
 // muniGetResolvedScripts, a new Unicode version included, and with
@@ -161,7 +161,7 @@ extern "C"
 
     /// Returns the results version of the library that was linked: it
     /// moves up with every change to what muniNormalize,
-    /// muniToNfkcCasefold, muniConvertCase or muniGetSkeleton give for
+    /// muniGetNfkcCasefold, muniConvertCase or muniGetSkeleton give for
     /// some text, or to the verdict of muniCheckIdentifier,
     /// muniGetRestrictionLevel, muniCheckMixedNumbers or
     /// muniGetResolvedScripts, in any release, and stays the same

@@ -57,7 +57,7 @@ extern "C"
     /// @return The lowercase code point, or codePoint when it has none.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_API uint32_t muniToLower(uint32_t codePoint);
+    MUNI_API uint32_t muniGetLowercase(uint32_t codePoint);
 
     /// Returns the simple uppercase mapping of a code point.
     ///
@@ -65,7 +65,7 @@ extern "C"
     /// @return The uppercase code point, or codePoint when it has none.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_API uint32_t muniToUpper(uint32_t codePoint);
+    MUNI_API uint32_t muniGetUppercase(uint32_t codePoint);
 
     /// Returns the simple titlecase mapping of a code point, which differs
     /// from the uppercase one for digraphs such as "ǆ", which titlecases
@@ -75,7 +75,7 @@ extern "C"
     /// @return The titlecase code point, or codePoint when it has none.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_API uint32_t muniToTitle(uint32_t codePoint);
+    MUNI_API uint32_t muniGetTitlecase(uint32_t codePoint);
 
     /// Returns the simple case folding of a code point (statuses C and S
     /// of CaseFolding.txt).
@@ -154,9 +154,9 @@ extern "C"
     ///         an unknown mode.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_NODISCARD MUNI_API muniTextResult muniToNfkcCasefold(const char* text, size_t length,
-                                                              muniConvertMode mode, char* output,
-                                                              size_t capacity, size_t* neededOut);
+    MUNI_NODISCARD MUNI_API muniTextResult muniGetNfkcCasefold(const char* text, size_t length,
+                                                               muniConvertMode mode, char* output,
+                                                               size_t capacity, size_t* neededOut);
 
 #ifdef __cplusplus
 }
