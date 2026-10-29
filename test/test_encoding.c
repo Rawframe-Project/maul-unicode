@@ -304,6 +304,113 @@ static void TestUtf16Surrogates(void)
     CHECK(muniValidateUtf16(lone, 1).status == muni_success, "nothing past the length is read");
 }
 
+// A copy of units in a heap allocation of exactly their length, so
+// AddressSanitizer sees a read past the last unit.
+static uint16_t* CopyUnits(const uint16_t* units, size_t count)
+{
+    uint16_t* copy = malloc(count * sizeof(uint16_t));
+    if (copy != nullptr)
+    {
+        memcpy(copy, units, count * sizeof(uint16_t));
+    }
+    return copy;
+}
+
+// Pairs are stepped over whole, a pair in the wrong order or cut by the
+// end of the text is refused at its first unit, and strict conversion
+// stops there with the bytes of the units before it.
+static void TestUtf16Pairs(void)
+{
+    static const uint16_t paired[] = {0x0061, 0xD83D, 0xDE00, 0x0062};
+    uint16_t* units = CopyUnits(paired, 4);
+    CHECK(units != nullptr, "allocation");
+    if (units == nullptr)
+    {
+        return;
+    }
+    muniTextResult result = muniValidateUtf16(units, 4);
+    CHECK(result.status == muni_success && result.offset == 4, "a pair between two letters");
+    free(units);
+
+    static const uint16_t reversed[] = {0xDE00, 0xD83D};
+    units = CopyUnits(reversed, 2);
+    CHECK(units != nullptr, "allocation");
+    if (units == nullptr)
+    {
+        return;
+    }
+    result = muniValidateUtf16(units, 2);
+    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 0,
+          "low before high is refused at the low surrogate");
+    free(units);
+
+    static const uint16_t cut[] = {0x0061, 0xD83D};
+    units = CopyUnits(cut, 2);
+    CHECK(units != nullptr, "allocation");
+    if (units == nullptr)
+    {
+        return;
+    }
+    result = muniValidateUtf16(units, 2);
+    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 1,
+          "a high surrogate at the end is refused without a read past it");
+    free(units);
+
+    static const uint16_t lone[] = {0x0061, 0x00E9, 0xD800, 0x0063};
+    units = CopyUnits(lone, 4);
+    CHECK(units != nullptr, "allocation");
+    if (units == nullptr)
+    {
+        return;
+    }
+    char bytes[8];
+    memset(bytes, 'x', sizeof(bytes));
+    size_t needed = 0;
+    result = muniConvertUtf16ToUtf8(units, 4, muni_convertStrict, bytes, sizeof(bytes), &needed);
+    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 2 && needed == 3 &&
+              memcmp(bytes, "a\xC3\xA9x", 4) == 0,
+          "strict conversion stops at the surrogate with the bytes before it");
+    memset(bytes, 'x', sizeof(bytes));
+    result = muniConvertUtf16ToUtf8(units, 4, muni_convertStrict, bytes, 2, &needed);
+    CHECK(result.status == muni_errorUtf16Surrogate && result.offset == 2 && needed == 3 &&
+              memcmp(bytes, "axx", 3) == 0,
+          "the bytes before the surrogate are written as far as they fit");
+    free(units);
+}
+
+// Strict conversion from UTF-8 stops at the first error with its offset
+// and the units or code points of the text before it. The text is a heap
+// allocation of exactly its length.
+static void TestStrictUtf8Errors(void)
+{
+    static const char source[] = "a\xC3\xA9\xF0\x9F\x98\x80\xFF"
+                                 "b";
+    size_t length = sizeof(source) - 1;
+    char* text = malloc(length);
+    CHECK(text != nullptr, "allocation");
+    if (text == nullptr)
+    {
+        return;
+    }
+    memcpy(text, source, length);
+    uint16_t units[8];
+    size_t needed = 0;
+    muniTextResult result =
+        muniConvertUtf8ToUtf16(text, length, muni_convertStrict, units, 8, &needed);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 7 && needed == 4 &&
+              units[0] == 0x61 && units[1] == 0xE9 && units[2] == 0xD83D && units[3] == 0xDE00,
+          "UTF-16: the four units before the FF");
+    uint32_t codePoints[8];
+    result = muniConvertUtf8ToUtf32(text, length, muni_convertStrict, codePoints, 8, &needed);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 7 && needed == 3 &&
+              codePoints[0] == 0x61 && codePoints[1] == 0xE9 && codePoints[2] == 0x1F600,
+          "UTF-32: the three code points before the FF");
+    result = muniConvertUtf8ToUtf32(text, 6, muni_convertStrict, codePoints, 8, &needed);
+    CHECK(result.status == muni_errorUtf8Truncated && result.offset == 3 && needed == 2,
+          "a code point cut by the length");
+    free(text);
+}
+
 static void TestEncode(void)
 {
     char bytes[4];
@@ -460,6 +567,8 @@ int main(void)
     TestUtf32Values();
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
+    TestUtf16Pairs();
+    TestStrictUtf8Errors();
     TestEncode();
     TestEncodeCapacity();
     TestExactFit();
