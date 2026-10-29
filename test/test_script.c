@@ -16,6 +16,7 @@
 #define BENG MUNI_SCRIPT('B', 'e', 'n', 'g')
 #define HANI MUNI_SCRIPT('H', 'a', 'n', 'i')
 #define HIRA MUNI_SCRIPT('H', 'i', 'r', 'a')
+#define GREK MUNI_SCRIPT('G', 'r', 'e', 'k')
 
 // Whether text gives exactly the expected runs, whole and byte by byte.
 static bool Runs(const char* text, const muniScriptRun* expected, size_t count)
@@ -91,6 +92,26 @@ static void TestRuns(void)
           "Han and Hiragana");
 }
 
+// A run that could still be several scripts takes its first code point's
+// own Script while it can be that, and otherwise the script whose tag
+// comes first alphabetically.
+static void TestSharedScripts(void)
+{
+    // U+30FC, Common with the extensions Hiragana and Katakana, alone and
+    // before a digit.
+    CHECK(Runs("\xE3\x83\xBC", (muniScriptRun[]){{3, HIRA}}, 1),
+          "a run only of a sign shared by two scripts");
+    CHECK(Runs("\xE3\x83\xBC"
+               "1",
+               (muniScriptRun[]){{4, HIRA}}, 1),
+          "a shared sign before a digit");
+    // U+00B7, Common with extensions that hold Coptic and Greek, then
+    // U+0375, Greek with the extensions Coptic and Greek: the run can be
+    // either, and the first Script of its own is Greek.
+    CHECK(Runs("\xC2\xB7\xCD\xB5", (muniScriptRun[]){{4, GREK}}, 1),
+          "a run that starts neutral takes the first Script of its own");
+}
+
 // The bracket stack: a closing bracket matches only its own opening one,
 // popped once; an opening one before the run's first script takes it;
 // one that matches nothing is neutral.
@@ -113,6 +134,35 @@ static void TestBrackets(void)
                "abc\xE2\x8C\xAA x",
                (muniScriptRun[]){{8, HEBR}, {11, LATN}, {15, HEBR}, {16, LATN}}, 4),
           "angle brackets pair too");
+}
+
+// Greek alpha, then opening brackets: "(", "[" and then braces, so many
+// that the stack holds all of them or drops "(", then a Latin "a", ")"
+// and "]". Returns whether the runs are the expected ones.
+static bool DeepBrackets(size_t braces, const muniScriptRun* expected, size_t count)
+{
+    char text[64];
+    size_t length = 0;
+    memcpy(text, "\xCE\xB1([", 4);
+    length += 4;
+    memset(text + length, '{', braces);
+    length += braces;
+    memcpy(text + length, "a)]", 4);
+    return Runs(text, expected, count);
+}
+
+// The stack holds 32 opening brackets and forgets the oldest when a 33rd
+// comes.
+static void TestBracketDepth(void)
+{
+    // 32 openers: ")" closes "(" and is Greek, and "]" then matches
+    // nothing and stays with it.
+    CHECK(DeepBrackets(30, (muniScriptRun[]){{34, GREK}, {35, LATN}, {37, GREK}}, 3),
+          "32 opening brackets are all kept");
+    // 33 openers: "(" is forgotten, so ")" joins the Latin run, and "]"
+    // still closes "[" and is Greek.
+    CHECK(DeepBrackets(31, (muniScriptRun[]){{35, GREK}, {37, LATN}, {38, GREK}}, 3),
+          "the 33rd opening bracket drops the oldest");
 }
 
 // Script_Extensions as a list: measured with no room, written into room
@@ -158,7 +208,9 @@ static void TestCapacityAndArguments(void)
 int main(void)
 {
     TestRuns();
+    TestSharedScripts();
     TestBrackets();
+    TestBracketDepth();
     TestScriptExtensionsList();
     TestCapacityAndArguments();
     return s_failures == 0 ? 0 : 1;
