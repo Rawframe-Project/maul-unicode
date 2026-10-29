@@ -279,6 +279,7 @@ extern "C"
     /// @param capacity     The number of offsets the output can hold.
     /// @param countOut     Receives the number of boundaries, which may
     ///                     exceed capacity; the ones that fit are written.
+    ///                     `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
@@ -296,6 +297,7 @@ extern "C"
     /// @param capacity     The number of offsets the output can hold.
     /// @param countOut     Receives the number of boundaries, which may
     ///                     exceed capacity; the ones that fit are written.
+    ///                     `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
@@ -313,6 +315,7 @@ extern "C"
     /// @param capacity     The number of offsets the output can hold.
     /// @param countOut     Receives the number of boundaries, which may
     ///                     exceed capacity; the ones that fit are written.
+    ///                     `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
@@ -333,6 +336,8 @@ extern "C"
     /// @param capacity     The number of entries the outputs can hold.
     /// @param countOut     Receives the number of opportunities, which may
     ///                     exceed capacity; the ones that fit are written.
+    ///                     `muni_errorInvalid` leaves the offsets, the
+    ///                     flags and the count as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety

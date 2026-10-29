@@ -97,6 +97,7 @@ extern "C"
     /// @param capacity  The number of runs the output can hold.
     /// @param countOut  Receives the number of runs, which may exceed
     ///                  capacity; the ones that fit are written.
+    ///                  `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
