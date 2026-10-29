@@ -58,14 +58,17 @@ extern "C"
     /// @param length              The number of bytes.
     /// @param direction           The paragraph direction, or muni_bidiAuto.
     /// @param levels              Receives one level per byte of the
-    ///                            paragraph; holds length bytes.
-    /// @param workspace           Scratch memory of length bytes.
+    ///                            paragraph; holds length bytes. May be
+    ///                            NULL when length is 0.
+    /// @param workspace           Scratch memory of length bytes. May be
+    ///                            NULL when length is 0.
     /// @param paragraphLengthOut  Receives the paragraph's length in bytes.
     /// @param paragraphLevelOut   Receives the paragraph embedding level,
     ///                            0 or 1. On an error, levels and both
     ///                            outputs are left as they were.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
-    ///         an unknown direction.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL
+    ///         paragraphLengthOut or paragraphLevelOut, a NULL text, levels
+    ///         or workspace with a nonzero length, or an unknown direction.
     /// @par Thread safety
     /// Safe from any thread; the levels and workspace are used by one thread
     /// at a time.
@@ -80,8 +83,10 @@ extern "C"
     /// isolate formatting characters, and those before a tab or paragraph
     /// separator, take the paragraph level first.
     ///
-    /// @param line            The line's text within the paragraph.
-    /// @param levels          The line's levels from muniResolveBidi.
+    /// @param line            The line's text within the paragraph. May be
+    ///                        NULL when length is 0.
+    /// @param levels          The line's levels from muniResolveBidi. May be
+    ///                        NULL when length is 0.
     /// @param length          The line's length in bytes.
     /// @param paragraphLevel  The paragraph embedding level, 0 or 1.
     /// @param runs            The output. May be NULL when capacity is 0.
@@ -89,8 +94,9 @@ extern "C"
     /// @param countOut        Receives the number of runs.
     /// @return `muni_success`; `muni_errorCapacity` when the runs do not
     ///         fit, and then none is written; `muni_errorInvalid` for a
-    ///         NULL argument, a level above 126 or a paragraph level
-    ///         above 1.
+    ///         NULL countOut, a NULL line or levels with a nonzero length,
+    ///         NULL runs with a nonzero capacity, a level above 126 or a
+    ///         paragraph level above 1.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLine(const char* line, const uint8_t* levels,
