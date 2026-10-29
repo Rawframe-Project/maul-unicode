@@ -61,12 +61,21 @@ static void LoadCombiningClass(uint8_t* values)
 // Writes the ISO 15924 tag of every script index into src/generated/,
 // big-endian ASCII in a uint32_t ('Latn' is 0x4C61746E). The indexes from
 // 252 up are left free: the security checks number the writing systems
-// Hanb, Hntl, Jpan and Kore there.
+// Hanb, Hntl, Jpan and Kore there. The tags must rise alphabetically:
+// a script run that could be several scripts falls back to the lowest
+// index, which script.h promises is the first tag alphabetically.
 static void WriteScriptTags(char names[][8], int count)
 {
     if (count > 252)
     {
         Fail("%d scripts leave no room for the writing systems", count);
+    }
+    for (int i = 1; i < count; i++)
+    {
+        if (strcmp(names[i - 1], names[i]) >= 0)
+        {
+            Fail("script '%s' comes after '%s', out of alphabetical order", names[i], names[i - 1]);
+        }
     }
     FILE* file = CreateOutput("script_tags.c");
     fprintf(file, "// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Sirac Ozmen\n//\n");
