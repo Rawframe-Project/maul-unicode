@@ -54,7 +54,7 @@ Every answer comes from one Unicode version, 18.0.0. `muniGetUnicodeVersion` tel
 
 ## Results and buffers
 
-A fallible function returns a `muniResult`: `muni_success` (0), a positive outcome such as `muni_done` or `muni_needMoreText`, or a negative error. Functions over text return a `muniTextResult`: the status and, on an error, the byte offset where the offending input starts. `muniResultName` names any result for logs.
+A fallible function returns a `muniResult`: `muni_success` (0), a positive outcome such as `muni_done` or `muni_needMoreText`, or a negative error. Functions over text return a `muniTextResult`: the status and, on an error, the byte offset where the offending input starts. `muniGetResultName` names any result for logs.
 
 Functions that write text take an output buffer and its capacity, write what fits, and report through `neededOut` how many units the whole result needs. A result that does not fit returns `muni_errorCapacity`; one whose size does not fit in a `size_t`, which can happen on 32-bit targets, reports `SIZE_MAX` as its size and returns `muni_errorCapacity` too. A NULL buffer with capacity 0 measures:
 

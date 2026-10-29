@@ -55,9 +55,9 @@ static void TestResultNames(void)
     };
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
     {
-        CHECK(strcmp(muniResultName(names[i].result), names[i].name) == 0, names[i].name);
+        CHECK(strcmp(muniGetResultName(names[i].result), names[i].name) == 0, names[i].name);
     }
-    CHECK(strcmp(muniResultName(12345), "unknown result") == 0, "unknown name");
+    CHECK(strcmp(muniGetResultName(12345), "unknown result") == 0, "unknown name");
 }
 
 // The errors the family shares keep the family's values, and the

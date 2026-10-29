@@ -30,7 +30,7 @@ static void Show(const char* title, InitFn* init, const char* text, size_t lengt
     printf("%-10s |", title);
     size_t start = 0;
     size_t offset = 0;
-    while (muniNextSegmentBreak(&iterator, &offset) == muni_success)
+    while (muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success)
     {
         printf("%.*s|", (int)(offset - start), text + start);
         start = offset;
@@ -51,7 +51,7 @@ static void ShowLines(const char* text, size_t length)
     size_t start = 0;
     size_t offset = 0;
     bool mandatory = false;
-    while (muniNextLineBreak(&iterator, &offset, &mandatory) == muni_success)
+    while (muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) == muni_success)
     {
         // Trailing whitespace and newlines stay with the stretch before
         // the break; print them visibly.
@@ -77,7 +77,7 @@ int main(int argc, char** argv)
     muniTextResult valid = muniValidateUtf8(text, length);
     if (valid.status != muni_success)
     {
-        printf("not UTF-8: %s at byte %zu\n", muniResultName(valid.status), valid.offset);
+        printf("not UTF-8: %s at byte %zu\n", muniGetResultName(valid.status), valid.offset);
         return 1;
     }
     Show("clusters", muniInitGraphemeIterator, text, length);

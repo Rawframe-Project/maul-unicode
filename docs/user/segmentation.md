@@ -14,7 +14,7 @@ if (muniInitGraphemeIterator(&iterator, text, length, false) == muni_success)
 {
     size_t start = 0;
     size_t end = 0;
-    while (muniNextSegmentBreak(&iterator, &end) == muni_success)
+    while (muniSegmentIterator_NextBreak(&iterator, &end) == muni_success)
     {
         UseCluster(text + start, end - start);
         start = end;
@@ -34,7 +34,7 @@ if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 {
     size_t end = 0;
     bool mandatory = false;
-    while (muniNextLineBreak(&lines, &end, &mandatory) == muni_success)
+    while (muniSegmentIterator_NextLineBreak(&lines, &end, &mandatory) == muni_success)
     {
         // a line may end at end; it must when mandatory is true
     }
@@ -43,10 +43,10 @@ if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 
 A layout engine measures the text between opportunities and ends each line at the last opportunity that fits, or at the first mandatory one. Spaces before an opportunity belong to the line before it and are not drawn at its end. `muniFindLineBreaks` fills arrays of offsets and mandatory flags.
 
-Chinese and Japanese text often allows a break before the small kana, the prolonged sound mark and similar characters (Line_Break=CJ), which the default rules keep with the character before them. CSS calls the default strict line breaking, and its normal and loose line breaking allow those breaks. A line iterator takes them as ideographs with an option, set before its first break:
+Chinese and Japanese text often allows a break before the small kana, the prolonged sound mark and similar characters (Line_Break=CJ), which the default rules keep with the character before them. CSS calls the default strict line breaking, and its normal and loose line breaking allow those breaks. A line iterator takes them as ideographs once the switch is on, before its first break:
 
 ```c
-if (muniSetLineOptions(&lines, muni_lineCjAsIdeographic) != muni_success)
+if (muniSegmentIterator_EnableCjAsIdeographic(&lines, true) != muni_success)
 {
     // lines is not a line iterator, or has already started
 }
@@ -69,13 +69,13 @@ static size_t BreakThai(void* context, const char* run, size_t length, size_t fr
 It is set before the iterator is asked for its first break:
 
 ```c
-if (muniSetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
+if (muniSegmentIterator_SetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
 {
     // lines is not a line or word iterator, or has already started
 }
 ```
 
-The iterator then never breaks before a combining mark, whatever the segmenter answers, and a word iterator reports whole words. The segmenter must give the same answer for the same run and offset each time. It may not use its own iterator: while it runs, the setters, `muniFeedSegmentIterator` and the `muniNext` calls on that iterator return `muni_errorBusy` and change nothing, and it must not initialize the iterator again.
+The iterator then never breaks before a combining mark, whatever the segmenter answers, and a word iterator reports whole words. The segmenter must give the same answer for the same run and offset each time. It may not use its own iterator: while it runs, the setters, `muniSegmentIterator_Feed` and the `muniNext` calls on that iterator return `muni_errorBusy` and change nothing, and it must not initialize the iterator again.
 
 ## Language conventions
 
@@ -88,7 +88,7 @@ static const muniBreakClassOverride greek[] = {
 };
 muniSegmentIterator sentences;
 if (muniInitSentenceIterator(&sentences, text, length, false) == muni_success &&
-    muniSetBreakClassOverrides(&sentences, greek, 2) == muni_success)
+    muniSegmentIterator_SetBreakClassOverrides(&sentences, greek, 2) == muni_success)
 {
     // a sentence now ends after "; " as after "? "
 }
@@ -98,7 +98,7 @@ The entries are in strictly increasing order of code point, and their values are
 
 ## Text in pieces
 
-An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniFeedSegmentIterator` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked, or after the last piece, returns `muni_errorState`, since the unread rest of the piece would be lost; so does a setting such as `muniSetLineOptions` once the iterator was asked for a break.
+An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniSegmentIterator_Feed` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked, or after the last piece, returns `muni_errorState`, since the unread rest of the piece would be lost; so does a setting such as `muniSegmentIterator_EnableCjAsIdeographic` once the iterator was asked for a break.
 
 ## Not obvious
 

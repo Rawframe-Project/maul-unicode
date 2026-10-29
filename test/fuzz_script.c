@@ -44,7 +44,7 @@ static size_t Chunked(const char* text, size_t length, size_t piece, muniScriptR
     for (;;)
     {
         muniScriptRun run;
-        muniResult status = muniNextScriptRun(&iterator, &run);
+        muniResult status = muniScriptIterator_NextRun(&iterator, &run);
         if (status == muni_success)
         {
             Require(count < MAX_RUNS);
@@ -53,7 +53,7 @@ static size_t Chunked(const char* text, size_t length, size_t piece, muniScriptR
         else if (status == muni_needMoreText)
         {
             size_t next = length - fed < piece ? length - fed : piece;
-            Require(muniFeedScriptIterator(&iterator, text + fed, next, fed + next < length) ==
+            Require(muniScriptIterator_Feed(&iterator, text + fed, next, fed + next < length) ==
                     muni_success);
             fed += next;
         }

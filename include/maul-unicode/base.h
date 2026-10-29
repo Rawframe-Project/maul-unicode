@@ -179,7 +179,7 @@ extern "C"
     /// @return A static, NUL-terminated string such as "muni_errorCapacity".
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_API const char* muniResultName(muniResult result);
+    MUNI_API const char* muniGetResultName(muniResult result);
 
 #ifdef __cplusplus
 }

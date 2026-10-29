@@ -4,11 +4,11 @@ Grapheme, word and sentence boundaries (UAX #29), line break opportunities (UAX 
 
 ## One iterator type
 
-UAX #29 defines three segmentations of the same shape: walk the text and decide, before each code point, whether a boundary falls there. Line breaking has the same shape with one more answer, a mandatory break. Three or four iterator types with their own feed and next functions would multiply the API for no difference a caller can use, so there is one public type, `muniSegmentIterator`, with an init function per kind and shared `muniFeedSegmentIterator` and `muniNextSegmentBreak`.
+UAX #29 defines three segmentations of the same shape: walk the text and decide, before each code point, whether a boundary falls there. Line breaking has the same shape with one more answer, a mandatory break. Three or four iterator types with their own feed and next functions would multiply the API for no difference a caller can use, so there is one public type, `muniSegmentIterator`, with an init function per kind and shared `muniSegmentIterator_Feed` and `muniSegmentIterator_NextBreak`.
 
 The public struct is opaque storage. [`src/segment.c`](../../src/segment.c) copies the internal `muniSegmenter` in and out of it with `memcpy`, which keeps every access within the C aliasing rules, and dispatches on the kind once per boundary, not per code point.
 
-Its size follows the state: a `static_assert` in [`src/segmenter.h`](../../src/segmenter.h) keeps `muniSegmenter` within it, so a change that grows the state fails to build until the public iterator grows with it. On 64-bit targets `muniSegmenter` fills all 128 bytes, with the line options in the byte after the hold's kind and the class overrides' pointer in the last 8. The next option or piece of state therefore grows the public iterator, which changes the ABI, so its pull request's title carries `!`.
+Its size follows the state: a `static_assert` in [`src/segmenter.h`](../../src/segmenter.h) keeps `muniSegmenter` within it, so a change that grows the state fails to build until the public iterator grows with it. On 64-bit targets `muniSegmenter` fills all 128 bytes, with the CJ switch in the byte after the hold's kind and the class overrides' pointer in the last 8. The next switch or piece of state therefore grows the public iterator, which changes the ABI, so its pull request's title carries `!`.
 
 ## The engine and its holds
 
@@ -32,7 +32,7 @@ A run lies within the current piece and starts at an SA code point read whole fr
 
 ## Class overrides
 
-Locale data such as CLDR changes segmentation in two ways. Suppressions, like the abbreviation lists that keep "Mr." from ending a sentence, only remove boundaries, so a caller filters the boundaries an iterator reports and the library needs nothing. A class change, such as Greek's semicolon as STerm, also adds boundaries, so it has to reach the rules. `muniSetBreakClassOverrides` gives a word or sentence iterator a caller-owned table of code points and classes, and the rule file's lookup consults it before the rules see the class.
+Locale data such as CLDR changes segmentation in two ways. Suppressions, like the abbreviation lists that keep "Mr." from ending a sentence, only remove boundaries, so a caller filters the boundaries an iterator reports and the library needs nothing. A class change, such as Greek's semicolon as STerm, also adds boundaries, so it has to reach the rules. `muniSegmentIterator_SetBreakClassOverrides` gives a word or sentence iterator a caller-owned table of code points and classes, and the rule file's lookup consults it before the rules see the class.
 
 The table is sorted by code point and checked once when it is set (code points, order, classes), so the lookup is a binary search and a table of any length costs a logarithm per code point, keeping segmentation linear in the text. With no table the lookup skips it. The iterator stores the pointer after the rule state, and the count in the word or sentence rule state, the only kinds that use it. Only the lookup changes: rules that read another property of the code point, such as WB3c's Extended_Pictographic or the Line_Break=SA runs a word iterator hands to a complex breaker, see Unicode's values.
 

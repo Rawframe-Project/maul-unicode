@@ -45,10 +45,10 @@ static bool Runs(const char* text, const muniScriptRun* expected, size_t count)
     for (;;)
     {
         muniScriptRun run;
-        muniResult status = muniNextScriptRun(&iterator, &run);
+        muniResult status = muniScriptIterator_NextRun(&iterator, &run);
         if (status == muni_needMoreText)
         {
-            if (muniFeedScriptIterator(&iterator, text + fed, 1, fed + 1 < length) != muni_success)
+            if (muniScriptIterator_Feed(&iterator, text + fed, 1, fed + 1 < length) != muni_success)
             {
                 return false;
             }
@@ -197,12 +197,12 @@ static void TestCapacityAndArguments(void)
     CHECK(muniFindScriptRuns("a", 1, nullptr, 0, nullptr) == muni_errorInvalid, "no count");
     muniScriptIterator iterator;
     CHECK(muniInitScriptIterator(&iterator, "ab", 2, true) == muni_success &&
-              muniFeedScriptIterator(&iterator, "c", 1, false) == muni_errorState,
+              muniScriptIterator_Feed(&iterator, "c", 1, false) == muni_errorState,
           "feeding before the iterator asks");
     CHECK(muniInitScriptIterator(&iterator, "ab", 2, false) == muni_success &&
-              muniFeedScriptIterator(&iterator, "c", 1, false) == muni_errorState,
+              muniScriptIterator_Feed(&iterator, "c", 1, false) == muni_errorState,
           "feeding an iterator told no more text follows");
-    CHECK(muniFeedScriptIterator(&iterator, nullptr, 1, false) == muni_errorInvalid,
+    CHECK(muniScriptIterator_Feed(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "a NULL piece is invalid in any state");
 }
 

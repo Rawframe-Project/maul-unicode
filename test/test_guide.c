@@ -65,7 +65,7 @@ static void GuideGraphemes(void)
     {
         size_t start = 0;
         size_t end = 0;
-        while (muniNextSegmentBreak(&iterator, &end) == muni_success)
+        while (muniSegmentIterator_NextBreak(&iterator, &end) == muni_success)
         {
             UseCluster(text + start, end - start);
             start = end;
@@ -83,7 +83,7 @@ static void GuideLines(void)
     {
         size_t end = 0;
         bool mandatory = false;
-        while (muniNextLineBreak(&lines, &end, &mandatory) == muni_success)
+        while (muniSegmentIterator_NextLineBreak(&lines, &end, &mandatory) == muni_success)
         {
             // a line may end at end; it must when mandatory is true
         }
@@ -114,20 +114,21 @@ static size_t BreakThai(void* context, const char* run, size_t length, size_t fr
     return FindWordBreak(dictionary, run, length, from);
 }
 
-static void GuideLineOptions(void)
+static void GuideCjAsIdeographic(void)
 {
     // U+3042, then U+3041 HIRAGANA LETTER SMALL A (Line_Break=CJ).
     const char text[] = "\xE3\x81\x82\xE3\x81\x81";
     muniSegmentIterator lines;
     CHECK(muniInitLineIterator(&lines, text, sizeof(text) - 1, false) == muni_success,
           "a line iterator");
-    if (muniSetLineOptions(&lines, muni_lineCjAsIdeographic) != muni_success)
+    if (muniSegmentIterator_EnableCjAsIdeographic(&lines, true) != muni_success)
     {
         // lines is not a line iterator, or has already started
     }
     size_t end = 0;
     bool mandatory = false;
-    CHECK(muniNextLineBreak(&lines, &end, &mandatory) == muni_success && end == 3 && !mandatory,
+    CHECK(muniSegmentIterator_NextLineBreak(&lines, &end, &mandatory) == muni_success && end == 3 &&
+              !mandatory,
           "a break before the small kana");
 }
 
@@ -140,14 +141,14 @@ static void GuideComplexBreaker(void)
     ThaiDictionary* dictionary = &words;
     muniSegmentIterator lines;
     CHECK(muniInitLineIterator(&lines, text, length, false) == muni_success, "a line iterator");
-    if (muniSetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
+    if (muniSegmentIterator_SetComplexBreaker(&lines, BreakThai, dictionary) != muni_success)
     {
         // lines is not a line or word iterator, or has already started
     }
     size_t end = 0;
     bool mandatory = false;
     bool between = false;
-    while (muniNextLineBreak(&lines, &end, &mandatory) == muni_success)
+    while (muniSegmentIterator_NextLineBreak(&lines, &end, &mandatory) == muni_success)
     {
         between = between || end == 6;
     }
@@ -164,13 +165,13 @@ static void GuideLanguageConventions(void)
     };
     muniSegmentIterator sentences;
     if (muniInitSentenceIterator(&sentences, text, length, false) == muni_success &&
-        muniSetBreakClassOverrides(&sentences, greek, 2) == muni_success)
+        muniSegmentIterator_SetBreakClassOverrides(&sentences, greek, 2) == muni_success)
     {
         // a sentence now ends after "; " as after "? "
     }
     size_t end = 0;
     size_t count = 0;
-    while (muniNextSegmentBreak(&sentences, &end) == muni_success)
+    while (muniSegmentIterator_NextBreak(&sentences, &end) == muni_success)
     {
         count += 1;
     }
@@ -199,7 +200,7 @@ static void GuideScripts(void)
     if (muniInitScriptIterator(&scripts, text, length, false) == muni_success)
     {
         muniScriptRun run;
-        while (muniNextScriptRun(&scripts, &run) == muni_success)
+        while (muniScriptIterator_NextRun(&scripts, &run) == muni_success)
         {
             // the text up to run.end has script run.script
         }
@@ -226,7 +227,7 @@ int main(void)
     GuideValidate();
     GuideGraphemes();
     GuideLines();
-    GuideLineOptions();
+    GuideCjAsIdeographic();
     GuideComplexBreaker();
     GuideLanguageConventions();
     GuideBidi();

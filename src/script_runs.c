@@ -292,8 +292,8 @@ muniResult muniInitScriptIterator(muniScriptIterator* iterator, const char* text
     return muni_success;
 }
 
-muniResult muniFeedScriptIterator(muniScriptIterator* iterator, const char* text, size_t length,
-                                  bool moreFollows)
+muniResult muniScriptIterator_Feed(muniScriptIterator* iterator, const char* text, size_t length,
+                                   bool moreFollows)
 {
     if (iterator == nullptr || (text == nullptr && length != 0))
     {
@@ -310,7 +310,7 @@ muniResult muniFeedScriptIterator(muniScriptIterator* iterator, const char* text
     return muni_success;
 }
 
-muniResult muniNextScriptRun(muniScriptIterator* iterator, muniScriptRun* runOut)
+muniResult muniScriptIterator_NextRun(muniScriptIterator* iterator, muniScriptRun* runOut)
 {
     if (iterator == nullptr || runOut == nullptr)
     {
