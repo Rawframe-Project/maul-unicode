@@ -104,7 +104,7 @@ static int RunWhole(const Kind* kind, const Case* c)
         return 0;
     }
     size_t offset;
-    while (count < MAX_BREAKS && muniNextSegmentBreak(&iterator, &offset) == muni_success)
+    while (count < MAX_BREAKS && muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success)
     {
         found[count++] = offset;
     }
@@ -124,14 +124,14 @@ static int RunBytewise(const Kind* kind, const Case* c)
     for (;;)
     {
         size_t offset;
-        muniResult status = muniNextSegmentBreak(&iterator, &offset);
+        muniResult status = muniSegmentIterator_NextBreak(&iterator, &offset);
         if (status == muni_success && count < MAX_BREAKS)
         {
             found[count++] = offset;
         }
         else if (status == muni_needMoreText)
         {
-            if (muniFeedSegmentIterator(&iterator, c->text + fed, 1, fed + 1 < c->length) !=
+            if (muniSegmentIterator_Feed(&iterator, c->text + fed, 1, fed + 1 < c->length) !=
                 muni_success)
             {
                 return 0;
@@ -273,10 +273,11 @@ static void TestLineBreaks(void)
     size_t offset;
     bool must = false;
     CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success, "a word iterator");
-    CHECK(muniNextLineBreak(&iterator, &offset, &must) == muni_errorInvalid,
+    CHECK(muniSegmentIterator_NextLineBreak(&iterator, &offset, &must) == muni_errorInvalid,
           "line breaks need a line iterator");
     CHECK(muniInitLineIterator(&iterator, "a b", 3, false) == muni_success, "a line iterator");
-    CHECK(muniNextLineBreak(&iterator, &offset, &must) == muni_success && offset == 2 && !must,
+    CHECK(muniSegmentIterator_NextLineBreak(&iterator, &offset, &must) == muni_success &&
+              offset == 2 && !must,
           "after the space");
 }
 
@@ -330,7 +331,7 @@ static size_t CollectBreaks(muniSegmentIterator* iterator, size_t* offsets)
 {
     size_t count = 0;
     size_t offset;
-    while (count < 16 && muniNextSegmentBreak(iterator, &offset) == muni_success)
+    while (count < 16 && muniSegmentIterator_NextBreak(iterator, &offset) == muni_success)
     {
         offsets[count++] = offset;
     }
@@ -345,12 +346,14 @@ static void TestComplexBreaker(void)
     size_t offsets[16];
     muniSegmentIterator iterator;
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)words) ==
+                  muni_success,
           "a line iterator takes a breaker");
     CHECK(CollectBreaks(&iterator, offsets) == 2 && offsets[0] == 18 && offsets[1] == 30,
           "line breaks between Thai words");
     CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)badStop) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)badStop) ==
+                  muni_success,
           "a word iterator takes a breaker");
     CHECK(CollectBreaks(&iterator, offsets) == 2 && offsets[0] == 18 && offsets[1] == 30,
           "whole Thai words, no break before a mark");
@@ -358,16 +361,19 @@ static void TestComplexBreaker(void)
               CollectBreaks(&iterator, offsets) == 7,
           "without a breaker, one word per cluster");
     CHECK(muniInitGraphemeIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
+                  muni_errorInvalid,
           "grapheme iterators take no breaker");
     size_t offset;
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorState,
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
+                  muni_errorState,
           "no breaker after the first break");
     CHECK(muniInitGraphemeIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, nullptr) == muni_errorInvalid,
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
+                  muni_errorInvalid,
           "the wrong kind is invalid in any state");
 }
 
@@ -395,18 +401,19 @@ static size_t ReentrantBreaker(void* context, const char* run, size_t length, si
     muniSegmentIterator* iterator = reentry->iterator;
     size_t offset;
     bool mandatory;
-    ExpectBusy(reentry, muniSetComplexBreaker(iterator, ToyBreaker, (void*)noStops));
-    ExpectBusy(reentry, muniFeedSegmentIterator(iterator, "a", 1, false));
-    ExpectBusy(reentry, muniNextSegmentBreak(iterator, &offset));
-    if (muniSetLineOptions(iterator, muni_lineCjAsIdeographic) != muni_errorInvalid)
+    ExpectBusy(reentry,
+               muniSegmentIterator_SetComplexBreaker(iterator, ToyBreaker, (void*)noStops));
+    ExpectBusy(reentry, muniSegmentIterator_Feed(iterator, "a", 1, false));
+    ExpectBusy(reentry, muniSegmentIterator_NextBreak(iterator, &offset));
+    if (muniSegmentIterator_EnableCjAsIdeographic(iterator, true) != muni_errorInvalid)
     {
         // A line iterator: the line calls are busy.
-        ExpectBusy(reentry, muniSetLineOptions(iterator, muni_lineCjAsIdeographic));
-        ExpectBusy(reentry, muniNextLineBreak(iterator, &offset, &mandatory));
+        ExpectBusy(reentry, muniSegmentIterator_EnableCjAsIdeographic(iterator, true));
+        ExpectBusy(reentry, muniSegmentIterator_NextLineBreak(iterator, &offset, &mandatory));
     }
     else
     {
-        ExpectBusy(reentry, muniSetBreakClassOverrides(iterator, posix, 1));
+        ExpectBusy(reentry, muniSegmentIterator_SetBreakClassOverrides(iterator, posix, 1));
     }
     return ToyBreaker((void*)reentry->stops, run, length, from);
 }
@@ -422,26 +429,30 @@ static void TestReentrantBreaker(void)
     muniSegmentIterator iterator;
     Reentry reentry = {&iterator, words, 0, 0};
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, true) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)words) ==
+                  muni_success,
           "a plain line iterator");
     size_t count = CollectBreaks(&iterator, expected);
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, true) == muni_success &&
-              muniSetComplexBreaker(&iterator, ReentrantBreaker, &reentry) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ReentrantBreaker, &reentry) ==
+                  muni_success,
           "a reentrant line iterator");
     CHECK(CollectBreaks(&iterator, offsets) == count &&
               memcmp(offsets, expected, count * sizeof(size_t)) == 0,
           "a line iterator finds the same breaks");
     CHECK(reentry.calls >= 5 && reentry.notBusy == 0, "every line call back is busy");
-    CHECK(muniFeedSegmentIterator(&iterator, "", 0, false) == muni_success,
+    CHECK(muniSegmentIterator_Feed(&iterator, "", 0, false) == muni_success,
           "no longer busy once the outer call returned");
 
     reentry = (Reentry){&iterator, words, 0, 0};
     CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)words) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)words) ==
+                  muni_success,
           "a plain word iterator");
     count = CollectBreaks(&iterator, expected);
     CHECK(muniInitWordIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ReentrantBreaker, &reentry) == muni_success,
+              muniSegmentIterator_SetComplexBreaker(&iterator, ReentrantBreaker, &reentry) ==
+                  muni_success,
           "a reentrant word iterator");
     CHECK(CollectBreaks(&iterator, offsets) == count &&
               memcmp(offsets, expected, count * sizeof(size_t)) == 0,
@@ -467,7 +478,8 @@ static void TestComplexBreakerRuns(void)
     size_t offsets[16];
     muniSegmentIterator iterator;
     CHECK(muniInitLineIterator(&iterator, s_thai, 30, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, ToyBreaker, (void*)threeBreaks) == muni_success &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)threeBreaks) ==
+                  muni_success &&
               CollectBreaks(&iterator, offsets) == 4 && offsets[0] == 9 && offsets[1] == 12 &&
               offsets[2] == 18 && offsets[3] == 30,
           "breaks inside one run, the next one asked for at each");
@@ -476,7 +488,8 @@ static void TestComplexBreakerRuns(void)
     memcpy(text + 30, " abc", 4);
     static const size_t none[] = {0};
     CHECK(muniInitLineIterator(&iterator, text, 34, false) == muni_success &&
-              muniSetComplexBreaker(&iterator, RecordingBreaker, (void*)none) == muni_success &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, RecordingBreaker, (void*)none) ==
+                  muni_success &&
               CollectBreaks(&iterator, offsets) == 2 && s_runLength == 30,
           "the run ends with the Thai text");
     // A piece cut inside the Thai text, alone in its allocation so that
@@ -490,8 +503,10 @@ static void TestComplexBreakerRuns(void)
     {
         memcpy(piece, s_thai, 15);
         CHECK(muniInitLineIterator(&iterator, piece, 15, true) == muni_success &&
-                  muniSetComplexBreaker(&iterator, RecordingBreaker, (void*)none) == muni_success &&
-                  muniNextLineBreak(&iterator, &offset, &mandatory) == muni_needMoreText &&
+                  muniSegmentIterator_SetComplexBreaker(&iterator, RecordingBreaker, (void*)none) ==
+                      muni_success &&
+                  muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) ==
+                      muni_needMoreText &&
                   s_runLength == 15,
               "the run ends with the piece");
         free(piece);
@@ -509,7 +524,7 @@ static size_t CollectFedBreaks(bool word, const char* text, size_t length,
     muniResult init = word ? muniInitWordIterator(&iterator, nullptr, 0, true)
                            : muniInitSentenceIterator(&iterator, nullptr, 0, true);
     if (init != muni_success ||
-        muniSetBreakClassOverrides(&iterator, overrides, count) != muni_success)
+        muniSegmentIterator_SetBreakClassOverrides(&iterator, overrides, count) != muni_success)
     {
         return 0;
     }
@@ -520,7 +535,7 @@ static size_t CollectFedBreaks(bool word, const char* text, size_t length,
     for (;;)
     {
         size_t offset;
-        status = muniNextSegmentBreak(&iterator, &offset);
+        status = muniSegmentIterator_NextBreak(&iterator, &offset);
         if (status == muni_success && found < 16)
         {
             offsets[found++] = offset;
@@ -536,7 +551,7 @@ static size_t CollectFedBreaks(bool word, const char* text, size_t length,
             break;
         }
         *next = text[fed++];
-        muniResult feed = muniFeedSegmentIterator(&iterator, next, 1, fed < length);
+        muniResult feed = muniSegmentIterator_Feed(&iterator, next, 1, fed < length);
         free(piece);
         piece = next;
         if (feed != muni_success)
@@ -566,7 +581,7 @@ static void TestClassOverrides(void)
     {
         memcpy(table, greek, sizeof(greek));
         CHECK(muniInitSentenceIterator(&iterator, sentences, 13, false) == muni_success &&
-                  muniSetBreakClassOverrides(&iterator, table, 2) == muni_success &&
+                  muniSegmentIterator_SetBreakClassOverrides(&iterator, table, 2) == muni_success &&
                   CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 4 && offsets[1] == 10 &&
                   offsets[2] == 13,
               "as STerm, both end a sentence");
@@ -582,15 +597,15 @@ static void TestClassOverrides(void)
               CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 3,
           "without overrides, a.b is one word");
     CHECK(muniInitWordIterator(&iterator, "a.b 3.5", 7, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
               CollectBreaks(&iterator, offsets) == 5 && offsets[0] == 1 && offsets[1] == 2 &&
               offsets[2] == 3 && offsets[3] == 4 && offsets[4] == 7,
           "as MidNum, U+002E splits a.b and keeps 3.5");
     CHECK(CollectFedBreaks(true, "a.b 3.5", 7, posix, 1, offsets) == 5 && offsets[1] == 2,
           "the same fed one byte at a time");
     CHECK(muniInitWordIterator(&iterator, "a.b", 3, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, nullptr, 0) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, nullptr, 0) == muni_success &&
               CollectBreaks(&iterator, offsets) == 1,
           "no overrides restores the Unicode classes");
 }
@@ -607,54 +622,64 @@ static void TestClassOverrideArguments(void)
     static const muniBreakClassOverride wordClass[] = {{0x003B, muni_wbWSegSpace + 1}};
     static const muniBreakClassOverride sentenceClass[] = {{0x003B, muni_sbClose + 1}};
     muniSegmentIterator iterator;
-    CHECK(muniSetBreakClassOverrides(nullptr, posix, 1) == muni_errorInvalid, "no iterator");
+    CHECK(muniSegmentIterator_SetBreakClassOverrides(nullptr, posix, 1) == muni_errorInvalid,
+          "no iterator");
     CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, nullptr, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, nullptr, 1) ==
+                  muni_errorInvalid,
           "no table with a count");
     CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, wordClass, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, wordClass, 1) ==
+                  muni_errorInvalid,
           "past the last Word_Break class");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, sentenceClass, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, sentenceClass, 1) ==
+                  muni_errorInvalid,
           "past the last Sentence_Break class");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, unordered, 2) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, unordered, 2) ==
+                  muni_errorInvalid,
           "out of order");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, repeated, 2) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, repeated, 2) ==
+                  muni_errorInvalid,
           "repeated");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, pastMax, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, pastMax, 1) ==
+                  muni_errorInvalid,
           "past U+10FFFF");
     // Refused before any entry is read, so the one-entry table is enough.
     CHECK(muniInitWordIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 0x10F801) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 0x10F801) ==
+                  muni_errorInvalid,
           "more overrides than scalar values");
     CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, surrogate, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, surrogate, 1) ==
+                  muni_errorInvalid,
           "a surrogate");
     CHECK(muniInitGraphemeIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
           "grapheme iterators take no overrides");
     CHECK(muniInitLineIterator(&iterator, "a", 1, false) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
           "line iterators take no overrides");
     size_t offset;
     CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
           "no overrides after the first boundary");
     CHECK(muniInitWordIterator(&iterator, nullptr, 0, true) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText &&
-              muniSetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorState,
           "no overrides once asked for a boundary");
     CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetBreakClassOverrides(&iterator, unordered, 2) == muni_errorInvalid,
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, unordered, 2) ==
+                  muni_errorInvalid,
           "a bad table is invalid in any state");
 }
 
-static void TestLineOptions(void)
+static void TestCjAsIdeographic(void)
 {
     // U+3042 HIRAGANA LETTER A (ID), then U+3041 HIRAGANA LETTER SMALL A
     // and U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK (both CJ).
@@ -665,31 +690,34 @@ static void TestLineOptions(void)
               CollectBreaks(&iterator, offsets) == 1 && offsets[0] == 9,
           "by default CJ is NS: no break before the small kana or the mark");
     CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_success &&
+              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
+          "off in a new line iterator");
+    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
+              muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator) &&
               CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 3 && offsets[1] == 6 &&
               offsets[2] == 9,
           "as ID, a line may break before each");
     CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_success &&
-              muniSetLineOptions(&iterator, 0) == muni_success &&
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, false) == muni_success &&
+              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator) &&
               CollectBreaks(&iterator, offsets) == 1,
-          "0 restores the default rules");
+          "switched off again, the default rules");
     size_t offset;
-    CHECK(muniSetLineOptions(nullptr, 0) == muni_errorInvalid, "no iterator");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSetLineOptions(&iterator, 1u << 1) == muni_errorInvalid,
-          "an unknown option");
+    CHECK(muniSegmentIterator_EnableCjAsIdeographic(nullptr, true) == muni_errorInvalid &&
+              !muniSegmentIterator_IsCjAsIdeographicEnabled(nullptr),
+          "no iterator");
     CHECK(muniInitWordIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorInvalid,
-          "word iterators take no line options");
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_errorInvalid &&
+              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
+          "word iterators have no such switch");
     CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetLineOptions(&iterator, muni_lineCjAsIdeographic) == muni_errorState,
-          "no options after the first break");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniNextSegmentBreak(&iterator, &offset) == muni_success &&
-              muniSetLineOptions(&iterator, 1u << 1) == muni_errorInvalid,
-          "an unknown option is invalid in any state");
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+              muniSegmentIterator_EnableCjAsIdeographic(&iterator, false) == muni_errorState &&
+              muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
+          "no switching after the first break, and the switch stays on");
 }
 
 static void TestFeedingRules(void)
@@ -697,18 +725,21 @@ static void TestFeedingRules(void)
     muniSegmentIterator iterator;
     size_t offset;
     CHECK(muniInitWordIterator(&iterator, "ab", 2, false) == muni_success, "init");
-    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorState,
+    CHECK(muniSegmentIterator_Feed(&iterator, "c", 1, false) == muni_errorState,
           "no piece was announced");
     CHECK(muniInitWordIterator(&iterator, "ab", 2, true) == muni_success, "init with more");
-    CHECK(muniFeedSegmentIterator(&iterator, "c", 1, false) == muni_errorState,
+    CHECK(muniSegmentIterator_Feed(&iterator, "c", 1, false) == muni_errorState,
           "a piece before the iterator asked");
-    CHECK(muniFeedSegmentIterator(&iterator, nullptr, 1, false) == muni_errorInvalid,
+    CHECK(muniSegmentIterator_Feed(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "a NULL piece is invalid in any state");
-    CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_needMoreText, "the word may go on");
-    CHECK(muniFeedSegmentIterator(&iterator, " d", 2, false) == muni_success, "feed");
-    CHECK(muniNextSegmentBreak(&iterator, &offset) == muni_success && offset == 2, "after ab");
+    CHECK(muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText,
+          "the word may go on");
+    CHECK(muniSegmentIterator_Feed(&iterator, " d", 2, false) == muni_success, "feed");
+    CHECK(muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success && offset == 2,
+          "after ab");
     muniSegmentIterator zeroed = {{0}};
-    CHECK(muniNextSegmentBreak(&zeroed, &offset) == muni_errorInvalid, "never initialized");
+    CHECK(muniSegmentIterator_NextBreak(&zeroed, &offset) == muni_errorInvalid,
+          "never initialized");
 }
 
 int main(void)
@@ -723,7 +754,7 @@ int main(void)
     TestReentrantBreaker();
     TestClassOverrides();
     TestClassOverrideArguments();
-    TestLineOptions();
+    TestCjAsIdeographic();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

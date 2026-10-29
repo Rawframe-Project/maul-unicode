@@ -364,7 +364,7 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
         size_t end = 0;
         bool started = muniInitWordIterator(&words, text, length, false) == muni_success;
         while (started && status == muni_success &&
-               muniNextSegmentBreak(&words, &end) == muni_success)
+               muniSegmentIterator_NextBreak(&words, &end) == muni_success)
         {
             stop = Convert(&converter, start, end, operation, strict, &status);
             start = end;

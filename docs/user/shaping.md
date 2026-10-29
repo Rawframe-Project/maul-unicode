@@ -11,14 +11,14 @@ muniScriptIterator scripts;
 if (muniInitScriptIterator(&scripts, text, length, false) == muni_success)
 {
     muniScriptRun run;
-    while (muniNextScriptRun(&scripts, &run) == muni_success)
+    while (muniScriptIterator_NextRun(&scripts, &run) == muni_success)
     {
         // the text up to run.end has script run.script
     }
 }
 ```
 
-Like the segment iterators, it takes text in pieces through `muniFeedScriptIterator` after `muni_needMoreText`. `muniFindScriptRuns` writes the runs of a whole text into an array.
+Like the segment iterators, it takes text in pieces through `muniScriptIterator_Feed` after `muni_needMoreText`. `muniFindScriptRuns` writes the runs of a whole text into an array.
 
 A text layout pipeline itemizes by paragraph ([bidi](bidi.md)), then by script and bidi run, then by font, and shapes each item.
 

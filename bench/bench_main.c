@@ -57,7 +57,7 @@ static size_t CountBreaks(InitFn init)
     }
     size_t count = 0;
     size_t offset;
-    while (muniNextSegmentBreak(&iterator, &offset) == muni_success)
+    while (muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success)
     {
         count += 1;
     }

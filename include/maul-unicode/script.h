@@ -69,9 +69,9 @@ extern "C"
     ///         `muni_errorInvalid` is reported before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult muniFeedScriptIterator(muniScriptIterator* iterator,
-                                                              const char* text, size_t length,
-                                                              bool moreFollows);
+    MUNI_NODISCARD MUNI_API muniResult muniScriptIterator_Feed(muniScriptIterator* iterator,
+                                                               const char* text, size_t length,
+                                                               bool moreFollows);
 
     /// Finds the next script run.
     ///
@@ -86,8 +86,8 @@ extern "C"
     ///         text not yet fed; `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult muniNextScriptRun(muniScriptIterator* iterator,
-                                                         muniScriptRun* runOut);
+    MUNI_NODISCARD MUNI_API muniResult muniScriptIterator_NextRun(muniScriptIterator* iterator,
+                                                                  muniScriptRun* runOut);
 
     /// Writes the script runs of a whole UTF-8 text into a caller array.
     ///
