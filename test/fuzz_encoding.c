@@ -10,6 +10,7 @@
 // which may hold any surrogate or value past U+10FFFF.
 
 #include "maul-unicode/encoding.h"
+#include "maul-unicode/identifier.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,56 @@ static void Require(bool condition)
     {
         abort();
     }
+}
+
+// Encoding a decoded code point gives its bytes back. Every capacity
+// below its length is refused with the length and writes nothing; a
+// capacity of exactly the length writes nothing past it.
+static void CheckEncode(uint32_t codePoint, const char* bytes, size_t size)
+{
+    for (size_t capacity = 0; capacity <= size; capacity++)
+    {
+        char output[4] = {'x', 'x', 'x', 'x'};
+        size_t sizeOut = 0;
+        muniResult status = muniEncodeUtf8(codePoint, output, capacity, &sizeOut);
+        Require(sizeOut == size);
+        Require(status == (capacity < size ? muni_errorCapacity : muni_success));
+        for (size_t i = 0; i < 4; i++)
+        {
+            Require(i < size && status == muni_success ? output[i] == bytes[i] : output[i] == 'x');
+        }
+    }
+}
+
+// muniCheckIdentifier reports the first problem in the text, a UTF-8
+// error or a code point that may not stand where it is, as a walk with
+// muniDecodeUtf8 and the identifier properties finds it.
+static void CheckIdentifier(const char* text, size_t length)
+{
+    muniTextResult expected = {muni_errorIdentifier, 0};
+    if (length > 0)
+    {
+        expected = (muniTextResult){muni_success, length};
+    }
+    size_t offset = 0;
+    while (offset < length && expected.status == muni_success)
+    {
+        uint32_t codePoint;
+        size_t size;
+        muniResult status = muniDecodeUtf8(text + offset, length - offset, &codePoint, &size);
+        if (status != muni_success)
+        {
+            expected = (muniTextResult){status, offset};
+        }
+        else if (offset == 0 ? !muniIsIdentifierStart(codePoint)
+                             : !muniIsIdentifierContinue(codePoint))
+        {
+            expected = (muniTextResult){muni_errorIdentifier, offset};
+        }
+        offset += size;
+    }
+    muniTextResult result = muniCheckIdentifier(text, length);
+    Require(result.status == expected.status && result.offset == expected.offset);
 }
 
 static void CheckStepping(const char* text, size_t length, muniTextResult validation)
@@ -36,6 +87,7 @@ static void CheckStepping(const char* text, size_t length, muniTextResult valida
             Require(validation.status == status && validation.offset == offset);
             return;
         }
+        CheckEncode(codePoint, text + offset, size);
         offset += size;
     }
     Require(validation.status == muni_success);
@@ -163,6 +215,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     const char* text = (const char*)data;
     muniTextResult validation = muniValidateUtf8(text, size);
     CheckStepping(text, size, validation);
+    CheckIdentifier(text, size);
 
     uint16_t* units = malloc(sizeof(uint16_t) * (size + 1));
     size_t unitCount = 0;
