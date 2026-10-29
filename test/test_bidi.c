@@ -394,6 +394,23 @@ static void TestParagraphsAndLines(void)
     CHECK(muniResolveBidi("a", 1, muni_bidiAuto, nullptr, workspace, &paragraph, &level) ==
               muni_errorInvalid,
           "no levels");
+    CHECK(muniResolveBidi(nullptr, 0, muni_bidiAuto, nullptr, nullptr, nullptr, &level) ==
+                  muni_errorInvalid &&
+              muniResolveBidi(nullptr, 0, muni_bidiAuto, nullptr, nullptr, &paragraph, nullptr) ==
+                  muni_errorInvalid,
+          "the paragraph outputs are needed even for empty text");
+    muniBidiRun run = {7, 7, 7};
+    size_t runCount = 7;
+    CHECK(muniReorderBidiLine(nullptr, nullptr, 0, 0, nullptr, 0, &runCount) == muni_success &&
+              runCount == 0,
+          "an empty line, with no text and no levels");
+    runCount = 7;
+    CHECK(muniReorderBidiLine(nullptr, nullptr, 0, 0, &run, 1, nullptr) == muni_errorInvalid &&
+              run.start == 7,
+          "a line needs a count out even when empty");
+    CHECK(muniReorderBidiLine(nullptr, levels, 1, 0, &run, 1, &runCount) == muni_errorInvalid &&
+              runCount == 7 && run.start == 7,
+          "no line with a length");
 }
 
 // The level of the byte probe bytes into the content of an FSI that
@@ -512,6 +529,9 @@ static void TestMaps(void)
           "the inverse");
     const uint8_t deep[] = {0, 126, 127};
     CHECK(muniReorderBidiLevels(deep, 2, visual) == muni_success, "a level of 126");
+    CHECK(muniReorderBidiLevels(nullptr, 0, nullptr) == muni_success &&
+              muniInvertBidiMap(nullptr, 0, nullptr) == muni_success,
+          "no units, and no arrays for them");
     memset(visual, 0xA5, sizeof(visual));
     CHECK(muniReorderBidiLevels(deep, 3, visual) == muni_errorInvalid && visual[0] != 0,
           "a level above 126, and no map written");
