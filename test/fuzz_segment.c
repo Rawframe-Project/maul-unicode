@@ -7,7 +7,9 @@
 // strictly, fall on code point starts and end at the length of the text.
 // Word and sentence iterators are also run with class overrides for some
 // of the text's own code points, each given a class the input picks, and
-// line iterators with CJ resolved as ID.
+// line iterators with CJ resolved as ID. Line breaks and their mandatory
+// flags from muniFindLineBreaks must equal muniNextLineBreak's fed in
+// pieces.
 // Word and sentence boundaries need not be grapheme boundaries: the
 // UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
 // to grapheme clusters) when punctuation follows, for example.
@@ -171,6 +173,45 @@ static void CheckLineOptions(const char* text, size_t length, size_t piece)
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
+// The line breaks and their mandatory flags muniFindLineBreaks gives for
+// the whole text equal those muniNextLineBreak gives fed in pieces.
+static void CheckMandatory(const char* text, size_t length, size_t piece)
+{
+    static size_t whole[MAX_BREAKS];
+    static bool wholeMandatory[MAX_BREAKS];
+    size_t count = 0;
+    Require(muniFindLineBreaks(text, length, whole, wholeMandatory, MAX_BREAKS, &count) ==
+            muni_success);
+    size_t fed = piece < length ? piece : length;
+    muniSegmentIterator iterator;
+    Require(muniInitLineIterator(&iterator, text, fed, fed < length) == muni_success);
+    size_t index = 0;
+    for (;;)
+    {
+        size_t offset;
+        bool mandatory = !wholeMandatory[index < count ? index : 0];
+        muniResult status = muniNextLineBreak(&iterator, &offset, &mandatory);
+        if (status == muni_success)
+        {
+            Require(index < count && offset == whole[index] && mandatory == wholeMandatory[index]);
+            index++;
+        }
+        else if (status == muni_needMoreText)
+        {
+            Require(fed < length && !mandatory);
+            size_t next = length - fed < piece ? length - fed : piece;
+            Require(muniFeedSegmentIterator(&iterator, text + fed, next, fed + next < length) ==
+                    muni_success);
+            fed += next;
+        }
+        else
+        {
+            Require(status == muni_done && index == count && !mandatory);
+            return;
+        }
+    }
+}
+
 // With class overrides: the boundaries fed in pieces equal the whole
 // text's, rise, fall on code point starts and end at the length.
 static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const char* text,
@@ -230,6 +271,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     if (kind == 3)
     {
         CheckLineOptions(text, length, piece);
+        CheckMandatory(text, length, piece);
     }
     if (kind == 1 || kind == 2)
     {
