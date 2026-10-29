@@ -555,6 +555,47 @@ static void TestExactFit(void)
 // Prefixes of mixed text cut at every length, including inside a code
 // point, then three bytes of edge values: errors and truncations land on
 // either side of the validator's chunk and ASCII-run boundaries.
+// Each conversion also refuses a NULL neededOut and a mode that is
+// neither strict nor replace, and then writes nothing.
+static void TestConversionRefusals(void)
+{
+    const uint16_t a16[1] = {'a'};
+    const uint32_t a32[1] = {'a'};
+    uint16_t units[2] = {0x7777, 0x7777};
+    uint32_t values[2] = {7, 7};
+    char bytes[4] = {'x', 'x', 'x', 'x'};
+    size_t needed = 7;
+    CHECK(muniConvertUtf8ToUtf16("a", 1, muni_convertStrict, units, 2, nullptr).status ==
+                  muni_errorInvalid &&
+              units[0] == 0x7777,
+          "UTF-8 to UTF-16: no needed size out");
+    CHECK(muniConvertUtf16ToUtf8(a16, 1, muni_convertStrict, bytes, 4, nullptr).status ==
+                  muni_errorInvalid &&
+              bytes[0] == 'x',
+          "UTF-16 to UTF-8: no needed size out");
+    CHECK(muniConvertUtf8ToUtf32("a", 1, muni_convertStrict, values, 2, nullptr).status ==
+                  muni_errorInvalid &&
+              values[0] == 7,
+          "UTF-8 to UTF-32: no needed size out");
+    CHECK(muniConvertUtf32ToUtf8(a32, 1, muni_convertStrict, bytes, 4, nullptr).status ==
+                  muni_errorInvalid &&
+              bytes[0] == 'x',
+          "UTF-32 to UTF-8: no needed size out");
+    muniConvertMode unknown = 2;
+    CHECK(muniConvertUtf8ToUtf16("a", 1, unknown, units, 2, &needed).status == muni_errorInvalid &&
+              needed == 7 && units[0] == 0x7777,
+          "UTF-8 to UTF-16: an unknown mode");
+    CHECK(muniConvertUtf16ToUtf8(a16, 1, unknown, bytes, 4, &needed).status == muni_errorInvalid &&
+              needed == 7 && bytes[0] == 'x',
+          "UTF-16 to UTF-8: an unknown mode");
+    CHECK(muniConvertUtf8ToUtf32("a", 1, unknown, values, 2, &needed).status == muni_errorInvalid &&
+              needed == 7 && values[0] == 7,
+          "UTF-8 to UTF-32: an unknown mode");
+    CHECK(muniConvertUtf32ToUtf8(a32, 1, unknown, bytes, 4, &needed).status == muni_errorInvalid &&
+              needed == 7 && bytes[0] == 'x',
+          "UTF-32 to UTF-8: an unknown mode");
+}
+
 static void TestValidationAgreesAfterLongPrefixes(void)
 {
     static const uint8_t edges[] = {0x00, 0x7F, 0x80, 0x9F, 0xA0, 0xBF, 0xC1, 0xC2,
@@ -607,5 +648,6 @@ int main(void)
     TestEncode();
     TestEncodeCapacity();
     TestExactFit();
+    TestConversionRefusals();
     return s_failures == 0 ? 0 : 1;
 }
