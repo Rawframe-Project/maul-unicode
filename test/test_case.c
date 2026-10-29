@@ -117,6 +117,15 @@ static void TestTurkic(void)
     CHECK(Converts("I\xC4\xB0", muni_caseFold, muni_caseTurkic, "\xC4\xB1i"), "Turkic folding");
     CHECK(Converts("XI", muni_caseLower, muni_caseTurkic, "x\xC4\xB1"),
           "I at the end, no dot after it, lowercases to dotless i");
+    // Before_Dot and After_I look past marks of classes other than 0 and
+    // 230. U+0323 DOT BELOW (220) between the I and the dot lets the dot
+    // go; U+0301 ACUTE ACCENT (230) stops the look, so the I is dotless and
+    // the dot stays.
+    CHECK(Converts("I\xCC\xA3\xCC\x87", muni_caseLower, muni_caseTurkic, "i\xCC\xA3"),
+          "the dot of an I past a dot below");
+    CHECK(
+        Converts("I\xCC\x81\xCC\x87", muni_caseLower, muni_caseTurkic, "\xC4\xB1\xCC\x81\xCC\x87"),
+        "an acute accent keeps the dot from the I");
 }
 
 // Final_Sigma: a sigma ends a word when no cased letter follows past
