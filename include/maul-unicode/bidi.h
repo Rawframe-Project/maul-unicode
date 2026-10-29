@@ -104,11 +104,14 @@ extern "C"
     /// it was.
     ///
     /// @param levels             One level per unit, in logical order.
+    ///                           May be NULL when count is 0.
     /// @param count              The number of units.
     /// @param visualToLogicalOut Receives, for each position from left to
-    ///                           right, the logical index of its unit.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument or
-    ///         a level above 126, the highest rule L1 leaves.
+    ///                           right, the logical index of its unit. May
+    ///                           be NULL when count is 0.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument
+    ///         with a nonzero count or a level above 126, the highest rule
+    ///         L1 leaves.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count,
@@ -117,15 +120,17 @@ extern "C"
     /// Inverts a visual-to-logical map into a logical-to-visual one, or
     /// the other way round.
     ///
-    /// @param map         A permutation of 0 to count - 1.
+    /// @param map         A permutation of 0 to count - 1. May be NULL when
+    ///                    count is 0.
     /// @param count       The number of entries.
     /// @param inverseOut  Receives the inverse permutation. Must not overlap
-    ///                    map. On an error, its contents are unspecified:
-    ///                    telling a permutation from a map that repeats an
-    ///                    entry, in linear time and without memory, takes
-    ///                    inverseOut as scratch.
-    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument, an
-    ///         entry out of range or an entry that repeats an earlier one.
+    ///                    map. May be NULL when count is 0. On an error, its
+    ///                    contents are unspecified: telling a permutation
+    ///                    from a map that repeats an entry, in linear time
+    ///                    and without memory, takes inverseOut as scratch.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument
+    ///         with a nonzero count, an entry out of range or an entry that
+    ///         repeats an earlier one.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniInvertBidiMap(const size_t* map, size_t count,

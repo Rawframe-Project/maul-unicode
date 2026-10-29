@@ -512,6 +512,9 @@ static void TestMaps(void)
           "the inverse");
     const uint8_t deep[] = {0, 126, 127};
     CHECK(muniReorderBidiLevels(deep, 2, visual) == muni_success, "a level of 126");
+    CHECK(muniReorderBidiLevels(nullptr, 0, nullptr) == muni_success &&
+              muniInvertBidiMap(nullptr, 0, nullptr) == muni_success,
+          "no units, and no arrays for them");
     memset(visual, 0xA5, sizeof(visual));
     CHECK(muniReorderBidiLevels(deep, 3, visual) == muni_errorInvalid && visual[0] != 0,
           "a level above 126, and no map written");
