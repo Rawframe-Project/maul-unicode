@@ -452,6 +452,14 @@ static void TestIsolateDepth(void)
     CHECK(LevelInFsi(62, rle, hebrewLatin, 0) == 125, "Hebrew in an FSI at 125");
     CHECK(LevelInFsi(62, rle, hebrewLatin, 2) == 126, "an FSI of Hebrew at 125 overflows");
     CHECK(LevelInFsi(62, rle, "a", 0) == 126, "an FSI of Latin at 125 overflows");
+    // A PDF inside the overflowed FSI does nothing (X7), so the Latin
+    // letter after it stays at 125 and rises to 126; were the RLE popped,
+    // it would sit at 124.
+    CHECK(LevelInFsi(62, rle,
+                     "\xE2\x80\xAC"
+                     "a",
+                     3) == 126,
+          "a PDF inside an overflowed FSI");
 }
 
 // Bidi takes work in proportion to its text. A long run of FSIs with no
