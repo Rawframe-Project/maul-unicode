@@ -204,6 +204,27 @@ static void TestCapacityAndArguments(void)
           "feeding an iterator told no more text follows");
     CHECK(muniScriptIterator_Feed(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "a NULL piece is invalid in any state");
+    CHECK(muniInitScriptIterator(nullptr, "a", 1, false) == muni_errorInvalid, "no iterator");
+    CHECK(muniInitScriptIterator(&iterator, nullptr, 1, false) == muni_errorInvalid,
+          "no text with a length");
+    CHECK(muniInitScriptIterator(&iterator, nullptr, 0, false) == muni_success,
+          "no text and no length");
+    muniScriptRun run = {7, LATN};
+    CHECK(muniScriptIterator_NextRun(nullptr, &run) == muni_errorInvalid && run.end == 7 &&
+              run.script == LATN,
+          "the next run of no iterator");
+    CHECK(muniInitScriptIterator(&iterator, "a", 1, false) == muni_success &&
+              muniScriptIterator_NextRun(&iterator, nullptr) == muni_errorInvalid,
+          "the next run into nothing");
+    count = 7;
+    CHECK(muniFindScriptRuns(nullptr, 1, runs, 1, &count) == muni_errorInvalid && count == 7,
+          "finding runs in no text with a length");
+    CHECK(muniFindScriptRuns("a", 1, nullptr, 1, &count) == muni_errorInvalid && count == 7,
+          "no runs with a capacity");
+    runs[0] = (muniScriptRun){7, LATN};
+    CHECK(muniFindScriptRuns("a", 1, runs, 1, nullptr) == muni_errorInvalid && runs[0].end == 7 &&
+              runs[0].script == LATN,
+          "no count, and no run written");
 }
 
 int main(void)

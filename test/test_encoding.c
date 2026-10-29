@@ -203,6 +203,40 @@ static void TestErrorKinds(void)
     CHECK(muniValidateUtf8(nullptr, 1).status == muni_errorInvalid, "NULL with a length");
 }
 
+// Each conversion refuses a NULL input with a nonzero length and leaves
+// its output and the count as they were.
+static void TestConversionArguments(void)
+{
+    uint16_t units[2] = {0x7777, 0x7777};
+    uint32_t values[2] = {7, 7};
+    char bytes[4] = {'x', 'x', 'x', 'x'};
+    size_t needed = 7;
+    muniTextResult result =
+        muniConvertUtf8ToUtf16(nullptr, 1, muni_convertStrict, units, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && result.offset == 0 && needed == 7 &&
+              units[0] == 0x7777,
+          "UTF-8 to UTF-16: no text with a length");
+    result = muniConvertUtf16ToUtf8(nullptr, 1, muni_convertStrict, bytes, 4, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7 && bytes[0] == 'x',
+          "UTF-16 to UTF-8: no units with a length");
+    result = muniConvertUtf8ToUtf32(nullptr, 1, muni_convertReplace, values, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7 && values[0] == 7,
+          "UTF-8 to UTF-32: no text with a length");
+    result = muniConvertUtf32ToUtf8(nullptr, 1, muni_convertReplace, bytes, 4, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7 && bytes[0] == 'x',
+          "UTF-32 to UTF-8: no values with a length");
+    const uint16_t a16[1] = {'a'};
+    result = muniConvertUtf8ToUtf16("a", 1, muni_convertStrict, nullptr, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-8 to UTF-16: no output with a capacity");
+    result = muniConvertUtf16ToUtf8(a16, 1, muni_convertStrict, nullptr, 4, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-16 to UTF-8: no output with a capacity");
+    result = muniConvertUtf8ToUtf32("a", 1, muni_convertStrict, nullptr, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-8 to UTF-32: no output with a capacity");
+}
+
 static void TestReplacementFollowsTheStandard(void)
 {
     // The example of U+FFFD substitution in chapter 3 of the Unicode
@@ -562,6 +596,7 @@ int main(void)
     TestValidationAgreesOnFourByteStrings();
     TestMaximalSubpartsMatchTheReference();
     TestErrorKinds();
+    TestConversionArguments();
     TestReplacementFollowsTheStandard();
     TestConversionsRoundTrip();
     TestUtf32Values();

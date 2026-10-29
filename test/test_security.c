@@ -398,7 +398,24 @@ static void TestErrors(void)
                   muni_success &&
               needed == 0,
           "empty text");
-    muniRestrictionLevel level = 0;
+    muniRestrictionLevel level = muni_restrictionAsciiOnly;
+    result = muniGetRestrictionLevel(nullptr, 1, &level);
+    CHECK(result.status == muni_errorInvalid && level == muni_restrictionAsciiOnly,
+          "no text with a length has no level");
+    CHECK(muniGetRestrictionLevel("a", 1, nullptr).status == muni_errorInvalid, "no level out");
+    {
+        muniScript one[1] = {MUNI_SCRIPT_COMMON};
+        size_t many = 7;
+        CHECK(muniGetResolvedScripts(nullptr, 1, one, 1, &many).status == muni_errorInvalid &&
+                  many == 7 && one[0] == MUNI_SCRIPT_COMMON,
+              "no text with a length has no scripts");
+        CHECK(muniGetResolvedScripts("a", 1, nullptr, 1, &many).status == muni_errorInvalid &&
+                  many == 7,
+              "no scripts with a capacity");
+        CHECK(muniGetResolvedScripts("a", 1, one, 1, nullptr).status == muni_errorInvalid &&
+                  one[0] == MUNI_SCRIPT_COMMON,
+              "no count");
+    }
     result = muniGetRestrictionLevel("a\xC0", 2, &level);
     CHECK(result.status != muni_success && result.offset == 1, "ill-formed text has no level");
     // A truncated euro sign after Latin and Cyrillic, alone in a heap

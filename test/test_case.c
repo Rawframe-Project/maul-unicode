@@ -214,6 +214,27 @@ static void TestErrors(void)
         muniConvertCase("a", 1, muni_caseLower, 3, muni_convertStrict, output, 4, &needed).status ==
             muni_errorInvalid,
         "an unknown language");
+    needed = 7;
+    memcpy(output, "xxxx", 4);
+    CHECK(muniConvertCase("a", 1, muni_caseLower, muni_caseDefault, 2, output, 4, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "an unknown mode, and nothing is written");
+    CHECK(muniConvertCase(nullptr, 1, muni_caseLower, muni_caseDefault, muni_convertStrict, output,
+                          4, &needed)
+                      .status == muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "no text with a length");
+    CHECK(muniConvertCase("a", 1, muni_caseLower, muni_caseDefault, muni_convertStrict, nullptr, 4,
+                          &needed)
+                      .status == muni_errorInvalid &&
+              needed == 7,
+          "no output with a capacity");
+    CHECK(muniConvertCase("a", 1, muni_caseLower, muni_caseDefault, muni_convertStrict, output, 4,
+                          nullptr)
+                      .status == muni_errorInvalid &&
+              memcmp(output, "xxxx", 4) == 0,
+          "no needed size out");
 }
 
 #ifdef MUNI_UCD_DATA

@@ -720,6 +720,66 @@ static void TestCjAsIdeographic(void)
           "no switching after the first break, and the switch stays on");
 }
 
+// Every segment call refuses a NULL iterator, output or text with a
+// length, and writes no output.
+static void TestInvalidArguments(void)
+{
+    static const InitFn inits[] = {muniInitGraphemeIterator, muniInitWordIterator,
+                                   muniInitSentenceIterator, muniInitLineIterator};
+    static const FindFn finds[] = {muniFindGraphemeBreaks, muniFindWordBreaks,
+                                   muniFindSentenceBreaks, FindLines};
+    muniSegmentIterator iterator;
+    size_t offsets[2] = {7, 7};
+    for (size_t i = 0; i < 4; i++)
+    {
+        CHECK(inits[i](nullptr, "a", 1, false) == muni_errorInvalid, "init no iterator");
+        CHECK(inits[i](&iterator, nullptr, 1, false) == muni_errorInvalid,
+              "init no text with a length");
+        CHECK(inits[i](&iterator, nullptr, 0, false) == muni_success, "init no text and no length");
+        size_t count = 7;
+        CHECK(finds[i](nullptr, 1, offsets, 2, &count) == muni_errorInvalid && count == 7 &&
+                  offsets[0] == 7,
+              "find in no text with a length");
+        CHECK(finds[i]("a", 1, nullptr, 2, &count) == muni_errorInvalid && count == 7,
+              "find into no offsets with a capacity");
+        CHECK(finds[i]("a", 1, offsets, 2, nullptr) == muni_errorInvalid && offsets[0] == 7,
+              "find with no count");
+    }
+    size_t offset = 7;
+    bool mandatory = true;
+    CHECK(muniSegmentIterator_SetComplexBreaker(nullptr, ToyBreaker, nullptr) == muni_errorInvalid,
+          "a breaker for no iterator");
+    CHECK(muniInitGraphemeIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
+                  muni_errorInvalid,
+          "grapheme iterators take no breaker");
+    CHECK(muniSegmentIterator_NextBreak(nullptr, &offset) == muni_errorInvalid && offset == 7,
+          "the next break of no iterator");
+    CHECK(muniSegmentIterator_NextBreak(&iterator, nullptr) == muni_errorInvalid,
+          "the next break into nothing");
+    CHECK(muniSegmentIterator_NextLineBreak(nullptr, &offset, &mandatory) == muni_errorInvalid &&
+              offset == 7 && mandatory,
+          "the next line break of no iterator");
+    CHECK(muniInitLineIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSegmentIterator_NextLineBreak(&iterator, nullptr, &mandatory) ==
+                  muni_errorInvalid &&
+              mandatory,
+          "the next line break with no offset out");
+    CHECK(muniSegmentIterator_NextLineBreak(&iterator, &offset, nullptr) == muni_errorInvalid &&
+              offset == 7,
+          "the next line break with no flag out");
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) ==
+                  muni_errorInvalid &&
+              offset == 7 && mandatory,
+          "the next line break of a word iterator");
+    bool flags[2] = {true, true};
+    size_t count = 7;
+    CHECK(muniFindLineBreaks("a", 1, nullptr, flags, 2, &count) == muni_errorInvalid &&
+              count == 7 && flags[0],
+          "line breaks into no offsets with a capacity");
+}
+
 static void TestFeedingRules(void)
 {
     muniSegmentIterator iterator;
@@ -755,6 +815,7 @@ int main(void)
     TestClassOverrides();
     TestClassOverrideArguments();
     TestCjAsIdeographic();
+    TestInvalidArguments();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
 }

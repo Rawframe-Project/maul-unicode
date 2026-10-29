@@ -532,6 +532,10 @@ static void TestMaps(void)
     CHECK(muniInvertBidiMap(repeated, 3, logical) == muni_errorInvalid, "a repeated entry");
     const size_t first[] = {0, 0};
     CHECK(muniInvertBidiMap(first, 2, logical) == muni_errorInvalid, "a repeated first entry");
+    logical[0] = 7;
+    CHECK(muniInvertBidiMap(nullptr, 1, logical) == muni_errorInvalid && logical[0] == 7,
+          "no map with a count, and nothing written");
+    CHECK(muniInvertBidiMap(first, 1, nullptr) == muni_errorInvalid, "no inverse with a count");
 }
 
 int main(void)

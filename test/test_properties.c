@@ -233,6 +233,13 @@ static void TestScriptExtensionsBound(void)
         }
     }
     CHECK(most > 1 && most <= MUNI_MAX_SCRIPT_EXTENSIONS, "the bound holds for every code point");
+    size_t count = 7;
+    muniScript scripts[1] = {MUNI_SCRIPT_COMMON};
+    CHECK(muniGetScriptExtensions('a', nullptr, 1, &count) == muni_errorInvalid && count == 7,
+          "no scripts with a capacity, and no count written");
+    CHECK(muniGetScriptExtensions('a', scripts, 1, nullptr) == muni_errorInvalid &&
+              scripts[0] == MUNI_SCRIPT_COMMON,
+          "no count, and no script written");
 }
 
 static void TestDecimalDigits(void)
