@@ -5,6 +5,17 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.7.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.6.0...v0.7.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* calls on an iterator are renamed after the family naming rule, and the line options become a switch pair: muniResultName -> muniGetResultName; muniFeedSegmentIterator -> muniSegmentIterator_Feed; muniNextSegmentBreak -> muniSegmentIterator_NextBreak; muniNextLineBreak -> muniSegmentIterator_NextLineBreak; muniSetComplexBreaker -> muniSegmentIterator_SetComplexBreaker; muniSetBreakClassOverrides -> muniSegmentIterator_SetBreakClassOverrides; muniSetLineOptions(iterator, muni_lineCjAsIdeographic) -> muniSegmentIterator_EnableCjAsIdeographic(iterator, true), with the new muniSegmentIterator_IsCjAsIdeographicEnabled; muni_lineCjAsIdeographic is gone; muniFeedScriptIterator -> muniScriptIterator_Feed; muniNextScriptRun -> muniScriptIterator_NextRun.
+
+### Changed
+
+* name the calls on an iterator after the iterator ([#150](https://github.com/Rawframe-Project/maul-unicode/issues/150)) ([d84ec6c](https://github.com/Rawframe-Project/maul-unicode/commit/d84ec6ce083a0067ca599722a271ba62391eb520)), closes [#149](https://github.com/Rawframe-Project/maul-unicode/issues/149)
+
 ## [0.6.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.5.0...v0.6.0) (2026-10-28)
 
 ### Changed
