@@ -5,6 +5,56 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.7.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.6.0...v0.7.0) (2026-10-29)
+
+### Changed
+
+- **Breaking:** the calls that act on a segment or script iterator are
+  named after the iterator, and `muniResultName` is now
+  `muniGetResultName`, as the Maul family's naming rule asks. Their
+  parameters and behavior are unchanged: code that calls them changes
+  the name and nothing else. maul-locale moves to the new names with
+  its next pin of maul-unicode
+  ([#150](https://github.com/Rawframe-Project/maul-unicode/pull/150)).
+
+  | 0.6.0 | 0.7.0 |
+  |---|---|
+  | `muniResultName` | `muniGetResultName` |
+  | `muniFeedSegmentIterator` | `muniSegmentIterator_Feed` |
+  | `muniNextSegmentBreak` | `muniSegmentIterator_NextBreak` |
+  | `muniNextLineBreak` | `muniSegmentIterator_NextLineBreak` |
+  | `muniSetComplexBreaker` | `muniSegmentIterator_SetComplexBreaker` |
+  | `muniSetBreakClassOverrides` | `muniSegmentIterator_SetBreakClassOverrides` |
+  | `muniSetLineOptions(iterator, muni_lineCjAsIdeographic)` | `muniSegmentIterator_EnableCjAsIdeographic(iterator, true)` |
+  | `muniFeedScriptIterator` | `muniScriptIterator_Feed` |
+  | `muniNextScriptRun` | `muniScriptIterator_NextRun` |
+
+  The initializers (`muniInitLineIterator` and the others), the
+  `muniFind*` calls, `muniEncodeUtf8` and every other text and code
+  point function keep their names.
+- **Breaking:** whether a line iterator breaks before Line_Break=CJ
+  characters, such as the small kana and the prolonged sound mark, is
+  now a switch, which `muniSegmentIterator_EnableCjAsIdeographic` turns
+  on with `true` and off with `false`. It is off in a new line iterator, which
+  then follows the default rules of UAX #14, as an iterator without
+  options did before. As the option was, it is set before the first
+  break and refused for any iterator that is not a line iterator
+  ([#150](https://github.com/Rawframe-Project/maul-unicode/pull/150)).
+
+### Added
+
+- `muniSegmentIterator_IsCjAsIdeographicEnabled` tells whether a line
+  iterator resolves CJ as ID. It gives false for a NULL iterator and
+  for one that is not a line iterator
+  ([#150](https://github.com/Rawframe-Project/maul-unicode/pull/150)).
+
+### Removed
+
+- **Breaking:** `muniSetLineOptions` and `muni_lineCjAsIdeographic`.
+  Use the switch above: `muniSegmentIterator_EnableCjAsIdeographic`
+  with `true` in place of the option, and with `false` in place of 0
+  ([#150](https://github.com/Rawframe-Project/maul-unicode/pull/150)).
+
 ## [0.6.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.5.0...v0.6.0) (2026-10-28)
 
 ### Changed
