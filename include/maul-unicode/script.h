@@ -8,9 +8,10 @@
 // (Script_Extensions, UAX #24) narrows the run to those it shares; a
 // closing bracket takes the script of its opening bracket. Leading
 // Common characters take the script of the first run. A run that could
-// still be several scripts takes the Script of its first character that
-// has one of its own, while it can be that, and otherwise the script
-// whose tag comes first alphabetically.
+// still be several scripts takes the first Script of its own, among its
+// characters, that the run could still be when that character came,
+// while the run can still be that script, and otherwise the script whose
+// tag comes first alphabetically.
 //
 // Like the segment iterators, a script iterator is a fixed-size struct
 // the caller keeps, takes text in pieces cut anywhere, and asks for the

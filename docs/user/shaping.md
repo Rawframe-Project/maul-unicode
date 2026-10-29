@@ -36,6 +36,6 @@ The functions are immutable and may be shared between threads; release them with
 ## Not obvious
 
 - Leading Common characters take the script of the first run. A text of Common and Inherited characters only is one run of `MUNI_SCRIPT_COMMON`.
-- A run whose characters are all shared by several scripts could be any of them. It takes the Script of its first character that has a Script of its own, while the run can still be that script, and otherwise the script whose tag comes first alphabetically. U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK alone, shared by Hiragana and Katakana, is a run of Hiragana.
+- A run whose characters are all shared by several scripts could be any of them. It takes the first Script of its own, among its characters, that the run could still be when that character came, while the run can still be that script, and otherwise the script whose tag comes first alphabetically. U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK alone, shared by Hiragana and Katakana, is a run of Hiragana.
 - The bracket stack holds 32 opening brackets; when it is full the oldest is forgotten, and its closing bracket then joins the run around it like any other neutral character.
 - Script tags have the same values as HarfBuzz's `hb_script_t`, so a run's script passes to `hb_buffer_set_script` unchanged.
