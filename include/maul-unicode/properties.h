@@ -479,7 +479,8 @@ extern "C"
     /// @param scripts    The output. May be NULL when capacity is 0.
     /// @param capacity   The number of scripts the output can hold;
     ///                   MUNI_MAX_SCRIPT_EXTENSIONS always suffice.
-    /// @param countOut   Receives the number of scripts.
+    /// @param countOut   Receives the number of scripts. `muni_errorInvalid`
+    ///                   leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit (the ones that fit are written), or `muni_errorInvalid`
     ///         for a NULL argument.
