@@ -92,9 +92,10 @@ static void TestRuns(void)
           "Han and Hiragana");
 }
 
-// A run that could still be several scripts takes its first code point's
-// own Script while it can be that, and otherwise the script whose tag
-// comes first alphabetically.
+// A run that could still be several scripts takes the first Script of its
+// own, among its characters, that the run could still be when that
+// character came, while the run can still be that script, and otherwise
+// the script whose tag comes first alphabetically.
 static void TestSharedScripts(void)
 {
     // U+30FC, Common with the extensions Hiragana and Katakana, alone and
