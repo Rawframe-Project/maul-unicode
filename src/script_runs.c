@@ -323,10 +323,10 @@ muniResult muniScriptIterator_NextRun(muniScriptIterator* iterator, muniScriptRu
     return status;
 }
 
-muniResult muniFindScriptRuns(const char* text, size_t length, muniScriptRun* runs, size_t capacity,
-                              size_t* countOut)
+muniResult muniFindScriptRuns(const char* text, size_t length, muniScriptRun* runsOut,
+                              size_t capacity, size_t* countOut)
 {
-    if ((text == nullptr && length != 0) || (runs == nullptr && capacity != 0) ||
+    if ((text == nullptr && length != 0) || (runsOut == nullptr && capacity != 0) ||
         countOut == nullptr)
     {
         return muni_errorInvalid;
@@ -339,7 +339,7 @@ muniResult muniFindScriptRuns(const char* text, size_t length, muniScriptRun* ru
     {
         if (count < capacity)
         {
-            runs[count] = run;
+            runsOut[count] = run;
         }
         count += 1;
     }

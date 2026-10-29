@@ -332,10 +332,10 @@ static size_t Convert(Converter* converter, size_t start, size_t end, muniCaseOp
 }
 
 muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperation operation,
-                               muniCaseLanguage language, muniConvertMode mode, char* output,
+                               muniCaseLanguage language, muniConvertMode mode, char* textOut,
                                size_t capacity, size_t* neededOut)
 {
-    if ((text == nullptr && length != 0) || (output == nullptr && capacity != 0) ||
+    if ((text == nullptr && length != 0) || (textOut == nullptr && capacity != 0) ||
         neededOut == nullptr || operation > muni_caseFold || language > muni_caseLithuanian ||
         (mode != muni_convertStrict && mode != muni_convertReplace))
     {
@@ -348,7 +348,7 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
                            false,
                            false,
                            false,
-                           (muniWriter){output, capacity, 0}};
+                           (muniWriter){textOut, capacity, 0}};
     bool strict = mode == muni_convertStrict;
     muniResult status = muni_success;
     size_t stop = length;

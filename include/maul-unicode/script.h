@@ -93,17 +93,17 @@ extern "C"
     ///
     /// @param text      The text. May be NULL when length is 0.
     /// @param length    The number of bytes.
-    /// @param runs      The output. May be NULL when capacity is 0.
+    /// @param runsOut   The output. May be NULL when capacity is 0.
     /// @param capacity  The number of runs the output can hold.
-    /// @param countOut  Receives the number of runs, which may exceed
-    ///                  capacity; the ones that fit are written.
-    ///                  `muni_errorInvalid` leaves both as they were.
+    /// @param countOut  Receives the number of runs, which may exceed capacity;
+    ///                  the ones that fit are written. `muni_errorInvalid`
+    ///                  leaves both as they were.
     /// @return `muni_success`, `muni_errorCapacity` when they do not all
     ///         fit, or `muni_errorInvalid` for a NULL argument.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniFindScriptRuns(const char* text, size_t length,
-                                                          muniScriptRun* runs, size_t capacity,
+                                                          muniScriptRun* runsOut, size_t capacity,
                                                           size_t* countOut);
 
 #ifdef __cplusplus

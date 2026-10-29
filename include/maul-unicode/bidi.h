@@ -57,24 +57,24 @@ extern "C"
     /// @param text                The text. May be NULL when length is 0.
     /// @param length              The number of bytes.
     /// @param direction           The paragraph direction, or muni_bidiAuto.
-    /// @param levels              Receives one level per byte of the
-    ///                            paragraph; holds length bytes. May be
-    ///                            NULL when length is 0.
-    /// @param workspace           Scratch memory of length bytes. May be
-    ///                            NULL when length is 0.
+    /// @param levelsOut           Receives one level per byte of the paragraph;
+    ///                            holds length bytes. May be NULL when length
+    ///                            is 0.
+    /// @param workspace           Scratch memory of length bytes. May be NULL
+    ///                            when length is 0.
     /// @param paragraphLengthOut  Receives the paragraph's length in bytes.
-    /// @param paragraphLevelOut   Receives the paragraph embedding level,
-    ///                            0 or 1. On an error, levels and both
-    ///                            outputs are left as they were.
+    /// @param paragraphLevelOut   Receives the paragraph embedding level, 0 or
+    ///                            1. On an error, levelsOut and both outputs are
+    ///                            left as they were.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL
-    ///         paragraphLengthOut or paragraphLevelOut, a NULL text, levels
+    ///         paragraphLengthOut or paragraphLevelOut, a NULL text, levelsOut
     ///         or workspace with a nonzero length, or an unknown direction.
     /// @par Thread safety
-    /// Safe from any thread; the levels and workspace are used by one thread
+    /// Safe from any thread; the levelsOut and workspace are used by one thread
     /// at a time.
     MUNI_NODISCARD MUNI_API muniResult muniResolveBidi(const char* text, size_t length,
-                                                       muniBidiDirection direction, uint8_t* levels,
-                                                       uint8_t* workspace,
+                                                       muniBidiDirection direction,
+                                                       uint8_t* levelsOut, uint8_t* workspace,
                                                        size_t* paragraphLengthOut,
                                                        uint8_t* paragraphLevelOut);
 
@@ -83,25 +83,25 @@ extern "C"
     /// isolate formatting characters, and those before a tab or paragraph
     /// separator, take the paragraph level first.
     ///
-    /// @param line            The line's text within the paragraph. May be
-    ///                        NULL when length is 0.
+    /// @param line            The line's text within the paragraph. May be NULL
+    ///                        when length is 0.
     /// @param levels          The line's levels from muniResolveBidi. May be
     ///                        NULL when length is 0.
     /// @param length          The line's length in bytes.
     /// @param paragraphLevel  The paragraph embedding level, 0 or 1.
-    /// @param runs            The output. May be NULL when capacity is 0.
+    /// @param runsOut         The output. May be NULL when capacity is 0.
     /// @param capacity        The number of runs the output can hold.
     /// @param countOut        Receives the number of runs.
     /// @return `muni_success`; `muni_errorCapacity` when the runs do not
     ///         fit, and then none is written; `muni_errorInvalid` for a
     ///         NULL countOut, a NULL line or levels with a nonzero length,
-    ///         NULL runs with a nonzero capacity, a level above 126 or a
+    ///         NULL runsOut with a nonzero capacity, a level above 126 or a
     ///         paragraph level above 1.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniReorderBidiLine(const char* line, const uint8_t* levels,
                                                            size_t length, uint8_t paragraphLevel,
-                                                           muniBidiRun* runs, size_t capacity,
+                                                           muniBidiRun* runsOut, size_t capacity,
                                                            size_t* countOut);
 
     /// Computes a visual order from levels (rule L2), for any units the
