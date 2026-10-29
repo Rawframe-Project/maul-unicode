@@ -5,6 +5,25 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.8.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.7.0...v0.8.0) (2026-10-29)
+
+### Changed
+
+- **Breaking:** the case mappings are named `muniGet...`, as the Maul
+  family's naming rule asks of functions that act on no object. Their
+  parameters, results and the results version are unchanged: code that
+  calls them changes the name and nothing else. The engine and
+  maul-locale each rename these calls once, with their next pin of
+  maul-unicode
+  ([#161](https://github.com/Rawframe-Project/maul-unicode/pull/161)).
+
+  | 0.7.0 | 0.8.0 |
+  |---|---|
+  | `muniToLower` | `muniGetLowercase` |
+  | `muniToUpper` | `muniGetUppercase` |
+  | `muniToTitle` | `muniGetTitlecase` |
+  | `muniToNfkcCasefold` | `muniGetNfkcCasefold` |
+
 ## [0.7.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.6.0...v0.7.0) (2026-10-29)
 
 ### Changed
