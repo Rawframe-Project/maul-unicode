@@ -280,6 +280,32 @@ static void TestLineBreaks(void)
           "after the space");
 }
 
+// Whether the line breaks of text are the expected ones, found whole,
+// with an iterator and with an iterator fed one byte at a time.
+static bool LineBreaksAre(const char* text, const size_t* breaks, size_t count)
+{
+    static const Kind line = {"LineBreakTest.txt", muniInitLineIterator, FindLines};
+    Case c = {.length = strlen(text), .breakCount = count};
+    memcpy(c.text, text, c.length);
+    memcpy(c.breaks, breaks, count * sizeof(size_t));
+    return RunFind(&line, &c) && RunWhole(&line, &c) && RunBytewise(&line, &c);
+}
+
+// LB25 keeps a prefix (PR) or postfix (PO) symbol with an opening bracket
+// when an optional infix separator (IS) and a digit follow: (PR | PO) ×
+// OP IS? NU. Whether it may break after the symbol is known only at the
+// digit, so the answer is held across the bracket and the separator.
+static void TestPrefixBeforeNumber(void)
+{
+    CHECK(LineBreaksAre("$(.5", (size_t[]){4}, 1), "$(.5 stays whole");
+    CHECK(LineBreaksAre("$(.a", (size_t[]){1, 4}, 2), "$(.a breaks after the $");
+    CHECK(LineBreaksAre("%(.5", (size_t[]){4}, 1), "%(.5 stays whole");
+    CHECK(LineBreaksAre("%(.a", (size_t[]){1, 4}, 2), "%(.a breaks after the %");
+    CHECK(LineBreaksAre("$(5", (size_t[]){3}, 1), "$(5 stays whole");
+    // At most one separator: the second one ends the hold with a break.
+    CHECK(LineBreaksAre("$(..5", (size_t[]){1, 5}, 2), "$(..5 breaks after the $");
+}
+
 // "Hello" in Thai, two words: U+0E2A U+0E27 U+0E31 U+0E2A U+0E14 U+0E35
 // (18 bytes), then U+0E04 U+0E23 U+0E31 U+0E1A (12 bytes). U+0E31 and
 // U+0E35 are combining vowels.
@@ -691,6 +717,7 @@ int main(void)
     TestGraphemeEdges();
     TestWordAndSentence();
     TestLineBreaks();
+    TestPrefixBeforeNumber();
     TestComplexBreaker();
     TestComplexBreakerRuns();
     TestReentrantBreaker();
