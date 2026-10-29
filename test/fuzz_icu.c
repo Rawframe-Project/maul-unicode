@@ -166,7 +166,7 @@ static void CompareCasefold(const char* text, size_t length, const UChar* units,
     static UChar folded[MAX_UNITS];
     size_t needed = 0;
     muniTextResult result =
-        muniToNfkcCasefold(text, length, muni_convertStrict, ours, MAX_BYTES, &needed);
+        muniGetNfkcCasefold(text, length, muni_convertStrict, ours, MAX_BYTES, &needed);
     if (result.status == muni_errorLimit ||
         (result.status == muni_success && !OutputKnown(ours, needed)))
     {

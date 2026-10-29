@@ -65,8 +65,8 @@ static const char* Check(const char* input, Name* taken, size_t* takenCount)
     }
     Name candidate;
     static uint8_t workspace[2 * MAX_OUT];
-    if (muniToNfkcCasefold(name, length, muni_convertStrict, candidate.key, MAX_OUT,
-                           &candidate.keyLength)
+    if (muniGetNfkcCasefold(name, length, muni_convertStrict, candidate.key, MAX_OUT,
+                            &candidate.keyLength)
                 .status != muni_success ||
         muniGetSkeleton(name, length, muni_bidiLeftToRight, workspace, sizeof(workspace),
                         candidate.skeleton, MAX_OUT, &candidate.skeletonLength)

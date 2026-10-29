@@ -109,8 +109,8 @@ static bool Feed(muniNormalizer* normalizer, uint32_t codePoint)
     return true;
 }
 
-muniTextResult muniToNfkcCasefold(const char* text, size_t length, muniConvertMode mode,
-                                  char* output, size_t capacity, size_t* neededOut)
+muniTextResult muniGetNfkcCasefold(const char* text, size_t length, muniConvertMode mode,
+                                   char* output, size_t capacity, size_t* neededOut)
 {
     if ((text == nullptr && length != 0) || (output == nullptr && capacity != 0) ||
         neededOut == nullptr || (mode != muni_convertStrict && mode != muni_convertReplace))

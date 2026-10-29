@@ -214,7 +214,7 @@ static void GuideIdentifierKey(void)
     char key[32];
     size_t keyLength = 0;
     muniTextResult result =
-        muniToNfkcCasefold(name, length, muni_convertStrict, key, sizeof(key), &keyLength);
+        muniGetNfkcCasefold(name, length, muni_convertStrict, key, sizeof(key), &keyLength);
     // "Alice", "ALICE", a full-width "ALICE" and "Al" + soft hyphen + "ice"
     // all get the key "alice".
     CHECK(result.status == muni_success && keyLength == 5 && memcmp(key, "alice", 5) == 0,
