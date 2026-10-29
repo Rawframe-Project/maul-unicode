@@ -160,6 +160,21 @@ static void TestConformance(void)
     CHECK(unchanged == 0, "code points outside Part 1 stay the same");
 }
 
+// muniCheckNormalization refuses a NULL text with a length, a NULL
+// answer and an unknown form, and writes no answer.
+static void TestCheckArguments(void)
+{
+    muniQuickCheck answer = muni_quickCheckMaybe;
+    muniTextResult result = muniCheckNormalization(nullptr, 1, muni_nfc, &answer);
+    CHECK(result.status == muni_errorInvalid && result.offset == 0 &&
+              answer == muni_quickCheckMaybe,
+          "no text with a length");
+    CHECK(muniCheckNormalization("a", 1, muni_nfc, nullptr).status == muni_errorInvalid,
+          "no answer");
+    result = muniCheckNormalization("a", 1, (muniNormalForm)9, &answer);
+    CHECK(result.status == muni_errorInvalid && answer == muni_quickCheckMaybe, "an unknown form");
+}
+
 static void TestLimitsAndErrors(void)
 {
     char output[256];
@@ -322,6 +337,7 @@ static void TestQuickCheckEverywhere(void)
 
 int main(void)
 {
+    TestCheckArguments();
     TestConformance();
     TestLimitsAndErrors();
     TestEdges();
