@@ -211,6 +211,21 @@ static void TestErrors(void)
                   muni_errorInvalid &&
               needed == 7 && memcmp(output, "xxxx", 4) == 0,
           "an unknown mode, and nothing is written");
+    CHECK(muniConvertCase(nullptr, 1, muni_caseLower, muni_caseDefault, muni_convertStrict, output,
+                          4, &needed)
+                      .status == muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "no text with a length");
+    CHECK(muniConvertCase("a", 1, muni_caseLower, muni_caseDefault, muni_convertStrict, nullptr, 4,
+                          &needed)
+                      .status == muni_errorInvalid &&
+              needed == 7,
+          "no output with a capacity");
+    CHECK(muniConvertCase("a", 1, muni_caseLower, muni_caseDefault, muni_convertStrict, output, 4,
+                          nullptr)
+                      .status == muni_errorInvalid &&
+              memcmp(output, "xxxx", 4) == 0,
+          "no needed size out");
 }
 
 #ifdef MUNI_UCD_DATA

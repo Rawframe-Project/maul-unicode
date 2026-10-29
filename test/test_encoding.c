@@ -225,6 +225,16 @@ static void TestConversionArguments(void)
     result = muniConvertUtf32ToUtf8(nullptr, 1, muni_convertReplace, bytes, 4, &needed);
     CHECK(result.status == muni_errorInvalid && needed == 7 && bytes[0] == 'x',
           "UTF-32 to UTF-8: no values with a length");
+    const uint16_t a16[1] = {'a'};
+    result = muniConvertUtf8ToUtf16("a", 1, muni_convertStrict, nullptr, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-8 to UTF-16: no output with a capacity");
+    result = muniConvertUtf16ToUtf8(a16, 1, muni_convertStrict, nullptr, 4, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-16 to UTF-8: no output with a capacity");
+    result = muniConvertUtf8ToUtf32("a", 1, muni_convertStrict, nullptr, 2, &needed);
+    CHECK(result.status == muni_errorInvalid && needed == 7,
+          "UTF-8 to UTF-32: no output with a capacity");
 }
 
 static void TestReplacementFollowsTheStandard(void)

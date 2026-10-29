@@ -768,6 +768,11 @@ static void TestInvalidArguments(void)
     CHECK(muniSegmentIterator_NextLineBreak(&iterator, &offset, nullptr) == muni_errorInvalid &&
               offset == 7,
           "the next line break with no flag out");
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) ==
+                  muni_errorInvalid &&
+              offset == 7 && mandatory,
+          "the next line break of a word iterator");
     bool flags[2] = {true, true};
     size_t count = 7;
     CHECK(muniFindLineBreaks("a", 1, nullptr, flags, 2, &count) == muni_errorInvalid &&
