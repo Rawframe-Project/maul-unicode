@@ -243,9 +243,9 @@ static void ReverseIndexes(size_t* map, size_t first, size_t end)
     }
 }
 
-muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* visualToLogicalOut)
+muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* visualToLogical)
 {
-    if (((levels == nullptr || visualToLogicalOut == nullptr) && count != 0) ||
+    if (((levels == nullptr || visualToLogical == nullptr) && count != 0) ||
         !LevelsInRange(levels, count))
     {
         return muni_errorInvalid;
@@ -254,11 +254,11 @@ muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* vi
     uint8_t lowest = UINT8_MAX;
     for (size_t k = 0; k < count; k++)
     {
-        visualToLogicalOut[k] = k;
+        visualToLogical[k] = k;
         highest = levels[k] > highest ? levels[k] : highest;
         lowest = levels[k] < lowest ? levels[k] : lowest;
     }
-    size_t* map = visualToLogicalOut;
+    size_t* map = visualToLogical;
     for (unsigned level = highest; level >= (unsigned)(lowest | 1) && level > 0; level--)
     {
         size_t k = 0;
@@ -281,9 +281,9 @@ muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* vi
     return muni_success;
 }
 
-muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut)
+muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverse)
 {
-    if ((map == nullptr || inverseOut == nullptr) && count != 0)
+    if ((map == nullptr || inverse == nullptr) && count != 0)
     {
         return muni_errorInvalid;
     }
@@ -291,15 +291,15 @@ muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut
     // and an entry that finds its slot set repeats an earlier one.
     for (size_t k = 0; k < count; k++)
     {
-        inverseOut[k] = SIZE_MAX;
+        inverse[k] = SIZE_MAX;
     }
     for (size_t k = 0; k < count; k++)
     {
-        if (map[k] >= count || inverseOut[map[k]] != SIZE_MAX)
+        if (map[k] >= count || inverse[map[k]] != SIZE_MAX)
         {
             return muni_errorInvalid;
         }
-        inverseOut[map[k]] = k;
+        inverse[map[k]] = k;
     }
     return muni_success;
 }

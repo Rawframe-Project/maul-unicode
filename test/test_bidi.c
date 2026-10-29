@@ -389,15 +389,20 @@ static void TestParagraphsAndLines(void)
                   muni_success &&
               paragraph == 0 && level == 1,
           "an empty paragraph");
-    CHECK(muniResolveBidi("a", 1, 3, levels, workspace, &paragraph, &level) == muni_errorInvalid,
+    // Each refusal leaves the empty paragraph's outputs as they were.
+    CHECK(muniResolveBidi("a", 1, 3, levels, workspace, &paragraph, &level) == muni_errorInvalid &&
+              paragraph == 0 && level == 1,
           "an unknown direction");
     CHECK(muniResolveBidi("a", 1, muni_bidiAuto, nullptr, workspace, &paragraph, &level) ==
-              muni_errorInvalid,
+                  muni_errorInvalid &&
+              paragraph == 0 && level == 1,
           "no levels");
     CHECK(muniResolveBidi(nullptr, 0, muni_bidiAuto, nullptr, nullptr, nullptr, &level) ==
                   muni_errorInvalid &&
+              level == 1 &&
               muniResolveBidi(nullptr, 0, muni_bidiAuto, nullptr, nullptr, &paragraph, nullptr) ==
-                  muni_errorInvalid,
+                  muni_errorInvalid &&
+              paragraph == 0,
           "the paragraph outputs are needed even for empty text");
     muniBidiRun run = {7, 7, 7};
     size_t runCount = 7;
