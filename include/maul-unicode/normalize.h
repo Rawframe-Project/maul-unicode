@@ -74,7 +74,8 @@ extern "C"
     ///         strict mode the first UTF-8 error and its offset;
     ///         `muni_errorLimit` and the offset of the code point that
     ///         makes a segment longer than MUNI_MAX_NORMALIZATION_SEGMENT;
-    ///         `muni_errorInvalid` for a NULL argument or an unknown form.
+    ///         `muni_errorInvalid` for a NULL argument, an unknown form or
+    ///         a textOut that overlaps text.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniTextResult muniNormalize(const char* text, size_t length,

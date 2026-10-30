@@ -231,6 +231,49 @@ static void TestLimitsAndErrors(void)
     CHECK(muniComposePair(0x0915, 0x093C) == 0, "U+0958 is excluded from composition");
 }
 
+// An output that overlaps the text, on either side, is refused and
+// nothing is written. The text is 8 bytes and so is its normal form, and
+// the output starts 0, 1 or 7 bytes after the text or 1 or 7 bytes before
+// it. Right beside the text, 8 bytes after or before it, it is apart.
+static void TestOverlap(void)
+{
+    enum
+    {
+        size = 8
+    };
+    static const char input[size + 1] = "Abcdefgh";
+    static const ptrdiff_t shifts[] = {0, 1, size - 1, -1, -(size - 1)};
+    char buffer[3 * size];
+    char* text = buffer + size;
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(shifts) / sizeof(shifts[0]); i++)
+    {
+        memset(buffer, '#', sizeof(buffer));
+        memcpy(text, input, size);
+        char before[sizeof(buffer)];
+        memcpy(before, buffer, sizeof(buffer));
+        size_t needed = 99;
+        muniTextResult result = muniNormalize(text, size, muni_nfc, muni_convertStrict,
+                                              text + shifts[i], size, &needed);
+        refused = refused && result.status == muni_errorInvalid && needed == 99 &&
+                  memcmp(buffer, before, sizeof(buffer)) == 0;
+    }
+    CHECK(refused, "an output that overlaps the text refused, nothing written");
+    bool apart = true;
+    for (int side = 0; side < 2; side++)
+    {
+        memset(buffer, '#', sizeof(buffer));
+        memcpy(text, input, size);
+        size_t needed = 0;
+        char* output = side == 0 ? text + size : text - size;
+        muniTextResult result =
+            muniNormalize(text, size, muni_nfc, muni_convertStrict, output, size, &needed);
+        apart = apart && result.status == muni_success && needed == size &&
+                memcmp(output, input, size) == 0 && memcmp(text, input, size) == 0;
+    }
+    CHECK(apart, "an output right beside the text, on either side, written");
+}
+
 // More of the limits: an output that fits exactly, the quick check of
 // ill-formed text, and the trailing consonants a Hangul LV syllable
 // takes, U+11A8 to U+11C2 and no further.
@@ -341,6 +384,7 @@ int main(void)
     TestConformance();
     TestLimitsAndErrors();
     TestEdges();
+    TestOverlap();
 #ifdef MUNI_UCD_DATA
     TestQuickCheckEverywhere();
 #endif

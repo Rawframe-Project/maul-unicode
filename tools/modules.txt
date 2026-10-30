@@ -6,9 +6,9 @@ bidi_brackets: bidi_core invariant
 bidi_core: encoding tables
 bidi_explicit: bidi_core invariant
 bidi_implicit: bidi_brackets bidi_core
-bidi_line: bidi_core
+bidi_line: bidi_core overlap
 bits: invariant
-case: case_map encoding tables writer
+case: case_map encoding overlap tables writer
 case_map: tables
 complex: encoding segmenter tables
 cursor: encoding invariant
@@ -19,16 +19,17 @@ harfbuzz:
 identifier: encoding tables
 invariant:
 line: complex segmenter tables
-normalize: decompose encoding normalizer tables writer
+normalize: decompose encoding normalizer overlap tables writer
 normalizer: decompose tables writer
-nfkc_casefold: case_map decompose encoding normalizer tables
+overlap:
+nfkc_casefold: case_map decompose encoding normalizer overlap tables
 properties: tables
 script_runs: cursor tables
 segment: segmenter
 segmenter: cursor invariant
 security: bits encoding tables
 sentence: segmenter tables
-skeleton: bidi_line bits decompose encoding tables writer
+skeleton: bidi_line bits decompose encoding overlap tables writer
 tables:
 word: complex segmenter tables
 writer:

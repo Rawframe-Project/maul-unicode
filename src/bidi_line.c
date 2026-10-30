@@ -9,6 +9,7 @@
 #include "bidi_line.h"
 
 #include "bidi_core.h"
+#include "overlap.h"
 
 #include "maul-unicode/bidi.h"
 
@@ -283,7 +284,8 @@ muniResult muniReorderBidiLevels(const uint8_t* levels, size_t count, size_t* vi
 
 muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut)
 {
-    if ((map == nullptr || inverseOut == nullptr) && count != 0)
+    if (((map == nullptr || inverseOut == nullptr) && count != 0) ||
+        muniOverlaps(map, count, inverseOut, count, sizeof(size_t)))
     {
         return muni_errorInvalid;
     }

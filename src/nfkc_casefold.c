@@ -13,6 +13,7 @@
 #include "decompose.h"
 #include "encoding.h"
 #include "normalizer.h"
+#include "overlap.h"
 #include "tables.h"
 
 #include "maul-unicode/case.h"
@@ -113,7 +114,8 @@ muniTextResult muniGetNfkcCasefold(const char* text, size_t length, muniConvertM
                                    char* textOut, size_t capacity, size_t* neededOut)
 {
     if ((text == nullptr && length != 0) || (textOut == nullptr && capacity != 0) ||
-        neededOut == nullptr || (mode != muni_convertStrict && mode != muni_convertReplace))
+        neededOut == nullptr || (mode != muni_convertStrict && mode != muni_convertReplace) ||
+        muniOverlaps(text, length, textOut, capacity, 1))
     {
         return (muniTextResult){muni_errorInvalid, 0};
     }

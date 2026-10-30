@@ -10,6 +10,7 @@
 #include "decompose.h"
 #include "encoding.h"
 #include "normalizer.h"
+#include "overlap.h"
 #include "tables.h"
 
 static bool IsForm(muniNormalForm form)
@@ -23,7 +24,8 @@ muniTextResult muniNormalize(const char* text, size_t length, muniNormalForm for
 {
     if ((text == nullptr && length != 0) || (textOut == nullptr && capacity != 0) ||
         neededOut == nullptr || !IsForm(form) ||
-        (mode != muni_convertStrict && mode != muni_convertReplace))
+        (mode != muni_convertStrict && mode != muni_convertReplace) ||
+        muniOverlaps(text, length, textOut, capacity, 1))
     {
         return (muniTextResult){muni_errorInvalid, 0};
     }

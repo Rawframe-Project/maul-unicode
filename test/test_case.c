@@ -375,6 +375,69 @@ static void TestCasefoldText(void)
 
 #endif
 
+// The two text mappings, with their other arguments fixed.
+typedef muniTextResult (*MapFunction)(const char* text, size_t length, char* textOut,
+                                      size_t capacity, size_t* neededOut);
+
+static muniTextResult Uppercase(const char* text, size_t length, char* textOut, size_t capacity,
+                                size_t* neededOut)
+{
+    return muniConvertCase(text, length, muni_caseUpper, muni_caseDefault, muni_convertStrict,
+                           textOut, capacity, neededOut);
+}
+
+static muniTextResult Casefold(const char* text, size_t length, char* textOut, size_t capacity,
+                               size_t* neededOut)
+{
+    return muniGetNfkcCasefold(text, length, muni_convertStrict, textOut, capacity, neededOut);
+}
+
+// An output that overlaps the text, on either side, is refused and
+// nothing is written. The text is 8 bytes and so is its mapping, and the
+// output starts 0, 1 or 7 bytes after the text or 1 or 7 bytes before
+// it. Right beside the text, 8 bytes after or before it, it is apart.
+static bool MapsApart(MapFunction map, const char* input, const char* expected)
+{
+    enum
+    {
+        size = 8
+    };
+    static const ptrdiff_t shifts[] = {0, 1, size - 1, -1, -(size - 1)};
+    char buffer[3 * size];
+    char* text = buffer + size;
+    bool right = true;
+    for (size_t i = 0; i < sizeof(shifts) / sizeof(shifts[0]); i++)
+    {
+        memset(buffer, '#', sizeof(buffer));
+        memcpy(text, input, size);
+        char before[sizeof(buffer)];
+        memcpy(before, buffer, sizeof(buffer));
+        size_t needed = 99;
+        muniTextResult result = map(text, size, text + shifts[i], size, &needed);
+        right = right && result.status == muni_errorInvalid && needed == 99 &&
+                memcmp(buffer, before, sizeof(buffer)) == 0;
+    }
+    for (int side = 0; side < 2; side++)
+    {
+        memset(buffer, '#', sizeof(buffer));
+        memcpy(text, input, size);
+        size_t needed = 0;
+        char* output = side == 0 ? text + size : text - size;
+        muniTextResult result = map(text, size, output, size, &needed);
+        right = right && result.status == muni_success && needed == size &&
+                memcmp(output, expected, size) == 0 && memcmp(text, input, size) == 0;
+    }
+    return right;
+}
+
+static void TestOverlap(void)
+{
+    CHECK(MapsApart(Uppercase, "Abcdefgh", "ABCDEFGH"),
+          "muniConvertCase refuses an overlapping output and writes one beside the text");
+    CHECK(MapsApart(Casefold, "ABCDEFGH", "abcdefgh"),
+          "muniGetNfkcCasefold refuses an overlapping output and writes one beside the text");
+}
+
 int main(void)
 {
     TestSimple();
@@ -384,6 +447,7 @@ int main(void)
     TestNfkcCasefoldLimit();
     TestLithuanian();
     TestErrors();
+    TestOverlap();
 #ifdef MUNI_UCD_DATA
     TestCasefoldEverywhere();
     TestCasefoldText();
