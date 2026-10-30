@@ -337,7 +337,8 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
                                size_t capacity, size_t* neededOut)
 {
     if ((text == nullptr && length != 0) || (textOut == nullptr && capacity != 0) ||
-        neededOut == nullptr || operation > muni_caseFold || language > muni_caseLithuanian ||
+        neededOut == nullptr || (uint32_t)operation > muni_caseFold ||
+        (uint32_t)language > muni_caseLithuanian ||
         (mode != muni_convertStrict && mode != muni_convertReplace) ||
         muniOverlaps(text, length, textOut, capacity, 1))
     {

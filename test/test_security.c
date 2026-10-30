@@ -227,13 +227,15 @@ static bool Resolves(const char* text, const muniScript* expected, size_t expect
 
 static void TestScripts(void)
 {
-    const muniScript latin[] = {MUNI_SCRIPT('H', 'n', 't', 'l'), MUNI_SCRIPT('L', 'a', 't', 'n')};
-    const muniScript cyrillic[] = {MUNI_SCRIPT('C', 'y', 'r', 'l')};
+    const muniScript latin[] = {MUNI_MAKE_SCRIPT('H', 'n', 't', 'l'),
+                                MUNI_MAKE_SCRIPT('L', 'a', 't', 'n')};
+    const muniScript cyrillic[] = {MUNI_MAKE_SCRIPT('C', 'y', 'r', 'l')};
     const muniScript all[] = {MUNI_SCRIPT_COMMON};
-    const muniScript han[] = {MUNI_SCRIPT('H', 'a', 'n', 'b'), MUNI_SCRIPT('H', 'a', 'n', 'i'),
-                              MUNI_SCRIPT('H', 'n', 't', 'l'), MUNI_SCRIPT('J', 'p', 'a', 'n'),
-                              MUNI_SCRIPT('K', 'o', 'r', 'e')};
-    const muniScript japanese[] = {MUNI_SCRIPT('J', 'p', 'a', 'n')};
+    const muniScript han[] = {
+        MUNI_MAKE_SCRIPT('H', 'a', 'n', 'b'), MUNI_MAKE_SCRIPT('H', 'a', 'n', 'i'),
+        MUNI_MAKE_SCRIPT('H', 'n', 't', 'l'), MUNI_MAKE_SCRIPT('J', 'p', 'a', 'n'),
+        MUNI_MAKE_SCRIPT('K', 'o', 'r', 'e')};
+    const muniScript japanese[] = {MUNI_MAKE_SCRIPT('J', 'p', 'a', 'n')};
     CHECK(Resolves("Circle", latin, 2), "Circle");
     CHECK(Resolves("\xD0\xA1\xD1\x96\xD0\xB3\xD1\x81\xD3\x80\xD0\xB5", cyrillic, 1), "Cyrillic");
     CHECK(Resolves("\xD0\xA1ir\xD1\x81l\xD0\xB5", nullptr, 0), "mixed Latin and Cyrillic");
@@ -519,6 +521,28 @@ static void TestOverlap(void)
     CHECK(apart, "an output right beside the text, on either side, written");
 }
 
+// A kind is an int32_t, so a caller can pass a negative one; every call
+// that takes a kind refuses -1 and INT32_MIN as it refuses a kind past the
+// last, and leaves its outputs as they were.
+static const int32_t s_negative[] = {-1, INT32_MIN};
+
+static void TestNegativeDirection(void)
+{
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(s_negative) / sizeof(s_negative[0]); i++)
+    {
+        uint8_t workspace[2];
+        char output[4] = {7, 7, 7, 7};
+        size_t needed = 99;
+        refused =
+            refused &&
+            muniGetSkeleton("a", 1, s_negative[i], workspace, sizeof(workspace), output, 4, &needed)
+                    .status == muni_errorInvalid &&
+            needed == 99 && output[0] == 7;
+    }
+    CHECK(refused, "a negative direction refused");
+}
+
 int main(void)
 {
     CHECK(HashSecurity() == muniSecurityHash, "the Security table matches the generator");
@@ -530,6 +554,7 @@ int main(void)
     TestNumbers();
     TestErrors();
     TestOverlap();
+    TestNegativeDirection();
     TestLongIsolateRun();
     return s_failures == 0 ? 0 : 1;
 }

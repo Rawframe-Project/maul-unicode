@@ -808,6 +808,30 @@ static void TestFeedingRules(void)
           "never initialized");
 }
 
+// A kind is an int32_t, so a caller can pass a negative one; every call
+// that takes a kind refuses -1 and INT32_MIN as it refuses a kind past the
+// last, and leaves its outputs as they were.
+static const int32_t s_negative[] = {-1, INT32_MIN};
+
+static void TestNegativeClasses(void)
+{
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(s_negative) / sizeof(s_negative[0]); i++)
+    {
+        const muniBreakClassOverride table[] = {{0x003B, s_negative[i]}};
+        muniSegmentIterator iterator;
+        size_t offset = 77;
+        refused =
+            refused && muniInitWordIterator(&iterator, "a;b", 3, false) == muni_success &&
+            muniSegmentIterator_SetBreakClassOverrides(&iterator, table, 1) == muni_errorInvalid &&
+            muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
+            muniInitSentenceIterator(&iterator, "a;b", 3, false) == muni_success &&
+            muniSegmentIterator_SetBreakClassOverrides(&iterator, table, 1) == muni_errorInvalid &&
+            muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success;
+    }
+    CHECK(refused, "a negative class in an override refused, and the iterator still works");
+}
+
 int main(void)
 {
     TestConformance();
@@ -820,6 +844,7 @@ int main(void)
     TestReentrantBreaker();
     TestClassOverrides();
     TestClassOverrideArguments();
+    TestNegativeClasses();
     TestCjAsIdeographic();
     TestInvalidArguments();
     TestFeedingRules();

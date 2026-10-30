@@ -417,11 +417,12 @@ static Survey SurveyText(const UChar* units, int32_t count)
         U16_NEXT(units, i, count, c);
         survey.changed |= s_changed[c];
         muniScript script = muniGetScript((uint32_t)c);
-        survey.dictionary = survey.dictionary || script == MUNI_SCRIPT('H', 'a', 'n', 'i') ||
-                            script == MUNI_SCRIPT('H', 'i', 'r', 'a') ||
-                            script == MUNI_SCRIPT('K', 'a', 'n', 'a') ||
-                            script == MUNI_SCRIPT('H', 'a', 'n', 'g') || c == ':' || c == 0xFE55 ||
-                            c == 0xFF1A || muniGetLineBreak((uint32_t)c) == muni_lbSa;
+        survey.dictionary = survey.dictionary || script == MUNI_MAKE_SCRIPT('H', 'a', 'n', 'i') ||
+                            script == MUNI_MAKE_SCRIPT('H', 'i', 'r', 'a') ||
+                            script == MUNI_MAKE_SCRIPT('K', 'a', 'n', 'a') ||
+                            script == MUNI_MAKE_SCRIPT('H', 'a', 'n', 'g') || c == ':' ||
+                            c == 0xFE55 || c == 0xFF1A ||
+                            muniGetLineBreak((uint32_t)c) == muni_lbSa;
         survey.complex = survey.complex || muniGetLineBreak((uint32_t)c) == muni_lbSa;
         survey.linker = survey.linker || muniGetIndicConjunctBreak((uint32_t)c) == muni_incbLinker;
         survey.glue = survey.glue || muniGetLineBreak((uint32_t)c) == muni_lbGl;

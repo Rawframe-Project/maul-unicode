@@ -153,7 +153,7 @@ extern "C"
     typedef struct muniBreakClassOverride
     {
         uint32_t codePoint; // at most U+10FFFF, not a surrogate
-        uint8_t value;      // a muniWordBreak or muniSentenceBreak value
+        int32_t value;      // a muniWordBreak or muniSentenceBreak value
     } muniBreakClassOverride;
 
     /// Gives code points other classes in a word iterator (Word_Break

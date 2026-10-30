@@ -601,6 +601,28 @@ static void TestMapOverlap(void)
     CHECK(apart, "an inverse right beside the map, on either side, written");
 }
 
+// A kind is an int32_t, so a caller can pass a negative one; every call
+// that takes a kind refuses -1 and INT32_MIN as it refuses a kind past the
+// last, and leaves its outputs as they were.
+static const int32_t s_negative[] = {-1, INT32_MIN};
+
+static void TestNegativeDirection(void)
+{
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(s_negative) / sizeof(s_negative[0]); i++)
+    {
+        uint8_t levels[1] = {7};
+        uint8_t workspace[1];
+        size_t length = 99;
+        uint8_t level = 7;
+        refused = refused &&
+                  muniResolveBidi("a", 1, s_negative[i], levels, workspace, &length, &level) ==
+                      muni_errorInvalid &&
+                  levels[0] == 7 && length == 99 && level == 7;
+    }
+    CHECK(refused, "a negative direction refused");
+}
+
 int main(void)
 {
     TestCharacterFile();
@@ -610,5 +632,6 @@ int main(void)
     TestLongIsolateRun();
     TestMaps();
     TestMapOverlap();
+    TestNegativeDirection();
     return s_failures == 0 ? 0 : 1;
 }

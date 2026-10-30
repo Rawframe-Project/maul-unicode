@@ -117,7 +117,8 @@ static bool ValidOverrides(const muniBreakClassOverride* overrides, size_t count
     {
         uint32_t codePoint = overrides[i].codePoint;
         if (codePoint > 0x10FFFF || (codePoint >= 0xD800 && codePoint <= 0xDFFF) ||
-            overrides[i].value >= classCount || (i > 0 && codePoint <= overrides[i - 1].codePoint))
+            (uint32_t)overrides[i].value >= classCount ||
+            (i > 0 && codePoint <= overrides[i - 1].codePoint))
         {
             return false;
         }

@@ -28,7 +28,7 @@ extern "C"
     } muniTextResult;
 
     // What a conversion does with ill-formed input.
-    typedef uint8_t muniConvertMode;
+    typedef int32_t muniConvertMode;
 
     enum
     {

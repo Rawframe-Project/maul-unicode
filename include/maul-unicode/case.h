@@ -23,7 +23,7 @@ extern "C"
 #endif
 
     // A case operation over text.
-    typedef uint8_t muniCaseOperation;
+    typedef int32_t muniCaseOperation;
 
     enum
     {
@@ -37,7 +37,7 @@ extern "C"
     };
 
     // Language rules for case operations.
-    typedef uint8_t muniCaseLanguage;
+    typedef int32_t muniCaseLanguage;
 
     enum
     {
