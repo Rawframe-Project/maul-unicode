@@ -114,8 +114,9 @@ extern "C"
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the result does not fit (the bytes that fit are written); in
     ///         strict mode the first UTF-8 error and its offset;
-    ///         `muni_errorInvalid` for a NULL argument or an unknown
-    ///         operation, language or mode.
+    ///         `muni_errorInvalid` for a NULL argument, an unknown
+    ///         operation, language or mode, or a textOut that overlaps
+    ///         text.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniTextResult muniConvertCase(const char* text, size_t length,
@@ -148,8 +149,8 @@ extern "C"
     ///         strict mode the first UTF-8 error and its offset;
     ///         `muni_errorLimit` and the offset of the code point that
     ///         makes a segment longer than MUNI_MAX_NORMALIZATION_SEGMENT,
-    ///         as in muniNormalize; `muni_errorInvalid` for a NULL argument or
-    ///         an unknown mode.
+    ///         as in muniNormalize; `muni_errorInvalid` for a NULL argument,
+    ///         an unknown mode or a textOut that overlaps text.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniTextResult muniGetNfkcCasefold(const char* text, size_t length,

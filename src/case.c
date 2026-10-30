@@ -13,6 +13,7 @@
 
 #include "case_map.h"
 #include "encoding.h"
+#include "overlap.h"
 #include "tables.h"
 #include "writer.h"
 
@@ -337,7 +338,8 @@ muniTextResult muniConvertCase(const char* text, size_t length, muniCaseOperatio
 {
     if ((text == nullptr && length != 0) || (textOut == nullptr && capacity != 0) ||
         neededOut == nullptr || operation > muni_caseFold || language > muni_caseLithuanian ||
-        (mode != muni_convertStrict && mode != muni_convertReplace))
+        (mode != muni_convertStrict && mode != muni_convertReplace) ||
+        muniOverlaps(text, length, textOut, capacity, 1))
     {
         return (muniTextResult){muni_errorInvalid, 0};
     }

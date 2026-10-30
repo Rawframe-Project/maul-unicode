@@ -129,14 +129,15 @@ extern "C"
     /// @param map         A permutation of 0 to count - 1. May be NULL when
     ///                    count is 0.
     /// @param count       The number of entries.
-    /// @param inverseOut  Receives the inverse permutation. Must not overlap
-    ///                    map. May be NULL when count is 0. On an error, its
-    ///                    contents are unspecified: telling a permutation
+    /// @param inverseOut  Receives the inverse permutation. May be NULL when
+    ///                    count is 0. A NULL argument or an inverseOut that
+    ///                    overlaps map leaves it as it was. On another error,
+    ///                    its contents are unspecified: telling a permutation
     ///                    from a map that repeats an entry, in linear time
     ///                    and without memory, takes inverseOut as scratch.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument
-    ///         with a nonzero count, an entry out of range or an entry that
-    ///         repeats an earlier one.
+    ///         with a nonzero count, an inverseOut that overlaps map, an
+    ///         entry out of range or an entry that repeats an earlier one.
     /// @par Thread safety
     /// Safe from any thread.
     MUNI_NODISCARD MUNI_API muniResult muniInvertBidiMap(const size_t* map, size_t count,

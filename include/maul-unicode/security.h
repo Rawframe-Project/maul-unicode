@@ -95,8 +95,8 @@ extern "C"
     ///         MUNI_MAX_NORMALIZATION_SEGMENT, and the offset of the code
     ///         point being read then, with part of the skeleton possibly
     ///         written;
-    ///         `muni_errorInvalid` for a NULL argument or an unknown
-    ///         direction.
+    ///         `muni_errorInvalid` for a NULL argument, an unknown
+    ///         direction or a textOut that overlaps text.
     /// @par Thread safety
     /// Safe from any thread; the workspace and textOut are used by one thread
     /// at a time.

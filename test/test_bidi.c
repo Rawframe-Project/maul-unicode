@@ -563,6 +563,44 @@ static void TestMaps(void)
     CHECK(muniInvertBidiMap(first, 1, nullptr) == muni_errorInvalid, "no inverse with a count");
 }
 
+// An inverseOut that overlaps the map, on either side, is refused and
+// nothing is written. The map has 8 entries, and the inverse starts 0, 1
+// or 7 entries after the map or 1 or 7 entries before it. Right beside
+// the map, 8 entries after or before it, it is apart.
+static void TestMapOverlap(void)
+{
+    enum
+    {
+        size = 8
+    };
+    static const size_t reversed[size] = {7, 6, 5, 4, 3, 2, 1, 0};
+    static const ptrdiff_t shifts[] = {0, 1, size - 1, -1, -(size - 1)};
+    size_t buffer[3 * size];
+    size_t* map = buffer + size;
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(shifts) / sizeof(shifts[0]); i++)
+    {
+        memset(buffer, 0xA5, sizeof(buffer));
+        memcpy(map, reversed, sizeof(reversed));
+        size_t before[3 * size];
+        memcpy(before, buffer, sizeof(buffer));
+        refused = refused && muniInvertBidiMap(map, size, map + shifts[i]) == muni_errorInvalid &&
+                  memcmp(buffer, before, sizeof(buffer)) == 0;
+    }
+    CHECK(refused, "an inverse that overlaps the map refused, nothing written");
+    bool apart = true;
+    for (int side = 0; side < 2; side++)
+    {
+        memset(buffer, 0xA5, sizeof(buffer));
+        memcpy(map, reversed, sizeof(reversed));
+        size_t* inverse = side == 0 ? map + size : map - size;
+        apart = apart && muniInvertBidiMap(map, size, inverse) == muni_success &&
+                memcmp(inverse, reversed, sizeof(reversed)) == 0 &&
+                memcmp(map, reversed, sizeof(reversed)) == 0;
+    }
+    CHECK(apart, "an inverse right beside the map, on either side, written");
+}
+
 int main(void)
 {
     TestCharacterFile();
@@ -571,5 +609,6 @@ int main(void)
     TestIsolateDepth();
     TestLongIsolateRun();
     TestMaps();
+    TestMapOverlap();
     return s_failures == 0 ? 0 : 1;
 }
