@@ -261,7 +261,7 @@ static bool BadArguments(const void* input, size_t length, const void* output, s
                          muniConvertMode mode, const size_t* neededOut)
 {
     return (input == nullptr && length != 0) || (output == nullptr && capacity != 0) ||
-           neededOut == nullptr || mode > muni_convertReplace;
+           neededOut == nullptr || (uint32_t)mode > muni_convertReplace;
 }
 
 muniTextResult muniConvertUtf8ToUtf16(const char* bytes, size_t length, muniConvertMode mode,

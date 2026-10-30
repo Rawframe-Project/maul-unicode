@@ -10,13 +10,13 @@
 
 #include <string.h>
 
-#define LATN MUNI_SCRIPT('L', 'a', 't', 'n')
-#define HEBR MUNI_SCRIPT('H', 'e', 'b', 'r')
-#define DEVA MUNI_SCRIPT('D', 'e', 'v', 'a')
-#define BENG MUNI_SCRIPT('B', 'e', 'n', 'g')
-#define HANI MUNI_SCRIPT('H', 'a', 'n', 'i')
-#define HIRA MUNI_SCRIPT('H', 'i', 'r', 'a')
-#define GREK MUNI_SCRIPT('G', 'r', 'e', 'k')
+#define LATN MUNI_MAKE_SCRIPT('L', 'a', 't', 'n')
+#define HEBR MUNI_MAKE_SCRIPT('H', 'e', 'b', 'r')
+#define DEVA MUNI_MAKE_SCRIPT('D', 'e', 'v', 'a')
+#define BENG MUNI_MAKE_SCRIPT('B', 'e', 'n', 'g')
+#define HANI MUNI_MAKE_SCRIPT('H', 'a', 'n', 'i')
+#define HIRA MUNI_MAKE_SCRIPT('H', 'i', 'r', 'a')
+#define GREK MUNI_MAKE_SCRIPT('G', 'r', 'e', 'k')
 
 // Whether text gives exactly the expected runs, whole and byte by byte.
 static bool Runs(const char* text, const muniScriptRun* expected, size_t count)

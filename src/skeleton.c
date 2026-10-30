@@ -360,7 +360,8 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
 {
     if ((text == nullptr && length != 0) || (workspace == nullptr && workspaceSize != 0) ||
         (textOut == nullptr && capacity != 0) || neededOut == nullptr ||
-        direction > muni_bidiRightToLeft || muniOverlaps(text, length, textOut, capacity, 1))
+        (uint32_t)direction > muni_bidiRightToLeft ||
+        muniOverlaps(text, length, textOut, capacity, 1))
     {
         return (muniTextResult){muni_errorInvalid, 0};
     }

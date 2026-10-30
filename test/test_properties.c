@@ -193,11 +193,11 @@ static void TestLayoutPropertiesKnownValues(void)
     size_t count = 0;
     CHECK(muniGetScriptExtensions('a', scripts, MUNI_MAX_SCRIPT_EXTENSIONS, &count) ==
                   muni_success &&
-              count == 1 && scripts[0] == MUNI_SCRIPT('L', 'a', 't', 'n'),
+              count == 1 && scripts[0] == MUNI_MAKE_SCRIPT('L', 'a', 't', 'n'),
           "a is Latin only");
     CHECK(muniGetScriptExtensions(0x060C, scripts, MUNI_MAX_SCRIPT_EXTENSIONS, &count) ==
                   muni_success &&
-              scripts[0] == MUNI_SCRIPT('A', 'r', 'a', 'b'),
+              scripts[0] == MUNI_MAKE_SCRIPT('A', 'r', 'a', 'b'),
           "the Arabic comma lists Arabic first");
     CHECK(muniGetMirroringGlyph('(') == ')' && muniGetMirroringGlyph(')') == '(', "( and )");
     CHECK(muniGetMirroringGlyph('a') == 'a', "a has no mirror");
@@ -210,7 +210,7 @@ static void TestLayoutPropertiesKnownValues(void)
     CHECK(muniGetBidiClass(0x05FF) == muni_bcR, "unassigned U+05FF defaults to R");
     CHECK(muniGetBidiClass(0x2067) == muni_bcRli, "U+2067 is RLI");
     CHECK(muniGetCombiningClass(0x0301) == 230, "U+0301 has class 230");
-    CHECK(muniGetScript(0x0627) == MUNI_SCRIPT('A', 'r', 'a', 'b'), "U+0627 is Arabic");
+    CHECK(muniGetScript(0x0627) == MUNI_MAKE_SCRIPT('A', 'r', 'a', 'b'), "U+0627 is Arabic");
     CHECK(muniGetScript(0x0301) == MUNI_SCRIPT_INHERITED, "U+0301 is Inherited");
     CHECK(muniGetScript(0x0378) == MUNI_SCRIPT_UNKNOWN, "U+0378 is Unknown");
     CHECK(muniGetScript(0x110000) == MUNI_SCRIPT_UNKNOWN, "past U+10FFFF is Unknown");

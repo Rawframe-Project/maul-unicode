@@ -378,6 +378,31 @@ static void TestQuickCheckEverywhere(void)
 }
 #endif
 
+// A kind is an int32_t, so a caller can pass a negative one; every call
+// that takes a kind refuses -1 and INT32_MIN as it refuses a kind past the
+// last, and leaves its outputs as they were.
+static const int32_t s_negative[] = {-1, INT32_MIN};
+
+static void TestNegativeKinds(void)
+{
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(s_negative) / sizeof(s_negative[0]); i++)
+    {
+        char output[4] = {7, 7, 7, 7};
+        size_t needed = 99;
+        muniQuickCheck answer = muni_quickCheckMaybe;
+        refused =
+            refused &&
+            muniNormalize("a", 1, s_negative[i], muni_convertStrict, output, 4, &needed).status ==
+                muni_errorInvalid &&
+            muniNormalize("a", 1, muni_nfc, s_negative[i], output, 4, &needed).status ==
+                muni_errorInvalid &&
+            muniCheckNormalization("a", 1, s_negative[i], &answer).status == muni_errorInvalid &&
+            needed == 99 && output[0] == 7 && answer == muni_quickCheckMaybe;
+    }
+    CHECK(refused, "a negative form or mode refused");
+}
+
 int main(void)
 {
     TestCheckArguments();
@@ -385,6 +410,7 @@ int main(void)
     TestLimitsAndErrors();
     TestEdges();
     TestOverlap();
+    TestNegativeKinds();
 #ifdef MUNI_UCD_DATA
     TestQuickCheckEverywhere();
 #endif

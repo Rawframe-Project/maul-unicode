@@ -30,7 +30,7 @@ extern "C"
 #endif
 
     // A normal form.
-    typedef uint8_t muniNormalForm;
+    typedef int32_t muniNormalForm;
 
     enum
     {
@@ -41,7 +41,7 @@ extern "C"
     };
 
     // The answer of a quick check (UAX #15 section 9).
-    typedef uint8_t muniQuickCheck;
+    typedef int32_t muniQuickCheck;
 
     enum
     {

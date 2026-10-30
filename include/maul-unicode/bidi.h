@@ -28,7 +28,7 @@ extern "C"
 #endif
 
     // The direction of a paragraph.
-    typedef uint8_t muniBidiDirection;
+    typedef int32_t muniBidiDirection;
 
     enum
     {

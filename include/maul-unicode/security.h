@@ -37,7 +37,7 @@ extern "C"
 #endif
 
     // A restriction level (UTS #39 section 5.2); a lower one is stricter.
-    typedef uint8_t muniRestrictionLevel;
+    typedef int32_t muniRestrictionLevel;
 
     enum
     {
