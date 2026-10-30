@@ -8,7 +8,7 @@ What verifies a change, locally and in CI, and the time each may take.
 
 | Tier | Runs | Budget |
 |---|---|---|
-| `changed` | The source, module, length, API documentation and snippet rules, the Unicode files against their SHA-256, test hygiene, the organization's documentation check, `clang-format` on the changed C files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
+| `changed` | The source, module, length, API documentation and snippet rules, the Unicode files against their SHA-256, test hygiene, the organization's documentation check, `clang-format` on the changed C files, clang-tidy on a Release and a Debug build for the changed `src/*.c` files, and the `linux-clang-20-asan` preset (assertions on) with the CTest labels the changed files reach. | under 2 minutes |
 | `pr` | Every rule on every file, the generated tables against the generator and their ceilings, clang-tidy on a Release build (assertions compiled out) and a Debug build, the `linux-harfbuzz` and `linux-clang-20-asan` presets, and 10 seconds of fuzzing per target. | under 10 minutes |
 | `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the HarfBuzz functions, the package test and the exports test, every optional component left out, 32-bit x86, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
 
