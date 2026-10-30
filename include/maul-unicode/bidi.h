@@ -131,10 +131,11 @@ extern "C"
     /// @param count       The number of entries.
     /// @param inverseOut  Receives the inverse permutation. May be NULL when
     ///                    count is 0. A NULL argument or an inverseOut that
-    ///                    overlaps map leaves it as it was. On another error,
-    ///                    its contents are unspecified: telling a permutation
-    ///                    from a map that repeats an entry, in linear time
-    ///                    and without memory, takes inverseOut as scratch.
+    ///                    overlaps map leaves it as it was. Any other
+    ///                    refusal clears inverseOut, which the call uses to
+    ///                    check the map: telling a permutation from a map
+    ///                    that repeats an entry, in linear time and without
+    ///                    memory, takes it as scratch.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL argument
     ///         with a nonzero count, an inverseOut that overlaps map, an
     ///         entry out of range or an entry that repeats an earlier one.

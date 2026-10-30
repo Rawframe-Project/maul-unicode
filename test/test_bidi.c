@@ -551,12 +551,23 @@ static void TestMaps(void)
           "a paragraph level of 200");
     CHECK(muniReorderBidiLine("a ", flat, 2, 1, runs, 3, &count) == muni_success,
           "a paragraph level of 1");
+    // A map refused for its entries clears the inverse, which the call
+    // used to check it.
     const size_t broken[] = {0, 9};
-    CHECK(muniInvertBidiMap(broken, 2, logical) == muni_errorInvalid, "an entry out of range");
+    memset(logical, 0xA5, sizeof(logical));
+    CHECK(muniInvertBidiMap(broken, 2, logical) == muni_errorInvalid && logical[0] == 0 &&
+              logical[1] == 0 && logical[2] != 0,
+          "an entry out of range, and the inverse cleared");
     const size_t repeated[] = {2, 0, 2};
-    CHECK(muniInvertBidiMap(repeated, 3, logical) == muni_errorInvalid, "a repeated entry");
+    memset(logical, 0xA5, sizeof(logical));
+    CHECK(muniInvertBidiMap(repeated, 3, logical) == muni_errorInvalid && logical[0] == 0 &&
+              logical[1] == 0 && logical[2] == 0 && logical[3] != 0,
+          "a repeated entry, and the inverse cleared");
     const size_t first[] = {0, 0};
-    CHECK(muniInvertBidiMap(first, 2, logical) == muni_errorInvalid, "a repeated first entry");
+    memset(logical, 0xA5, sizeof(logical));
+    CHECK(muniInvertBidiMap(first, 2, logical) == muni_errorInvalid && logical[0] == 0 &&
+              logical[1] == 0 && logical[2] != 0,
+          "a repeated first entry, and the inverse cleared");
     logical[0] = 7;
     CHECK(muniInvertBidiMap(nullptr, 1, logical) == muni_errorInvalid && logical[0] == 7,
           "no map with a count, and nothing written");
