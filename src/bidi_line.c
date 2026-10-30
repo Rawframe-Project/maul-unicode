@@ -299,6 +299,8 @@ muniResult muniInvertBidiMap(const size_t* map, size_t count, size_t* inverseOut
     {
         if (map[k] >= count || inverseOut[map[k]] != SIZE_MAX)
         {
+            // The marks are no answer: a refusal leaves a defined state.
+            memset(inverseOut, 0, count * sizeof(size_t));
             return muni_errorInvalid;
         }
         inverseOut[map[k]] = k;
