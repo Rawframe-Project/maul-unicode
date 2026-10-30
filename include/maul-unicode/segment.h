@@ -150,6 +150,13 @@ extern "C"
     // conventions may: Greek ends a sentence at U+003B and U+037E
     // (muni_sbSTerm), and POSIX English keeps U+002E out of words
     // (muni_wbMidNum).
+    //
+    // value holds a muniWordBreak or a muniSentenceBreak value, so it has
+    // their common type, int32_t. The struct has no field that says which:
+    // the iterator the table is given to does. A word iterator reads each
+    // value as a muniWordBreak and a sentence iterator as a
+    // muniSentenceBreak, and each refuses a value outside its own kind,
+    // negative ones included.
     typedef struct muniBreakClassOverride
     {
         uint32_t codePoint; // at most U+10FFFF, not a surrogate
