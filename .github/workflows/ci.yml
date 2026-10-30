@@ -37,7 +37,7 @@ env:
 jobs:
   # Whether anything beyond documentation changed; the builds skip when not.
   changes:
-    uses: Rawframe-Project/.github/.github/workflows/changes.yml@89f98d8066ba5deec132332fba9f0b0347aecc01 # v0.0.40
+    uses: Rawframe-Project/.github/.github/workflows/changes.yml@3044ba71d36f3e3eb370b8915ca1b02f337fda8c # v0.0.41
     permissions:
       pull-requests: read
 
@@ -52,12 +52,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: Rawframe-Project/.github/.github/actions/docs-check@89f98d8066ba5deec132332fba9f0b0347aecc01 # v0.0.40
+      - uses: Rawframe-Project/.github/.github/actions/docs-check@3044ba71d36f3e3eb370b8915ca1b02f337fda8c # v0.0.41
         with:
           exclude: tools/ucd
 
   zizmor:
-    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@89f98d8066ba5deec132332fba9f0b0347aecc01 # v0.0.40
+    uses: Rawframe-Project/.github/.github/workflows/zizmor.yml@3044ba71d36f3e3eb370b8915ca1b02f337fda8c # v0.0.41
     permissions:
       contents: read
 
@@ -165,7 +165,7 @@ jobs:
           - { preset: linux-i686-gcc-14 }
           - { preset: macos-clang, runner: macos-15 }
           - { preset: windows-clang-cl, runner: windows-2025 }
-    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@89f98d8066ba5deec132332fba9f0b0347aecc01 # v0.0.40
+    uses: Rawframe-Project/.github/.github/workflows/cpp.yml@3044ba71d36f3e3eb370b8915ca1b02f337fda8c # v0.0.41
     permissions:
       contents: read
     with:
@@ -221,12 +221,11 @@ jobs:
           cmake -B out/fuzz -G Ninja -DCMAKE_C_COMPILER=clang-20 -D${PREFIX}_FUZZ=ON \
             -D${PREFIX}_FUZZ_ICU=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_WERROR=ON
           cmake --build out/fuzz
-      # Caches are immutable: each run saves a new entry and the next run
-      # restores the latest. Only main reads the corpus, as only main
-      # saves it; a pull request or a dispatch on a branch starts from the
-      # seeds.
+      # Caches are immutable: each run on main saves a new entry, and every
+      # run restores the latest, a pull request's included, so a change
+      # that breaks a harness's promise fails on its own pull request
+      # (maul-conventions.md). Only main minimizes and saves it.
       - name: Restore the corpus
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: out/corpus
