@@ -260,9 +260,9 @@ extern "C"
     ///                      start of the whole text. Left as it was unless
     ///                      the call returns `muni_success`.
     /// @param mandatoryOut  Receives true when the break is mandatory. It
-    ///                      is false when the result is not `muni_success`,
-    ///                      except that `muni_errorInvalid` leaves it as it
-    ///                      was.
+    ///                      is false after `muni_done` and
+    ///                      `muni_needMoreText`; `muni_errorBusy` and
+    ///                      `muni_errorInvalid` leave it as it was.
     /// @return As muniSegmentIterator_NextBreak; `muni_errorInvalid` also for an
     ///         iterator of another kind.
     /// @par Thread safety
