@@ -5,6 +5,24 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.9.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.8.0...v0.9.0) (2026-10-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* the kind, mode and choice enumerations are `int32_t` instead of `uint8_t`, and `muniBreakClassOverride.value` is an `int32_t`. This changes the binary interface; code that stores these values in a `uint8_t` keeps working after a recompile, since every value fits. `MUNI_SCRIPT` is renamed `MUNI_MAKE_SCRIPT`. A negative kind is now refused with `muni_errorInvalid`. | 0.8.0 | Next | |---|---| | `typedef uint8_t muniBidiDirection` (and the 15 other kinds) | `typedef int32_t muniBidiDirection` | | `muniBreakClassOverride.value`: `uint8_t` | `int32_t` | | `MUNI_SCRIPT('L', 'a', 't', 'n')` | `MUNI_MAKE_SCRIPT('L', 'a', 't', 'n')` |
+
+### Fixed
+
+* **bidi:** clear the inverse map when muniInvertBidiMap refuses a map ([#192](https://github.com/Rawframe-Project/maul-unicode/issues/192)) ([38c3c2a](https://github.com/Rawframe-Project/maul-unicode/commit/38c3c2a511b0a8a057712cc90c4c96c7ee7b8788)), closes [#188](https://github.com/Rawframe-Project/maul-unicode/issues/188)
+* **build:** configure again when the version header changes ([#200](https://github.com/Rawframe-Project/maul-unicode/issues/200)) ([11282e2](https://github.com/Rawframe-Project/maul-unicode/commit/11282e2ed7d59c906984a77ae2879da45d0da628)), closes [#199](https://github.com/Rawframe-Project/maul-unicode/issues/199)
+* refuse an output that overlaps an input of its type ([#191](https://github.com/Rawframe-Project/maul-unicode/issues/191)) ([1bfa6fe](https://github.com/Rawframe-Project/maul-unicode/commit/1bfa6fec1357b86cbad208fd3e4143d22e6e838f)), closes [#189](https://github.com/Rawframe-Project/maul-unicode/issues/189)
+
+
+### Changed
+
+* make the kind enumerations int32_t and name MUNI_MAKE_SCRIPT ([#196](https://github.com/Rawframe-Project/maul-unicode/issues/196)) ([aede197](https://github.com/Rawframe-Project/maul-unicode/commit/aede197c21f14d46e4c8a238afdeac795b020743)), closes [#186](https://github.com/Rawframe-Project/maul-unicode/issues/186) [#187](https://github.com/Rawframe-Project/maul-unicode/issues/187)
+
 ## [0.8.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.7.0...v0.8.0) (2026-10-29)
 
 ### Changed
