@@ -7,12 +7,17 @@
 // final sigma, titlecase by word, the Turkic dotted and dotless i, and
 // the Lithuanian dot above.
 // With normalization built, NFKC_Casefold of every code point against
-// DerivedNormalizationProps.txt, and over text.
+// DerivedNormalizationProps.txt, and over text, and the simple and full
+// mappings of every code point against the UCD files.
 
 #include "tables.h"
 #include "test_harness.h"
 
 #include "maul-unicode/case.h"
+
+#ifdef MUNI_UCD_DATA
+#include "ucd.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -380,6 +385,266 @@ static void TestCasefoldText(void)
           "an unknown mode");
 }
 
+// The simple mappings and Cased of every code point against the UCD
+// files, read here without the generator: UnicodeData.txt, whose
+// titlecase is the uppercase when its field is empty, CaseFolding.txt's
+// C and S lines, and DerivedCoreProperties.txt. A code point a file
+// does not list maps to itself.
+static uint8_t s_listed[0x110000];
+
+// Counts the code points where map differs from the file: field of
+// UnicodeData.txt after the code point, or folding for -1.
+static int CompareSimple(int field, uint32_t (*map)(uint32_t))
+{
+    FILE* file = UcdOpen(field < 0 ? "CaseFolding.txt" : "UnicodeData.txt");
+    if (file == nullptr)
+    {
+        return 1;
+    }
+    memset(s_listed, 0, sizeof(s_listed));
+    static char buffer[4096];
+    UcdLine line;
+    int failures = 0;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        const char* value = nullptr;
+        if (field < 0)
+        {
+            bool simple = strcmp(line.fields[0], "C") == 0 || strcmp(line.fields[0], "S") == 0;
+            value = simple ? line.fields[1] : "";
+        }
+        else
+        {
+            value =
+                line.fields[field][0] != '\0' || field != 13 ? line.fields[field] : line.fields[11];
+        }
+        if (value[0] != '\0')
+        {
+            s_listed[line.first] = 1;
+            if (map(line.first) != (uint32_t)strtoul(value, nullptr, 16) && failures++ < 5)
+            {
+                printf("the simple mapping of U+%04X differs\n", (unsigned)line.first);
+            }
+        }
+    }
+    fclose(file);
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (s_listed[c] == 0 && map(c) != c && failures++ < 5)
+        {
+            printf("U+%04X maps to another code point\n", (unsigned)c);
+        }
+    }
+    return failures;
+}
+
+static void TestSimpleAgainstTheUcd(void)
+{
+    CHECK(CompareSimple(11, muniGetUppercase) == 0, "Simple_Uppercase_Mapping");
+    CHECK(CompareSimple(12, muniGetLowercase) == 0, "Simple_Lowercase_Mapping");
+    CHECK(CompareSimple(13, muniGetTitlecase) == 0, "Simple_Titlecase_Mapping");
+    CHECK(CompareSimple(-1, muniFoldCase) == 0, "Simple_Case_Folding");
+    memset(s_listed, 0, sizeof(s_listed));
+    bool read = UcdFillBinary("DerivedCoreProperties.txt", "Cased", s_listed);
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if ((muniIsCased(c) ? 1 : 0) != s_listed[c] && failures++ < 5)
+        {
+            printf("Cased of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(read && failures == 0, "Cased");
+}
+
+// A full mapping of one code point: from SpecialCasing.txt, with the
+// languages and contexts it needs, or CaseFolding.txt's F and T lines.
+typedef struct FullMapping
+{
+    uint32_t codePoint;
+    muniCaseOperation operation;
+    muniCaseLanguage language; // muni_caseDefault for every language
+    bool alone;                // its contexts hold for a code point alone
+    uint32_t to[3];
+    size_t count;
+} FullMapping;
+
+static FullMapping s_full[512];
+static size_t s_fullCount;
+static uint8_t s_hasFull[0x110000];
+
+static void AddFull(uint32_t codePoint, muniCaseOperation operation, muniCaseLanguage language,
+                    bool alone, char* text)
+{
+    if (s_fullCount == sizeof(s_full) / sizeof(s_full[0]))
+    {
+        return;
+    }
+    FullMapping* mapping = &s_full[s_fullCount++];
+    *mapping = (FullMapping){codePoint, operation, language, alone, {0}, 0};
+    for (char* item = strtok(text, " "); item != nullptr && mapping->count < 3;
+         item = strtok(nullptr, " "))
+    {
+        mapping->to[mapping->count++] = (uint32_t)strtoul(item, nullptr, 16);
+    }
+    s_hasFull[codePoint] = 1;
+}
+
+// Reads the conditions of a SpecialCasing.txt line: its language and
+// whether its contexts hold for a code point with nothing around it.
+// Only Not_Before_Dot does; Final_Sigma, After_Soft_Dotted, More_Above,
+// Before_Dot and After_I need a neighbor. False for a condition this
+// does not know.
+static bool ReadConditions(char* text, muniCaseLanguage* language, bool* alone)
+{
+    static const char* const needNeighbor[] = {"Final_Sigma", "After_Soft_Dotted", "More_Above",
+                                               "Before_Dot", "After_I"};
+    *language = muni_caseDefault;
+    *alone = true;
+    for (char* item = strtok(text, " "); item != nullptr; item = strtok(nullptr, " "))
+    {
+        bool known = true;
+        if (strcmp(item, "tr") == 0 || strcmp(item, "az") == 0)
+        {
+            *language = muni_caseTurkic;
+        }
+        else if (strcmp(item, "lt") == 0)
+        {
+            *language = muni_caseLithuanian;
+        }
+        else if (strcmp(item, "Not_Before_Dot") != 0)
+        {
+            known = false;
+            for (size_t i = 0; i < sizeof(needNeighbor) / sizeof(needNeighbor[0]); i++)
+            {
+                known = known || strcmp(item, needNeighbor[i]) == 0;
+            }
+            *alone = false;
+        }
+        if (!known)
+        {
+            printf("SpecialCasing.txt: an unknown condition %s\n", item);
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool LoadFull(void)
+{
+    s_fullCount = 0;
+    memset(s_hasFull, 0, sizeof(s_hasFull));
+    static char buffer[4096];
+    UcdLine line;
+    FILE* file = UcdOpen("SpecialCasing.txt");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    bool known = true;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        muniCaseLanguage language = muni_caseDefault;
+        bool alone = true;
+        if (line.count > 3)
+        {
+            known = ReadConditions(line.fields[3], &language, &alone) && known;
+        }
+        AddFull(line.first, muni_caseLower, language, alone, line.fields[0]);
+        AddFull(line.first, muni_caseTitle, language, alone, line.fields[1]);
+        AddFull(line.first, muni_caseUpper, language, alone, line.fields[2]);
+    }
+    fclose(file);
+    file = UcdOpen("CaseFolding.txt");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        if (strcmp(line.fields[0], "F") == 0 || strcmp(line.fields[0], "T") == 0)
+        {
+            bool turkic = line.fields[0][0] == 'T';
+            AddFull(line.first, muni_caseFold, turkic ? muni_caseTurkic : muni_caseDefault, true,
+                    line.fields[1]);
+        }
+    }
+    fclose(file);
+    return known && s_fullCount > 200 && s_fullCount < sizeof(s_full) / sizeof(s_full[0]);
+}
+
+// The full mapping of a code point alone: the entry of its language
+// before one for every language, else its simple mapping.
+static size_t ExpectedFull(uint32_t codePoint, muniCaseOperation operation,
+                           muniCaseLanguage language, uint32_t* to)
+{
+    const FullMapping* found = nullptr;
+    for (size_t i = 0; i < s_fullCount && s_hasFull[codePoint] != 0; i++)
+    {
+        const FullMapping* mapping = &s_full[i];
+        if (mapping->codePoint == codePoint && mapping->operation == operation && mapping->alone &&
+            (mapping->language == language || mapping->language == muni_caseDefault) &&
+            (found == nullptr || mapping->language != muni_caseDefault))
+        {
+            found = mapping;
+        }
+    }
+    if (found != nullptr)
+    {
+        memcpy(to, found->to, found->count * sizeof(uint32_t));
+        return found->count;
+    }
+    uint32_t (*const simple[])(uint32_t) = {muniGetLowercase, muniGetUppercase, muniGetTitlecase,
+                                            muniFoldCase};
+    to[0] = simple[operation](codePoint);
+    return 1;
+}
+
+static void TestFullAgainstTheUcd(void)
+{
+    CHECK(LoadFull(), "SpecialCasing.txt and CaseFolding.txt read");
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (c >= 0xD800 && c < 0xE000)
+        {
+            continue;
+        }
+        char input[4];
+        size_t inputSize = 0;
+        (void)muniEncodeUtf8(c, input, sizeof(input), &inputSize);
+        for (int language = muni_caseDefault; language <= muni_caseLithuanian; language++)
+        {
+            for (int operation = muni_caseLower; operation <= muni_caseFold; operation++)
+            {
+                uint32_t to[3];
+                size_t count = ExpectedFull(c, operation, language, to);
+                char expected[12];
+                size_t expectedSize = 0;
+                for (size_t i = 0; i < count; i++)
+                {
+                    size_t size = 0;
+                    (void)muniEncodeUtf8(to[i], expected + expectedSize, 4, &size);
+                    expectedSize += size;
+                }
+                char output[64];
+                size_t needed = 0;
+                muniTextResult result =
+                    muniConvertCase(input, inputSize, operation, language, muni_convertStrict,
+                                    output, sizeof(output), &needed);
+                if ((result.status != muni_success || needed != expectedSize ||
+                     memcmp(output, expected, needed) != 0) &&
+                    failures++ < 5)
+                {
+                    printf("operation %d, language %d of U+%04X differs\n", operation, language,
+                           (unsigned)c);
+                }
+            }
+        }
+    }
+    CHECK(failures == 0, "the full mappings of every code point alone match the UCD");
+}
+
 #endif
 
 // The two text mappings, with their other arguments fixed.
@@ -486,6 +751,8 @@ int main(void)
 #ifdef MUNI_UCD_DATA
     TestCasefoldEverywhere();
     TestCasefoldText();
+    TestSimpleAgainstTheUcd();
+    TestFullAgainstTheUcd();
 #endif
     return s_failures == 0 ? 0 : 1;
 }

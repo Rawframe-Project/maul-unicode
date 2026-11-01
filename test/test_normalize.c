@@ -5,12 +5,17 @@
 // five columns under the four forms, and, as its Part 1 asks, every code
 // point it does not list left alone by all four. Quick checks are held
 // to the results: a Yes must leave the text alone and a No must change
-// it.
+// it. The decomposition and composition pairs of every code point
+// against the UCD files.
 
 #include "test_harness.h"
 
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
+
+#ifdef MUNI_UCD_DATA
+#include "ucd.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -390,6 +395,85 @@ static void TestQuickCheckEverywhere(void)
     }
     CHECK(failures == 0, "the quick check of every code point");
 }
+
+// The pairs of every code point against UnicodeData.txt and
+// DerivedNormalizationProps.txt, read here without the generator: each
+// canonical decomposition of one or two code points is what
+// muniDecomposePair gives, a pair composes back unless the code point
+// has Full_Composition_Exclusion, and a code point without one does not
+// decompose. Hangul syllables split as Unicode's arithmetic says.
+static void TestPairsAgainstTheUcd(void)
+{
+    static uint8_t excluded[0x110000];
+    static uint8_t decomposes[0x110000];
+    memset(excluded, 0, sizeof(excluded));
+    memset(decomposes, 0, sizeof(decomposes));
+    bool read =
+        UcdFillBinary("DerivedNormalizationProps.txt", "Full_Composition_Exclusion", excluded);
+    FILE* file = UcdOpen("UnicodeData.txt");
+    CHECK(read && file != nullptr, "UnicodeData.txt and DerivedNormalizationProps.txt read");
+    if (file == nullptr)
+    {
+        return;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    int failures = 0;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        const char* mapping = line.fields[4];
+        if (mapping[0] == '\0' || mapping[0] == '<')
+        {
+            continue;
+        }
+        char* end = nullptr;
+        uint32_t want[2] = {(uint32_t)strtoul(mapping, &end, 16), 0};
+        size_t wantCount = 1;
+        if (*end != '\0')
+        {
+            want[1] = (uint32_t)strtoul(end, nullptr, 16);
+            wantCount = 2;
+        }
+        decomposes[line.first] = 1;
+        uint32_t first = 0;
+        uint32_t second = 0;
+        size_t count = 0;
+        bool same = muniDecomposePair(line.first, &first, &second, &count) == muni_success &&
+                    count == wantCount && first == want[0] && second == want[1];
+        uint32_t composite = wantCount == 2 && excluded[line.first] == 0 ? line.first : 0;
+        same = same && (wantCount == 1 || muniComposePair(want[0], want[1]) == composite);
+        if (!same && failures++ < 5)
+        {
+            printf("the pair of U+%04X differs\n", (unsigned)line.first);
+        }
+    }
+    fclose(file);
+    for (uint32_t c = 0; c < 0x110000; c++)
+    {
+        uint32_t want[2] = {0, 0};
+        size_t wantCount = 0;
+        if (c >= 0xAC00 && c <= 0xD7A3)
+        {
+            uint32_t index = c - 0xAC00;
+            want[0] = index % 28 != 0 ? c - index % 28 : 0x1100 + index / 588;
+            want[1] = index % 28 != 0 ? 0x11A7 + index % 28 : 0x1161 + index % 588 / 28;
+            wantCount = 2;
+        }
+        uint32_t first = 1;
+        uint32_t second = 1;
+        size_t count = 9;
+        bool same =
+            decomposes[c] != 0 || (muniDecomposePair(c, &first, &second, &count) == muni_success &&
+                                   count == wantCount && first == want[0] && second == want[1] &&
+                                   (wantCount == 0 || muniComposePair(want[0], want[1]) == c));
+        if (!same && failures++ < 5)
+        {
+            printf("the pair of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(failures == 0, "the pairs of every code point match the UCD");
+}
+
 #endif
 
 // A kind is an int32_t, so a caller can pass a negative one; every call
@@ -427,6 +511,7 @@ int main(void)
     TestNegativeKinds();
 #ifdef MUNI_UCD_DATA
     TestQuickCheckEverywhere();
+    TestPairsAgainstTheUcd();
 #endif
     return s_failures == 0 ? 0 : 1;
 }

@@ -12,6 +12,10 @@
 
 #include "maul-unicode/properties.h"
 
+#ifdef MUNI_UCD_DATA
+#include "ucd.h"
+#endif
+
 static uint64_t HashAll(uint8_t (*lookup)(uint32_t))
 {
     uint64_t hash = 0xcbf29ce484222325ull;
@@ -291,6 +295,504 @@ static void TestPastTheLastCodePoint(void)
     CHECK(failures == 0, "past U+10FFFF answers as an unassigned code point");
 }
 
+#ifdef MUNI_UCD_DATA
+// Every code point through the public API against the UCD files, read
+// here without the generator, so that a table the generator wrote from a
+// misread file fails as well as one it wrote wrong.
+
+static const UcdName s_generalCategories[] = {
+    {"Cn", "Unassigned", muni_gcCn},
+    {"Lu", "Uppercase_Letter", muni_gcLu},
+    {"Ll", "Lowercase_Letter", muni_gcLl},
+    {"Lt", "Titlecase_Letter", muni_gcLt},
+    {"Lm", "Modifier_Letter", muni_gcLm},
+    {"Lo", "Other_Letter", muni_gcLo},
+    {"Mn", "Nonspacing_Mark", muni_gcMn},
+    {"Mc", "Spacing_Mark", muni_gcMc},
+    {"Me", "Enclosing_Mark", muni_gcMe},
+    {"Nd", "Decimal_Number", muni_gcNd},
+    {"Nl", "Letter_Number", muni_gcNl},
+    {"No", "Other_Number", muni_gcNo},
+    {"Pc", "Connector_Punctuation", muni_gcPc},
+    {"Pd", "Dash_Punctuation", muni_gcPd},
+    {"Ps", "Open_Punctuation", muni_gcPs},
+    {"Pe", "Close_Punctuation", muni_gcPe},
+    {"Pi", "Initial_Punctuation", muni_gcPi},
+    {"Pf", "Final_Punctuation", muni_gcPf},
+    {"Po", "Other_Punctuation", muni_gcPo},
+    {"Sm", "Math_Symbol", muni_gcSm},
+    {"Sc", "Currency_Symbol", muni_gcSc},
+    {"Sk", "Modifier_Symbol", muni_gcSk},
+    {"So", "Other_Symbol", muni_gcSo},
+    {"Zs", "Space_Separator", muni_gcZs},
+    {"Zl", "Line_Separator", muni_gcZl},
+    {"Zp", "Paragraph_Separator", muni_gcZp},
+    {"Cc", "Control", muni_gcCc},
+    {"Cf", "Format", muni_gcCf},
+    {"Cs", "Surrogate", muni_gcCs},
+    {"Co", "Private_Use", muni_gcCo},
+};
+
+static const UcdName s_graphemeBreaks[] = {
+    {"XX", "Other", muni_gcbOther},
+    {"CR", "CR", muni_gcbCr},
+    {"LF", "LF", muni_gcbLf},
+    {"CN", "Control", muni_gcbControl},
+    {"EX", "Extend", muni_gcbExtend},
+    {"ZWJ", "ZWJ", muni_gcbZwj},
+    {"RI", "Regional_Indicator", muni_gcbRegionalIndicator},
+    {"PP", "Prepend", muni_gcbPrepend},
+    {"SM", "SpacingMark", muni_gcbSpacingMark},
+    {"L", "L", muni_gcbL},
+    {"V", "V", muni_gcbV},
+    {"T", "T", muni_gcbT},
+    {"LV", "LV", muni_gcbLv},
+    {"LVT", "LVT", muni_gcbLvt},
+};
+
+static const UcdName s_wordBreaks[] = {
+    {"XX", "Other", muni_wbOther},
+    {"CR", "CR", muni_wbCr},
+    {"LF", "LF", muni_wbLf},
+    {"NL", "Newline", muni_wbNewline},
+    {"Extend", "Extend", muni_wbExtend},
+    {"ZWJ", "ZWJ", muni_wbZwj},
+    {"RI", "Regional_Indicator", muni_wbRegionalIndicator},
+    {"FO", "Format", muni_wbFormat},
+    {"KA", "Katakana", muni_wbKatakana},
+    {"HL", "Hebrew_Letter", muni_wbHebrewLetter},
+    {"LE", "ALetter", muni_wbALetter},
+    {"SQ", "Single_Quote", muni_wbSingleQuote},
+    {"DQ", "Double_Quote", muni_wbDoubleQuote},
+    {"MB", "MidNumLet", muni_wbMidNumLet},
+    {"ML", "MidLetter", muni_wbMidLetter},
+    {"MN", "MidNum", muni_wbMidNum},
+    {"NU", "Numeric", muni_wbNumeric},
+    {"EX", "ExtendNumLet", muni_wbExtendNumLet},
+    {"WSegSpace", "WSegSpace", muni_wbWSegSpace},
+};
+
+static const UcdName s_sentenceBreaks[] = {
+    {"XX", "Other", muni_sbOther},
+    {"CR", "CR", muni_sbCr},
+    {"LF", "LF", muni_sbLf},
+    {"EX", "Extend", muni_sbExtend},
+    {"SE", "Sep", muni_sbSep},
+    {"FO", "Format", muni_sbFormat},
+    {"SP", "Sp", muni_sbSp},
+    {"LO", "Lower", muni_sbLower},
+    {"UP", "Upper", muni_sbUpper},
+    {"LE", "OLetter", muni_sbOLetter},
+    {"NU", "Numeric", muni_sbNumeric},
+    {"AT", "ATerm", muni_sbATerm},
+    {"SC", "SContinue", muni_sbSContinue},
+    {"ST", "STerm", muni_sbSTerm},
+    {"CL", "Close", muni_sbClose},
+};
+
+static const UcdName s_indicConjunctBreaks[] = {
+    {"None", "None", muni_incbNone},
+    {"Linker", "Linker", muni_incbLinker},
+    {"Consonant", "Consonant", muni_incbConsonant},
+    {"Extend", "Extend", muni_incbExtend},
+};
+
+static const UcdName s_lineBreaks[] = {
+    {"XX", "Unknown", muni_lbXx},
+    {"BK", "Mandatory_Break", muni_lbBk},
+    {"CR", "Carriage_Return", muni_lbCr},
+    {"LF", "Line_Feed", muni_lbLf},
+    {"CM", "Combining_Mark", muni_lbCm},
+    {"NL", "Next_Line", muni_lbNl},
+    {"SG", "Surrogate", muni_lbSg},
+    {"WJ", "Word_Joiner", muni_lbWj},
+    {"ZW", "ZWSpace", muni_lbZw},
+    {"GL", "Glue", muni_lbGl},
+    {"SP", "Space", muni_lbSp},
+    {"ZWJ", "ZWJ", muni_lbZwj},
+    {"B2", "Break_Both", muni_lbB2},
+    {"BA", "Break_After", muni_lbBa},
+    {"BB", "Break_Before", muni_lbBb},
+    {"HY", "Hyphen", muni_lbHy},
+    {"CB", "Contingent_Break", muni_lbCb},
+    {"CL", "Close_Punctuation", muni_lbCl},
+    {"CP", "Close_Parenthesis", muni_lbCp},
+    {"EX", "Exclamation", muni_lbEx},
+    {"IN", "Inseparable", muni_lbIn},
+    {"NS", "Nonstarter", muni_lbNs},
+    {"OP", "Open_Punctuation", muni_lbOp},
+    {"QU", "Quotation", muni_lbQu},
+    {"IS", "Infix_Numeric", muni_lbIs},
+    {"NU", "Numeric", muni_lbNu},
+    {"PO", "Postfix_Numeric", muni_lbPo},
+    {"PR", "Prefix_Numeric", muni_lbPr},
+    {"SY", "Break_Symbols", muni_lbSy},
+    {"AI", "Ambiguous", muni_lbAi},
+    {"AL", "Alphabetic", muni_lbAl},
+    {"CJ", "Conditional_Japanese_Starter", muni_lbCj},
+    {"EB", "E_Base", muni_lbEb},
+    {"EM", "E_Modifier", muni_lbEm},
+    {"H2", "H2", muni_lbH2},
+    {"H3", "H3", muni_lbH3},
+    {"HL", "Hebrew_Letter", muni_lbHl},
+    {"ID", "Ideographic", muni_lbId},
+    {"JL", "JL", muni_lbJl},
+    {"JV", "JV", muni_lbJv},
+    {"JT", "JT", muni_lbJt},
+    {"RI", "Regional_Indicator", muni_lbRi},
+    {"SA", "Complex_Context", muni_lbSa},
+    {"AK", "Aksara", muni_lbAk},
+    {"AP", "Aksara_Prebase", muni_lbAp},
+    {"AS", "Aksara_Start", muni_lbAs},
+    {"VF", "Virama_Final", muni_lbVf},
+    {"VI", "Virama", muni_lbVi},
+    {"HH", "Unambiguous_Hyphen", muni_lbHh},
+};
+
+static const UcdName s_eastAsianWidths[] = {
+    {"N", "Neutral", muni_eawNeutral},     {"A", "Ambiguous", muni_eawAmbiguous},
+    {"H", "Halfwidth", muni_eawHalfwidth}, {"W", "Wide", muni_eawWide},
+    {"F", "Fullwidth", muni_eawFullwidth}, {"Na", "Narrow", muni_eawNarrow},
+};
+
+static const UcdName s_bidiClasses[] = {
+    {"L", "Left_To_Right", muni_bcL},
+    {"R", "Right_To_Left", muni_bcR},
+    {"AL", "Arabic_Letter", muni_bcAl},
+    {"EN", "European_Number", muni_bcEn},
+    {"ES", "European_Separator", muni_bcEs},
+    {"ET", "European_Terminator", muni_bcEt},
+    {"AN", "Arabic_Number", muni_bcAn},
+    {"CS", "Common_Separator", muni_bcCs},
+    {"NSM", "Nonspacing_Mark", muni_bcNsm},
+    {"BN", "Boundary_Neutral", muni_bcBn},
+    {"B", "Paragraph_Separator", muni_bcB},
+    {"S", "Segment_Separator", muni_bcS},
+    {"WS", "White_Space", muni_bcWs},
+    {"ON", "Other_Neutral", muni_bcOn},
+    {"LRE", "Left_To_Right_Embedding", muni_bcLre},
+    {"LRO", "Left_To_Right_Override", muni_bcLro},
+    {"RLE", "Right_To_Left_Embedding", muni_bcRle},
+    {"RLO", "Right_To_Left_Override", muni_bcRlo},
+    {"PDF", "Pop_Directional_Format", muni_bcPdf},
+    {"LRI", "Left_To_Right_Isolate", muni_bcLri},
+    {"RLI", "Right_To_Left_Isolate", muni_bcRli},
+    {"FSI", "First_Strong_Isolate", muni_bcFsi},
+    {"PDI", "Pop_Directional_Isolate", muni_bcPdi},
+};
+
+static const UcdName s_bracketTypes[] = {
+    {"n", "None", muni_bracketNone},
+    {"o", "Open", muni_bracketOpen},
+    {"c", "Close", muni_bracketClose},
+};
+
+static uint8_t s_table[UCD_CODE_POINTS];
+static uint32_t s_wide[UCD_CODE_POINTS];
+
+#define COUNT(array) (sizeof(array) / sizeof((array)[0]))
+
+static void TestEnumeratedPropertiesAgainstTheUcd(void)
+{
+    static const struct
+    {
+        const char* file;
+        const char* property; // the field 0 of the lines that count, if any
+        int field;
+        uint8_t unlisted;
+        const UcdName* names;
+        size_t count;
+        uint8_t (*get)(uint32_t);
+    } properties[] = {
+        {"DerivedGeneralCategory.txt", nullptr, 0, muni_gcCn, s_generalCategories,
+         COUNT(s_generalCategories), GeneralCategory},
+        {"GraphemeBreakProperty.txt", nullptr, 0, muni_gcbOther, s_graphemeBreaks,
+         COUNT(s_graphemeBreaks), GraphemeBreak},
+        {"WordBreakProperty.txt", nullptr, 0, muni_wbOther, s_wordBreaks, COUNT(s_wordBreaks),
+         WordBreak},
+        {"SentenceBreakProperty.txt", nullptr, 0, muni_sbOther, s_sentenceBreaks,
+         COUNT(s_sentenceBreaks), SentenceBreak},
+        {"DerivedCoreProperties.txt", "InCB", 1, muni_incbNone, s_indicConjunctBreaks,
+         COUNT(s_indicConjunctBreaks), IndicConjunctBreak},
+        {"LineBreak.txt", nullptr, 0, muni_lbXx, s_lineBreaks, COUNT(s_lineBreaks), LineBreak},
+        {"EastAsianWidth.txt", nullptr, 0, muni_eawNeutral, s_eastAsianWidths,
+         COUNT(s_eastAsianWidths), EastAsianWidth},
+        {"DerivedBidiClass.txt", nullptr, 0, muni_bcL, s_bidiClasses, COUNT(s_bidiClasses),
+         BidiClass},
+        {"BidiBrackets.txt", nullptr, 1, muni_bracketNone, s_bracketTypes, COUNT(s_bracketTypes),
+         BracketType},
+    };
+    for (size_t i = 0; i < COUNT(properties); i++)
+    {
+        memset(s_table, properties[i].unlisted, sizeof(s_table));
+        bool read = UcdFill(properties[i].file, properties[i].property, properties[i].field,
+                            properties[i].names, properties[i].count, s_table);
+        CHECK(read && UcdCompare(properties[i].file, properties[i].get, s_table) == 0,
+              properties[i].file);
+    }
+}
+
+static void TestBinaryPropertiesAgainstTheUcd(void)
+{
+    static const struct
+    {
+        const char* file;
+        const char* property;
+        bool (*has)(uint32_t);
+    } properties[] = {
+        {"emoji-data.txt", "Extended_Pictographic", muniIsExtendedPictographic},
+        {"emoji-data.txt", "Emoji", muniIsEmoji},
+        {"emoji-data.txt", "Emoji_Presentation", muniIsEmojiPresentation},
+        {"emoji-data.txt", "Emoji_Modifier", muniIsEmojiModifier},
+        {"emoji-data.txt", "Emoji_Modifier_Base", muniIsEmojiModifierBase},
+        {"emoji-data.txt", "Emoji_Component", muniIsEmojiComponent},
+        {"PropList.txt", "White_Space", muniIsWhiteSpace},
+        {"PropList.txt", "Ideographic", muniIsIdeographic},
+        {"DerivedCoreProperties.txt", "Default_Ignorable_Code_Point", muniIsDefaultIgnorable},
+    };
+    for (size_t i = 0; i < COUNT(properties); i++)
+    {
+        memset(s_table, 0, sizeof(s_table));
+        bool read = UcdFillBinary(properties[i].file, properties[i].property, s_table);
+        int failures = 0;
+        for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+        {
+            if ((properties[i].has(c) ? 1 : 0) != s_table[c] && failures++ < 5)
+            {
+                printf("%s of U+%04X differs\n", properties[i].property, (unsigned)c);
+            }
+        }
+        CHECK(read && failures == 0, properties[i].property);
+    }
+}
+
+static uint8_t DecimalDigit(uint32_t codePoint)
+{
+    return (uint8_t)(muniGetDecimalDigitValue(codePoint) + 1);
+}
+
+// The Canonical_Combining_Class and the decimal digit value of
+// UnicodeData.txt, whose ranges are a First and a Last line.
+static void TestUnicodeDataAgainstTheUcd(void)
+{
+    static uint8_t digits[UCD_CODE_POINTS];
+    memset(s_table, 0, sizeof(s_table));
+    memset(digits, 0, sizeof(digits));
+    FILE* file = UcdOpen("UnicodeData.txt");
+    CHECK(file != nullptr, "UnicodeData.txt opens");
+    if (file == nullptr)
+    {
+        return;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    uint32_t first = 0;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        if (UcdEndsWith(line.fields[0], ", First>"))
+        {
+            first = line.first;
+            continue;
+        }
+        bool range = UcdEndsWith(line.fields[0], ", Last>");
+        for (uint32_t c = range ? first : line.first; c <= line.last; c++)
+        {
+            s_table[c] = (uint8_t)atoi(line.fields[2]);
+            digits[c] = line.fields[5][0] != '\0' ? (uint8_t)(atoi(line.fields[5]) + 1) : 0;
+        }
+    }
+    fclose(file);
+    CHECK(UcdCompare("Canonical_Combining_Class", CombiningClass, s_table) == 0,
+          "Canonical_Combining_Class of every code point");
+    CHECK(UcdCompare("the decimal digit value", DecimalDigit, digits) == 0,
+          "decimal digit values of every code point");
+}
+
+static void TestMirroringAgainstTheUcd(void)
+{
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        s_wide[c] = c;
+    }
+    FILE* file = UcdOpen("BidiMirroring.txt");
+    CHECK(file != nullptr, "BidiMirroring.txt opens");
+    if (file == nullptr)
+    {
+        return;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        if (!line.missing && line.count == 1)
+        {
+            s_wide[line.first] = (uint32_t)strtoul(line.fields[0], nullptr, 16);
+        }
+    }
+    fclose(file);
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (muniGetMirroringGlyph(c) != s_wide[c] && failures++ < 5)
+        {
+            printf("Bidi_Mirroring_Glyph of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(failures == 0, "Bidi_Mirroring_Glyph of every code point");
+}
+
+// The scripts of PropertyValueAliases.txt: their short and long names.
+typedef struct ScriptName
+{
+    char shortName[8];
+    char longName[64];
+} ScriptName;
+
+static ScriptName s_scriptNames[512];
+static size_t s_scriptCount;
+
+static bool LoadScriptNames(void)
+{
+    FILE* file = UcdOpen("PropertyValueAliases.txt");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    static char buffer[4096];
+    s_scriptCount = 0;
+    while (fgets(buffer, sizeof(buffer), file) != nullptr && s_scriptCount < COUNT(s_scriptNames))
+    {
+        char shortName[8];
+        char longName[64];
+        if (sscanf(buffer, "sc ; %7s ; %63s", shortName, longName) == 2)
+        {
+            strcpy(s_scriptNames[s_scriptCount].shortName, shortName);
+            strcpy(s_scriptNames[s_scriptCount].longName, longName);
+            s_scriptCount += 1;
+        }
+    }
+    fclose(file);
+    return s_scriptCount > 100;
+}
+
+// The tag of a script named either way, or 0.
+static muniScript ScriptTag(const char* name)
+{
+    for (size_t i = 0; i < s_scriptCount; i++)
+    {
+        const char* tag = s_scriptNames[i].shortName;
+        if (strcmp(tag, name) == 0 || strcmp(s_scriptNames[i].longName, name) == 0)
+        {
+            return MUNI_MAKE_SCRIPT(tag[0], tag[1], tag[2], tag[3]);
+        }
+    }
+    printf("no script named %s\n", name);
+    return 0;
+}
+
+// Whether the extensions of a code point are the scripts given, in any
+// order.
+static bool ExtensionsAre(uint32_t codePoint, const muniScript* scripts, size_t count)
+{
+    muniScript have[MUNI_MAX_SCRIPT_EXTENSIONS];
+    size_t haveCount = 0;
+    if (muniGetScriptExtensions(codePoint, have, COUNT(have), &haveCount) != muni_success ||
+        haveCount != count)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < count; i++)
+    {
+        bool found = false;
+        for (size_t j = 0; j < haveCount; j++)
+        {
+            found = found || have[j] == scripts[i];
+        }
+        if (!found)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void TestScriptsAgainstTheUcd(void)
+{
+    CHECK(LoadScriptNames(), "PropertyValueAliases.txt names the scripts");
+    FILE* file = UcdOpen("Scripts.txt");
+    CHECK(file != nullptr, "Scripts.txt opens");
+    if (file == nullptr)
+    {
+        return;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        s_wide[c] = MUNI_SCRIPT_UNKNOWN;
+    }
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        muniScript tag = ScriptTag(line.fields[0]);
+        for (uint32_t c = line.first; c <= line.last && !line.missing; c++)
+        {
+            s_wide[c] = tag;
+        }
+    }
+    fclose(file);
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (muniGetScript(c) != s_wide[c] && failures++ < 5)
+        {
+            printf("Script of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(failures == 0, "Script of every code point");
+
+    // A code point ScriptExtensions.txt does not list has its Script alone.
+    file = UcdOpen("ScriptExtensions.txt");
+    CHECK(file != nullptr, "ScriptExtensions.txt opens");
+    if (file == nullptr)
+    {
+        return;
+    }
+    memset(s_table, 0, sizeof(s_table));
+    failures = 0;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        if (line.missing)
+        {
+            continue;
+        }
+        muniScript scripts[MUNI_MAX_SCRIPT_EXTENSIONS];
+        size_t count = 0;
+        for (char* name = strtok(line.fields[0], " "); name != nullptr && count < COUNT(scripts);
+             name = strtok(nullptr, " "))
+        {
+            scripts[count++] = ScriptTag(name);
+        }
+        for (uint32_t c = line.first; c <= line.last; c++)
+        {
+            s_table[c] = 1;
+            if (!ExtensionsAre(c, scripts, count) && failures++ < 5)
+            {
+                printf("Script_Extensions of U+%04X differ\n", (unsigned)c);
+            }
+        }
+    }
+    fclose(file);
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (s_table[c] == 0 && !ExtensionsAre(c, &s_wide[c], 1) && failures++ < 5)
+        {
+            printf("Script_Extensions of U+%04X are not its Script\n", (unsigned)c);
+        }
+    }
+    CHECK(failures == 0, "Script_Extensions of every code point");
+}
+#endif
+
 int main(void)
 {
     TestLayoutPropertiesMatchTheUcdEverywhere();
@@ -302,5 +804,12 @@ int main(void)
     TestScriptExtensionsBound();
     TestDecimalDigits();
     TestPastTheLastCodePoint();
+#ifdef MUNI_UCD_DATA
+    TestEnumeratedPropertiesAgainstTheUcd();
+    TestBinaryPropertiesAgainstTheUcd();
+    TestUnicodeDataAgainstTheUcd();
+    TestMirroringAgainstTheUcd();
+    TestScriptsAgainstTheUcd();
+#endif
     return s_failures == 0 ? 0 : 1;
 }

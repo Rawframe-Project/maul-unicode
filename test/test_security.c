@@ -5,12 +5,18 @@
 // of confusables.txt, whose source and prototype must share a skeleton
 // that a second pass leaves alone; the bidi skeleton example of section
 // 4; the resolved script sets of table 1a; restriction levels, mixed
-// numbers and the errors.
+// numbers and the errors; Identifier_Status and the skeleton of every
+// code point against the UCD files.
 
 #include "tables.h"
 #include "test_harness.h"
 
+#include "maul-unicode/normalize.h"
 #include "maul-unicode/security.h"
+
+#ifdef MUNI_UCD_DATA
+#include "ucd.h"
+#endif
 
 #include <stdlib.h>
 #include <string.h>
@@ -610,6 +616,148 @@ static void TestLimitLeavesTheRest(void)
     }
 }
 
+#ifdef MUNI_UCD_DATA
+// Identifier_Status of every code point against IdentifierStatus.txt,
+// read here without the generator; Restricted is its @missing value.
+static void TestIdentifierStatusAgainstTheUcd(void)
+{
+    static const UcdName statuses[] = {{"Restricted", "Restricted", 0}, {"Allowed", "Allowed", 1}};
+    static uint8_t table[UCD_CODE_POINTS];
+    memset(table, 0, sizeof(table));
+    bool read = UcdFill("IdentifierStatus.txt", nullptr, 0, statuses, 2, table);
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if ((muniIsIdentifierAllowed(c) ? 1 : 0) != table[c] && failures++ < 5)
+        {
+            printf("Identifier_Status of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(read && failures == 0, "Identifier_Status of every code point");
+}
+
+// The prototypes of confusables.txt: s_prototypes[c] is 1 more than the
+// offset of c's prototype in s_prototypePool, which ends it with 0, or 0
+// when c has none.
+static uint32_t s_prototypes[UCD_CODE_POINTS];
+static uint32_t s_prototypePool[1u << 16];
+static uint8_t s_ignorable[UCD_CODE_POINTS];
+
+static bool LoadPrototypes(void)
+{
+    memset(s_prototypes, 0, sizeof(s_prototypes));
+    memset(s_ignorable, 0, sizeof(s_ignorable));
+    if (!UcdFillBinary("DerivedCoreProperties.txt", "Default_Ignorable_Code_Point", s_ignorable))
+    {
+        return false;
+    }
+    FILE* file = UcdOpen("confusables.txt");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    size_t used = 0;
+    bool fits = true;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        s_prototypes[line.first] = (uint32_t)used + 1;
+        for (char* item = strtok(line.fields[0], " "); item != nullptr && fits;
+             item = strtok(nullptr, " "))
+        {
+            s_prototypePool[used++] = (uint32_t)strtoul(item, nullptr, 16);
+            fits = used + 1 < sizeof(s_prototypePool) / sizeof(s_prototypePool[0]);
+        }
+        s_prototypePool[used++] = 0;
+    }
+    fclose(file);
+    return fits && used > 10000;
+}
+
+// The NFD of UTF-8 text as code points, through the library's NFD.
+static size_t Decomposed(const char* text, size_t length, uint32_t* codePoints, size_t capacity)
+{
+    char nfd[MAX_TEXT];
+    size_t needed = 0;
+    size_t count = 0;
+    if (muniNormalize(text, length, muni_nfd, muni_convertStrict, nfd, sizeof(nfd), &needed)
+                .status != muni_success ||
+        muniConvertUtf8ToUtf32(nfd, needed, muni_convertStrict, codePoints, capacity, &count)
+                .status != muni_success)
+    {
+        return 0;
+    }
+    return count;
+}
+
+// The skeleton of every code point alone in a left-to-right paragraph
+// against the definition of UTS #39 section 4 over the UCD files: NFD,
+// the default ignorables removed, each code point replaced by its
+// prototype, and NFD again. The library's NFD, which the normalization
+// suite checks against NormalizationTest.txt, does both NFDs.
+static void TestSkeletonsAgainstTheUcd(void)
+{
+    CHECK(LoadPrototypes(), "confusables.txt and DerivedCoreProperties.txt read");
+    int failures = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (c >= 0xD800 && c < 0xE000)
+        {
+            continue;
+        }
+        char text[4];
+        size_t length = 0;
+        (void)muniEncodeUtf8(c, text, sizeof(text), &length);
+        uint32_t decomposed[64];
+        size_t count = Decomposed(text, length, decomposed, 64);
+        uint32_t mapped[256];
+        size_t mappedCount = 0;
+        for (size_t i = 0; i < count; i++)
+        {
+            uint32_t d = decomposed[i];
+            if (s_ignorable[d] != 0)
+            {
+                continue;
+            }
+            if (s_prototypes[d] == 0)
+            {
+                mapped[mappedCount++] = d;
+                continue;
+            }
+            for (const uint32_t* prototype = &s_prototypePool[s_prototypes[d] - 1];
+                 *prototype != 0 && mappedCount < 256; prototype++)
+            {
+                mapped[mappedCount++] = *prototype;
+            }
+        }
+        char joined[MAX_TEXT * 4];
+        size_t joinedSize = 0;
+        char expected[MAX_TEXT * 4];
+        size_t expectedSize = 0;
+        bool computed = muniConvertUtf32ToUtf8(mapped, mappedCount, muni_convertStrict, joined,
+                                               sizeof(joined), &joinedSize)
+                                .status == muni_success &&
+                        muniNormalize(joined, joinedSize, muni_nfd, muni_convertStrict, expected,
+                                      sizeof(expected), &expectedSize)
+                                .status == muni_success;
+        uint8_t workspace[8];
+        char skeleton[MAX_TEXT * 4];
+        size_t skeletonSize = 0;
+        muniTextResult result =
+            muniGetSkeleton(text, length, muni_bidiLeftToRight, workspace, sizeof(workspace),
+                            skeleton, sizeof(skeleton), &skeletonSize);
+        if ((count == 0 || !computed || result.status != muni_success ||
+             skeletonSize != expectedSize || memcmp(skeleton, expected, expectedSize) != 0) &&
+            failures++ < 5)
+        {
+            printf("the skeleton of U+%04X differs\n", (unsigned)c);
+        }
+    }
+    CHECK(failures == 0, "the skeleton of every code point alone matches the UCD");
+}
+#endif
+
 int main(void)
 {
     CHECK(HashSecurity() == muniSecurityHash, "the Security table matches the generator");
@@ -624,5 +772,9 @@ int main(void)
     TestNegativeDirection();
     TestLongIsolateRun();
     TestLimitLeavesTheRest();
+#ifdef MUNI_UCD_DATA
+    TestIdentifierStatusAgainstTheUcd();
+    TestSkeletonsAgainstTheUcd();
+#endif
     return s_failures == 0 ? 0 : 1;
 }

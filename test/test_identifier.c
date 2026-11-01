@@ -2,12 +2,17 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // Identifiers: the table against the generator's hash over every code
-// point, known values, and whole identifiers.
+// point, every code point against the UCD files, known values, and
+// whole identifiers.
 
 #include "tables.h"
 #include "test_harness.h"
 
 #include "maul-unicode/identifier.h"
+
+#ifdef MUNI_UCD_DATA
+#include "ucd.h"
+#endif
 
 #include <string.h>
 
@@ -37,6 +42,40 @@ static void TestTable(void)
     }
 }
 
+#ifdef MUNI_UCD_DATA
+// Every code point against the UCD files, read here without the
+// generator.
+static void TestTableAgainstTheUcd(void)
+{
+    static const struct
+    {
+        const char* file;
+        const char* property;
+        bool (*has)(uint32_t);
+    } properties[] = {
+        {"DerivedCoreProperties.txt", "XID_Start", muniIsIdentifierStart},
+        {"DerivedCoreProperties.txt", "XID_Continue", muniIsIdentifierContinue},
+        {"PropList.txt", "Pattern_Syntax", muniIsPatternSyntax},
+        {"PropList.txt", "Pattern_White_Space", muniIsPatternWhiteSpace},
+    };
+    static uint8_t table[UCD_CODE_POINTS];
+    for (size_t i = 0; i < sizeof(properties) / sizeof(properties[0]); i++)
+    {
+        memset(table, 0, sizeof(table));
+        bool read = UcdFillBinary(properties[i].file, properties[i].property, table);
+        int failures = 0;
+        for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+        {
+            if ((properties[i].has(c) ? 1 : 0) != table[c] && failures++ < 5)
+            {
+                printf("%s of U+%04X differs\n", properties[i].property, (unsigned)c);
+            }
+        }
+        CHECK(read && failures == 0, properties[i].property);
+    }
+}
+#endif
+
 static muniResult Check(const char* text)
 {
     return muniCheckIdentifier(text, strlen(text)).status;
@@ -59,6 +98,9 @@ static void TestIdentifiers(void)
 int main(void)
 {
     TestTable();
+#ifdef MUNI_UCD_DATA
+    TestTableAgainstTheUcd();
+#endif
     TestIdentifiers();
     return s_failures == 0 ? 0 : 1;
 }

@@ -34,4 +34,4 @@ A ceiling only moves with a reason: a new Unicode version that adds data, or a d
 
 - Never edit `src/generated/` by hand; change the generator and regenerate.
 - The hash in a generated file is over the array the generator built, not over the table bytes: a layout change that keeps every value keeps the hash.
-- A table whose values the library combines with a public enumeration (General_Category, Line_Break, Bidi_Class and the others) depends on the generator writing values in the header's order. The known-value checks in `test/test_properties.c` catch a mismatch the hashes cannot, since both sides of a hash come from the generator.
+- A table whose values the library combines with a public enumeration (General_Category, Line_Break, Bidi_Class and the others) depends on the generator writing values in the header's order. Both sides of a hash come from the generator, so a hash cannot catch that, nor a file the generator misread. The suites that read `tools/ucd/` themselves catch both: each compares what the public API gives for every code point with the file, through a table of the value names the file uses.
