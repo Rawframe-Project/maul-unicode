@@ -84,6 +84,8 @@ set(MUNI_SOURCES
     src/grapheme.c
     src/identifier.c
     src/line.c
+    src/line_anywhere.c
+    src/line_tailored.c
     src/properties.c
     src/script_runs.c
     src/segment.c

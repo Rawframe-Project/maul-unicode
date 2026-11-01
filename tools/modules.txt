@@ -18,7 +18,10 @@ grapheme: segmenter tables
 harfbuzz:
 identifier: encoding tables
 invariant:
-line: complex segmenter tables
+line: line_rules segmenter
+line_anywhere: grapheme segmenter tables
+line_rules: complex segmenter tables
+line_tailored: line_rules segmenter
 normalize: decompose encoding normalizer overlap tables writer
 normalizer: decompose tables writer
 overlap:

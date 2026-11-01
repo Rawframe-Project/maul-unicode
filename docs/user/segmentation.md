@@ -43,14 +43,17 @@ if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 
 A layout engine measures the text between opportunities and ends each line at the last opportunity that fits, or at the first mandatory one. Spaces before an opportunity belong to the line before it and are not drawn at its end. `muniFindLineBreaks` fills arrays of offsets and mandatory flags.
 
-Chinese and Japanese text often allows a break before the small kana, the prolonged sound mark and similar characters (Line_Break=CJ), which the default rules keep with the character before them. CSS calls the default strict line breaking, and its normal and loose line breaking allow those breaks. A line iterator takes them as ideographs once the switch is on, before its first break:
+A line iterator breaks at one of the strictness levels of CSS's `line-break` property, set before its first break. Normal, the default, follows UAX #14. Strict breaks less in Chinese and Japanese, and loose breaks more: before the small kana and the prolonged sound mark (Line_Break=CJ), before iteration marks and between characters such as two ellipses, and in Chinese and Japanese also before centered punctuation and around fullwidth prefixes and postfixes. Anywhere breaks between any two grapheme clusters, for text such as long identifiers or URLs that would otherwise overflow. Some of these rules apply only to Chinese and Japanese, so the iterator needs the text's writing system, which the caller knows from its language:
 
 ```c
-if (muniSegmentIterator_EnableCjAsIdeographic(&lines, true) != muni_success)
+if (muniSegmentIterator_SetLineBreakStrictness(&lines, muni_lineBreakLoose) != muni_success ||
+    muniSegmentIterator_SetWritingSystem(&lines, muni_writingChineseJapanese) != muni_success)
 {
     // lines is not a line iterator, or has already started
 }
 ```
+
+The added breaks yield to what UAX #14 glues: a word joiner or no-break space, an opening bracket or quotation mark and what follows it, and the hard breaks, which stay mandatory at every level.
 
 ## Thai, Lao, Khmer and Burmese
 
@@ -98,7 +101,7 @@ The entries are in strictly increasing order of code point, and their values are
 
 ## Text in pieces
 
-An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniSegmentIterator_Feed` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked, or after the last piece, returns `muni_errorState`, since the unread rest of the piece would be lost; so does a setting such as `muniSegmentIterator_EnableCjAsIdeographic` once the iterator was asked for a break.
+An iterator initialized with `moreFollows` set stops with `muni_needMoreText` when the next boundary depends on text it has not seen. `muniSegmentIterator_Feed` then hands it the next piece, which may start in the middle of a UTF-8 sequence. The iterator keeps no pointer to earlier pieces, so a stream can be segmented through a small buffer, and offsets stay relative to the start of the whole text. Feeding before the iterator asked, or after the last piece, returns `muni_errorState`, since the unread rest of the piece would be lost; so does a setting such as `muniSegmentIterator_SetLineBreakStrictness` once the iterator was asked for a break.
 
 ## Not obvious
 

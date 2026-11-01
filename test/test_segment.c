@@ -193,6 +193,102 @@ static void RunConformance(const Kind* kind, int minimumCases)
     CHECK(cases >= minimumCases && failures == 0, "every conformance case");
 }
 
+// Whether the code point at offset is a hard line break, and the one
+// before it is not: the anywhere level keeps a line together there
+// (LB6), but a break after a hard line break stays mandatory (LB4, LB5).
+static bool BeforeHardBreak(const char* text, size_t length, size_t offset)
+{
+    static const char* const hard[] = {"\r",       "\n",           "\v",          "\f",
+                                       "\xC2\x85", "\xE2\x80\xA8", "\xE2\x80\xA9"};
+    bool before = false;
+    bool after = false;
+    for (size_t i = 0; i < sizeof(hard) / sizeof(hard[0]); i++)
+    {
+        size_t size = strlen(hard[i]);
+        before = before || (offset + size <= length && memcmp(text + offset, hard[i], size) == 0);
+        after = after || (offset >= size && memcmp(text + offset - size, hard[i], size) == 0);
+    }
+    return before && !after;
+}
+
+static muniResult InitLines(muniSegmentIterator* iterator, const char* text, size_t length,
+                            bool moreFollows, muniLineBreakStrictness strictness,
+                            muniWritingSystem writingSystem)
+{
+    muniResult status = muniInitLineIterator(iterator, text, length, moreFollows);
+    if (status == muni_success)
+    {
+        status = muniSegmentIterator_SetLineBreakStrictness(iterator, strictness);
+    }
+    return status == muni_success ? muniSegmentIterator_SetWritingSystem(iterator, writingSystem)
+                                  : status;
+}
+
+static muniResult InitStrictLines(muniSegmentIterator* iterator, const char* text, size_t length,
+                                  bool moreFollows)
+{
+    return InitLines(iterator, text, length, moreFollows, muni_lineBreakStrict, muni_writingOther);
+}
+
+static muniResult InitStrictCjkLines(muniSegmentIterator* iterator, const char* text, size_t length,
+                                     bool moreFollows)
+{
+    return InitLines(iterator, text, length, moreFollows, muni_lineBreakStrict,
+                     muni_writingChineseJapanese);
+}
+
+static muniResult InitAnywhereLines(muniSegmentIterator* iterator, const char* text, size_t length,
+                                    bool moreFollows)
+{
+    return InitLines(iterator, text, length, moreFollows, muni_lineBreakAnywhere,
+                     muni_writingOther);
+}
+
+// Every case of GraphemeBreakTest.txt at the anywhere level, whole and fed
+// one byte at a time: its grapheme cluster boundaries but those just
+// before a hard line break that does not follow one.
+static void RunAnywhere(void)
+{
+    static const Kind anywhere = {"GraphemeBreakTest.txt", InitAnywhereLines, FindLines};
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s", MUNI_UCD_DATA, anywhere.file);
+    FILE* file = fopen(path, "r");
+    CHECK(file != nullptr, "GraphemeBreakTest.txt opens");
+    if (file == nullptr)
+    {
+        return;
+    }
+    char line[4096];
+    int cases = 0;
+    int failures = 0;
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        Case c;
+        if (!ParseCase(line, &c))
+        {
+            continue;
+        }
+        size_t kept = 0;
+        for (size_t i = 0; i < c.breakCount; i++)
+        {
+            if (!BeforeHardBreak(c.text, c.length, c.breaks[i]))
+            {
+                c.breaks[kept++] = c.breaks[i];
+            }
+        }
+        c.breakCount = kept;
+        cases += 1;
+        int ok = RunWhole(&anywhere, &c) && RunBytewise(&anywhere, &c);
+        if (!ok && failures++ < 10)
+        {
+            printf("anywhere, GraphemeBreakTest.txt: %s", line);
+        }
+    }
+    fclose(file);
+    printf("anywhere over GraphemeBreakTest.txt: %d cases, %d failures\n", cases, failures);
+    CHECK(cases >= 800 && failures == 0, "the anywhere level breaks at grapheme clusters");
+}
+
 static void TestConformance(void)
 {
     static const Kind grapheme = {"GraphemeBreakTest.txt", muniInitGraphemeIterator,
@@ -205,6 +301,12 @@ static void TestConformance(void)
     RunConformance(&sentence, 500);
     static const Kind line = {"LineBreakTest.txt", muniInitLineIterator, FindLines};
     RunConformance(&line, 19000);
+    // Strict, with any writing system, breaks exactly as the default.
+    static const Kind strict = {"LineBreakTest.txt", InitStrictLines, FindLines};
+    static const Kind strictCjk = {"LineBreakTest.txt", InitStrictCjkLines, FindLines};
+    RunConformance(&strict, 19000);
+    RunConformance(&strictCjk, 19000);
+    RunAnywhere();
 }
 
 static void TestGraphemeEdges(void)
@@ -408,10 +510,14 @@ static size_t ReentrantBreaker(void* context, const char* run, size_t length, si
     ExpectBusy(reentry, muniSegmentIterator_Feed(iterator, "a", 1, false));
     ExpectBusy(reentry, muniSegmentIterator_NextBreak(iterator, &offset));
     reentry->written += offset != 77;
-    if (muniSegmentIterator_EnableCjAsIdeographic(iterator, true) != muni_errorInvalid)
+    if (muniSegmentIterator_SetLineBreakStrictness(iterator, muni_lineBreakLoose) !=
+        muni_errorInvalid)
     {
         // A line iterator: the line calls are busy.
-        ExpectBusy(reentry, muniSegmentIterator_EnableCjAsIdeographic(iterator, true));
+        ExpectBusy(reentry,
+                   muniSegmentIterator_SetLineBreakStrictness(iterator, muni_lineBreakLoose));
+        ExpectBusy(reentry,
+                   muniSegmentIterator_SetWritingSystem(iterator, muni_writingChineseJapanese));
         ExpectBusy(reentry, muniSegmentIterator_NextLineBreak(iterator, &offset, &mandatory));
         reentry->written += offset != 77 || !mandatory;
     }
@@ -685,45 +791,257 @@ static void TestClassOverrideArguments(void)
           "a bad table is invalid in any state");
 }
 
-static void TestCjAsIdeographic(void)
+// The two line settings: their defaults, what each call refuses, and
+// that they hold once the iterator has reported a break.
+static void TestLineSettings(void)
 {
-    // U+3042 HIRAGANA LETTER A (ID), then U+3041 HIRAGANA LETTER SMALL A
-    // and U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK (both CJ).
-    static const char kana[] = "\xE3\x81\x82\xE3\x81\x81\xE3\x83\xBC";
-    size_t offsets[16];
     muniSegmentIterator iterator;
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              CollectBreaks(&iterator, offsets) == 1 && offsets[0] == 9,
-          "by default CJ is NS: no break before the small kana or the mark");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
-          "off in a new line iterator");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
-              muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator) &&
-              CollectBreaks(&iterator, offsets) == 3 && offsets[0] == 3 && offsets[1] == 6 &&
-              offsets[2] == 9,
-          "as ID, a line may break before each");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, false) == muni_success &&
-              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator) &&
-              CollectBreaks(&iterator, offsets) == 1,
-          "switched off again, the default rules");
     size_t offset;
-    CHECK(muniSegmentIterator_EnableCjAsIdeographic(nullptr, true) == muni_errorInvalid &&
-              !muniSegmentIterator_IsCjAsIdeographicEnabled(nullptr),
+    CHECK(muniInitLineIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakNormal &&
+              muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther,
+          "a new line iterator is normal and of another writing system");
+    bool each = true;
+    for (int32_t level = muni_lineBreakNormal; level <= muni_lineBreakAnywhere; level++)
+    {
+        each = each && muniInitLineIterator(&iterator, "a b", 3, false) == muni_success &&
+               muniSegmentIterator_SetLineBreakStrictness(&iterator, level) == muni_success &&
+               muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                   muni_success &&
+               muniSegmentIterator_GetLineBreakStrictness(&iterator) == level &&
+               muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingChineseJapanese;
+    }
+    CHECK(each, "each strictness, with the Chinese or Japanese writing system, reads back");
+    const int32_t strictness[] = {-1, INT32_MIN, muni_lineBreakAnywhere + 1, INT32_MAX};
+    const int32_t writing[] = {-1, INT32_MIN, muni_writingChineseJapanese + 1, INT32_MAX};
+    bool refused = true;
+    for (size_t i = 0; i < sizeof(strictness) / sizeof(strictness[0]); i++)
+    {
+        refused =
+            refused && muniInitLineIterator(&iterator, "a b", 3, false) == muni_success &&
+            muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakLoose) ==
+                muni_success &&
+            muniSegmentIterator_SetLineBreakStrictness(&iterator, strictness[i]) ==
+                muni_errorInvalid &&
+            muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                muni_success &&
+            muniSegmentIterator_SetWritingSystem(&iterator, writing[i]) == muni_errorInvalid &&
+            muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakLoose &&
+            muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingChineseJapanese;
+    }
+    CHECK(refused, "an unknown or negative value refused, and the setting kept");
+    CHECK(muniSegmentIterator_SetLineBreakStrictness(nullptr, muni_lineBreakLoose) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_SetWritingSystem(nullptr, muni_writingChineseJapanese) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_GetLineBreakStrictness(nullptr) == muni_lineBreakNormal &&
+              muniSegmentIterator_GetWritingSystem(nullptr) == muni_writingOther,
           "no iterator");
-    CHECK(muniInitWordIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_errorInvalid &&
-              !muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
-          "word iterators have no such switch");
-    CHECK(muniInitLineIterator(&iterator, kana, 9, false) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success &&
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakLoose) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakNormal &&
+              muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther,
+          "other kinds of iterator have no line settings");
+    CHECK(muniInitLineIterator(&iterator, "a b", 3, false) == muni_success &&
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakLoose) ==
+                  muni_success &&
               muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
-              muniSegmentIterator_EnableCjAsIdeographic(&iterator, false) == muni_errorState &&
-              muniSegmentIterator_IsCjAsIdeographicEnabled(&iterator),
-          "no switching after the first break, and the switch stays on");
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakStrict) ==
+                  muni_errorState &&
+              muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                  muni_errorState &&
+              muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakLoose &&
+              muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther,
+          "no setting after the first break, and the settings stay");
+}
+
+// The line breaks of a text at a strictness and writing system, whole and
+// fed one byte at a time; count is 0 when the two disagree.
+static size_t LineBreaksAt(const char* text, muniLineBreakStrictness strictness,
+                           muniWritingSystem writingSystem, size_t* offsets)
+{
+    size_t length = strlen(text);
+    size_t count = 0;
+    muniSegmentIterator iterator;
+    if (muniInitLineIterator(&iterator, text, length, false) != muni_success ||
+        muniSegmentIterator_SetLineBreakStrictness(&iterator, strictness) != muni_success ||
+        muniSegmentIterator_SetWritingSystem(&iterator, writingSystem) != muni_success)
+    {
+        return 0;
+    }
+    count = CollectBreaks(&iterator, offsets);
+    size_t fed = length > 0 ? 1 : 0;
+    size_t again[16];
+    size_t againCount = 0;
+    if (muniInitLineIterator(&iterator, text, fed, fed < length) != muni_success ||
+        muniSegmentIterator_SetLineBreakStrictness(&iterator, strictness) != muni_success ||
+        muniSegmentIterator_SetWritingSystem(&iterator, writingSystem) != muni_success)
+    {
+        return 0;
+    }
+    for (;;)
+    {
+        size_t offset;
+        muniResult status = muniSegmentIterator_NextBreak(&iterator, &offset);
+        if (status == muni_success && againCount < 16)
+        {
+            again[againCount++] = offset;
+        }
+        else if (status == muni_needMoreText &&
+                 muniSegmentIterator_Feed(&iterator, text + fed, 1, fed + 1 < length) ==
+                     muni_success)
+        {
+            fed += 1;
+        }
+        else
+        {
+            break;
+        }
+    }
+    bool same = againCount == count && memcmp(again, offsets, count * sizeof(size_t)) == 0;
+    return same ? count : 0;
+}
+
+// Whether a text breaks only at its end (first == 0), or before the code
+// point at first and at its end, at a strictness and writing system.
+static bool BreaksAt(const char* text, muniLineBreakStrictness strictness,
+                     muniWritingSystem writingSystem, size_t first)
+{
+    size_t offsets[16];
+    size_t count = LineBreaksAt(text, strictness, writingSystem, offsets);
+    size_t length = strlen(text);
+    return first == 0 ? count == 1 && offsets[0] == length
+                      : count == 2 && offsets[0] == first && offsets[1] == length;
+}
+
+// A tailored break, at each strictness and writing system: whether each
+// of normal, strict, loose (with the writing system other, then Chinese
+// or Japanese) breaks before the code point at first.
+typedef struct Tailoring
+{
+    const char* text;
+    size_t first;
+    bool normalOther, strictOther, looseOther, normalCjk, strictCjk, looseCjk;
+    const char* name;
+} Tailoring;
+
+static void TestStrictnessLevels(void)
+{
+    // あ U+3042 (ID) or 人 U+4EBA (ID) before the code point under test.
+    static const Tailoring cases[] = {
+        {"\xE3\x81\x82\xE3\x80\x9C", 3, false, false, false, true, false, true, "あ U+301C"},
+        {"\xE3\x81\x82\xE3\x82\xA0", 3, false, false, false, true, false, true, "あ U+30A0"},
+        {"\xE3\x81\x82\xE2\x80\x90", 3, false, false, true, false, false, true, "あ U+2010"},
+        {"\xE3\x81\x82\xE2\x80\x93", 3, false, false, true, false, false, true, "あ U+2013"},
+        {"a\xE2\x80\x90", 1, false, false, false, false, false, false, "a U+2010: not after ID"},
+        {"\xE3\x81\x82\xE3\x81\x81", 3, false, false, true, false, false, true, "あ ぁ (CJ)"},
+        {"\xE3\x81\x82\xE3\x83\xBC", 3, false, false, true, false, false, true, "あ ー (CJ)"},
+        {"\xE4\xBA\xBA\xE3\x80\x85", 3, false, false, true, false, false, true, "人 U+3005"},
+        {"\xE4\xBA\xBA\xE3\x80\xBB", 3, false, false, true, false, false, true, "人 U+303B"},
+        {"\xE3\x81\x82\xE3\x82\x9D", 3, false, false, true, false, false, true, "あ U+309D"},
+        {"\xE3\x81\x82\xE3\x82\x9E", 3, false, false, true, false, false, true, "あ U+309E"},
+        {"\xE3\x82\xA2\xE3\x83\xBD", 3, false, false, true, false, false, true, "ア U+30FD"},
+        {"\xE3\x82\xA2\xE3\x83\xBE", 3, false, false, true, false, false, true, "ア U+30FE"},
+        {"\xE2\x80\xA5\xE2\x80\xA6", 3, false, false, true, false, false, true, "U+2025 U+2026"},
+        {"\xE3\x81\x82\xE2\x80\xA6", 3, false, false, false, false, false, false,
+         "あ U+2026: IN only after IN"},
+        {"\xE3\x81\x82\xE3\x83\xBB", 3, false, false, false, false, false, true, "あ U+30FB"},
+        {"\xE3\x81\x82\xEF\xBC\x9A", 3, false, false, false, false, false, true, "あ U+FF1A"},
+        {"\xE3\x81\x82\xEF\xBC\x9B", 3, false, false, false, false, false, true, "あ U+FF1B"},
+        {"\xE3\x81\x82\xEF\xBD\xA5", 3, false, false, false, false, false, true, "あ U+FF65"},
+        {"\xE3\x81\x82\xE2\x80\xBC", 3, false, false, false, false, false, true, "あ U+203C"},
+        {"\xE3\x81\x82\xE2\x81\x87", 3, false, false, false, false, false, true, "あ U+2047"},
+        {"\xE3\x81\x82\xE2\x81\x88", 3, false, false, false, false, false, true, "あ U+2048"},
+        {"\xE3\x81\x82\xE2\x81\x89", 3, false, false, false, false, false, true, "あ U+2049"},
+        {"\xE3\x81\x82\xEF\xBC\x81", 3, false, false, false, false, false, true, "あ U+FF01"},
+        {"\xE3\x81\x82\xEF\xBC\x9F", 3, false, false, false, false, false, true, "あ U+FF1F"},
+        {"\xE3\x81\x82\xEF\xBC\x85", 3, false, false, false, false, false, true,
+         "あ ％: a wide postfix"},
+        {"1%", 0, false, false, false, false, false, false, "1%: a narrow postfix"},
+        {"\xEF\xBF\xA5\xE3\x81\x82", 3, false, false, false, false, false, true,
+         "￥ あ: after a wide prefix"},
+        {"$\xE3\x81\x82", 0, false, false, false, false, false, false, "$ あ: a narrow prefix"},
+        {"\xEF\xBF\xA5\xEF\xBC\x89", 0, false, false, false, false, false, false,
+         "￥ ）: LB13 after a prefix"},
+        {"\xEF\xBC\x88\xE3\x80\x9C", 0, false, false, false, false, false, false,
+         "（ U+301C: LB14 keeps an opening bracket"},
+        {"\xE2\x80\x9C\xE3\x80\x9C", 0, false, false, false, false, false, false,
+         "“ U+301C: LB15a keeps an initial quotation mark"},
+        {"\xE3\x81\x82\xE2\x81\xA0\xE3\x80\x9C", 0, false, false, false, false, false, false,
+         "あ WJ U+301C: LB11 keeps the word joiner"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        const Tailoring* c = &cases[i];
+        size_t at = c->first;
+        bool ok =
+            BreaksAt(c->text, muni_lineBreakNormal, muni_writingOther, c->normalOther ? at : 0) &&
+            BreaksAt(c->text, muni_lineBreakStrict, muni_writingOther, c->strictOther ? at : 0) &&
+            BreaksAt(c->text, muni_lineBreakLoose, muni_writingOther, c->looseOther ? at : 0) &&
+            BreaksAt(c->text, muni_lineBreakNormal, muni_writingChineseJapanese,
+                     c->normalCjk ? at : 0) &&
+            BreaksAt(c->text, muni_lineBreakStrict, muni_writingChineseJapanese,
+                     c->strictCjk ? at : 0) &&
+            BreaksAt(c->text, muni_lineBreakLoose, muni_writingChineseJapanese,
+                     c->looseCjk ? at : 0);
+        CHECK(ok, c->name);
+    }
+}
+
+// The anywhere level breaks between any two grapheme clusters, but not
+// just before a hard line break, which stays mandatory.
+static void TestAnywhere(void)
+{
+    static const struct
+    {
+        const char* text;
+        size_t breaks[8];
+        size_t count;
+        const char* name;
+    } cases[] = {
+        {"ab", {1, 2}, 2, "between letters"},
+        {"a b", {1, 2, 3}, 3, "around a space"},
+        {"e\xCC\x81x", {3, 4}, 2, "not before a combining mark"},
+        {"a\xE2\x81\xA0"
+         "b",
+         {1, 4, 5},
+         3,
+         "around a word joiner"},
+        {"a\xC2\xA0"
+         "b",
+         {1, 3, 4},
+         3,
+         "around a no-break space"},
+        {"\xF0\x9F\x87\xAF\xF0\x9F\x87\xB5\xF0\x9F\x87\xBA\xF0\x9F\x87\xB8",
+         {8, 16},
+         2,
+         "between flags, not inside one"},
+        {"a\nb", {2, 3}, 2, "not before a line feed"},
+        {"a\r\nb", {3, 4}, 2, "not inside CR LF"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        size_t offsets[16];
+        size_t count =
+            LineBreaksAt(cases[i].text, muni_lineBreakAnywhere, muni_writingOther, offsets);
+        CHECK(count == cases[i].count &&
+                  memcmp(offsets, cases[i].breaks, count * sizeof(size_t)) == 0,
+              cases[i].name);
+    }
+    muniSegmentIterator iterator;
+    size_t offset = 0;
+    bool mandatory = false;
+    CHECK(muniInitLineIterator(&iterator, "a\nb", 3, false) == muni_success &&
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakAnywhere) ==
+                  muni_success &&
+              muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) == muni_success &&
+              offset == 2 && mandatory &&
+              muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) == muni_success &&
+              offset == 3 && mandatory,
+          "a line feed stays a mandatory break");
 }
 
 // Every segment call refuses a NULL iterator, output or text with a
@@ -845,7 +1163,9 @@ int main(void)
     TestClassOverrides();
     TestClassOverrideArguments();
     TestNegativeClasses();
-    TestCjAsIdeographic();
+    TestLineSettings();
+    TestStrictnessLevels();
+    TestAnywhere();
     TestInvalidArguments();
     TestFeedingRules();
     return s_failures == 0 ? 0 : 1;
