@@ -52,6 +52,61 @@ extern "C"
     typedef size_t (*muniComplexBreakFunction)(void* context, const char* run, size_t length,
                                                size_t from);
 
+    // How strictly a line iterator keeps text together: the levels of the
+    // CSS line-break property (CSS Text 3, section 5.2). Normal, strict
+    // and loose follow UAX #14 with the breaks CSS allows at each level
+    // added; anywhere breaks between any two grapheme clusters. An added
+    // break never splits what UAX #14 glues: a word joiner or no-break
+    // space and its neighbors, an opening punctuation or quotation mark
+    // and what follows, and a closing punctuation after a prefix.
+    typedef int32_t muniLineBreakStrictness;
+
+    enum
+    {
+        // The rules of UAX #14, with Line_Break=CJ resolved as NS. With
+        // the Chinese or Japanese writing system, a line may also break
+        // before U+301C and U+30A0. CSS Text 3 in its Candidate
+        // Recommendation Draft of 14 August 2026, section 5.2
+        // (https://www.w3.org/TR/css-text-3/#line-break-property; the
+        // dated draft is linked from docs/internals/segmentation.md),
+        // says: "The following breaks are forbidden for normal and strict
+        // line breaking and allowed in loose: breaks before Japanese
+        // small kana or the Katakana-Hiragana prolonged sound mark, i.e.
+        // characters from the Unicode line breaking class CJ." ICU4C's
+        // normal rules and earlier CSS drafts allow those breaks in
+        // normal; here only loose does.
+        muni_lineBreakNormal = 0,
+        // As normal, without the breaks before U+301C and U+30A0.
+        muni_lineBreakStrict = 1,
+        // As normal, with CJ (small kana and the prolonged sound mark)
+        // resolved as ID, and breaks before U+2010 and U+2013 after an
+        // ideograph, before the iteration marks U+3005, U+303B, U+309D,
+        // U+309E, U+30FD and U+30FE, and between two inseparable
+        // characters (Line_Break=IN). With the Chinese or Japanese
+        // writing system, also before the centered punctuation U+30FB,
+        // U+FF1A, U+FF1B, U+FF65, U+203C, U+2047, U+2048, U+2049, U+FF01
+        // and U+FF1F, before a postfix (PO) and after a prefix (PR) whose
+        // East_Asian_Width is Ambiguous, Fullwidth or Wide.
+        muni_lineBreakLoose = 2,
+        // A break between any two grapheme clusters, whatever the rules
+        // of UAX #14 say, but not just before a hard line break; hard
+        // line breaks stay mandatory.
+        muni_lineBreakAnywhere = 3,
+    };
+
+    // The writing system of the text a line iterator breaks, for the
+    // rules of muniLineBreakStrictness that CSS applies to Chinese and
+    // Japanese only. The caller knows it from the text's language.
+    typedef int32_t muniWritingSystem;
+
+    enum
+    {
+        // Any writing system but Chinese and Japanese, or unknown.
+        muni_writingOther = 0,
+        // Chinese or Japanese.
+        muni_writingChineseJapanese = 1,
+    };
+
     /// Starts an iterator over the grapheme cluster boundaries of a UTF-8 text or
     /// its first piece.
     ///
@@ -193,34 +248,59 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_SetBreakClassOverrides(
         muniSegmentIterator* iterator, const muniBreakClassOverride* overrides, size_t count);
 
-    /// Switches whether a line iterator resolves Line_Break=CJ, such as
-    /// the small kana and the prolonged sound mark, as ID instead of NS
-    /// (rule LB1), so a line may break before them, as CSS's normal and
-    /// loose line breaking do for Chinese and Japanese. It is off in a new
-    /// iterator, which then follows the default rules of UAX #14.
+    /// Sets how strictly a line iterator keeps text together. A new
+    /// iterator is muni_lineBreakNormal.
     ///
-    /// @param iterator  A line iterator not yet asked for a break.
-    /// @param enable    true to resolve CJ as ID, false to resolve it as NS.
+    /// @param iterator    A line iterator not yet asked for a break.
+    /// @param strictness  One of the muni_lineBreak values.
     /// @return `muni_success`; `muni_errorState` for an iterator already
     ///         asked for a break; `muni_errorBusy` when called from inside
     ///         the iterator's word segmenter; `muni_errorInvalid` for a NULL
-    ///         iterator or another kind of iterator. `muni_errorInvalid` is
-    ///         reported before `muni_errorBusy`, and that before
-    ///         `muni_errorState`.
+    ///         iterator, another kind of iterator or an unknown strictness.
+    ///         `muni_errorInvalid` is reported before `muni_errorBusy`, and
+    ///         that before `muni_errorState`.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_NODISCARD MUNI_API muniResult
-    muniSegmentIterator_EnableCjAsIdeographic(muniSegmentIterator* iterator, bool enable);
+    MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_SetLineBreakStrictness(
+        muniSegmentIterator* iterator, muniLineBreakStrictness strictness);
 
-    /// Whether a line iterator resolves Line_Break=CJ as ID.
+    /// Returns how strictly a line iterator keeps text together.
     ///
     /// @param iterator  The iterator.
-    /// @return true when muniSegmentIterator_EnableCjAsIdeographic switched
-    ///         it on; false otherwise, and for a NULL iterator or another
-    ///         kind of iterator.
+    /// @return The strictness muniSegmentIterator_SetLineBreakStrictness
+    ///         set, muni_lineBreakNormal when none was set, and for a NULL
+    ///         iterator or another kind of iterator.
     /// @par Thread safety
     /// Safe from any thread; an iterator is used by one thread at a time.
-    MUNI_API bool muniSegmentIterator_IsCjAsIdeographicEnabled(const muniSegmentIterator* iterator);
+    MUNI_API muniLineBreakStrictness
+    muniSegmentIterator_GetLineBreakStrictness(const muniSegmentIterator* iterator);
+
+    /// Sets the writing system of the text a line iterator breaks. A new
+    /// iterator is muni_writingOther.
+    ///
+    /// @param iterator       A line iterator not yet asked for a break.
+    /// @param writingSystem  One of the muni_writing values.
+    /// @return `muni_success`; `muni_errorState` for an iterator already
+    ///         asked for a break; `muni_errorBusy` when called from inside
+    ///         the iterator's word segmenter; `muni_errorInvalid` for a NULL
+    ///         iterator, another kind of iterator or an unknown writing
+    ///         system. `muni_errorInvalid` is reported before
+    ///         `muni_errorBusy`, and that before `muni_errorState`.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_SetWritingSystem(
+        muniSegmentIterator* iterator, muniWritingSystem writingSystem);
+
+    /// Returns the writing system of the text a line iterator breaks.
+    ///
+    /// @param iterator  The iterator.
+    /// @return The writing system muniSegmentIterator_SetWritingSystem set,
+    ///         muni_writingOther when none was set, and for a NULL iterator
+    ///         or another kind of iterator.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_API muniWritingSystem
+    muniSegmentIterator_GetWritingSystem(const muniSegmentIterator* iterator);
 
     /// Hands an iterator the next piece of its text, after it returned
     /// muni_needMoreText. The iterator keeps no pointer to earlier pieces.

@@ -165,9 +165,13 @@ muniResult muniSegmentIterator_SetBreakClassOverrides(muniSegmentIterator* itera
     return muni_success;
 }
 
-muniResult muniSegmentIterator_EnableCjAsIdeographic(muniSegmentIterator* iterator, bool enable)
+// Stores a line iterator's settings, after the checks every line
+// setting makes: value from 0 to last, a line iterator, not busy, not
+// started.
+static muniResult SetLineSettings(muniSegmentIterator* iterator, int32_t value, int32_t last,
+                                  uint8_t mask, uint8_t settings)
 {
-    if (iterator == nullptr)
+    if (iterator == nullptr || value < 0 || value > last)
     {
         return muni_errorInvalid;
     }
@@ -184,19 +188,46 @@ muniResult muniSegmentIterator_EnableCjAsIdeographic(muniSegmentIterator* iterat
     {
         return muni_errorState;
     }
-    segmenter.cjAsIdeographic = enable;
+    segmenter.lineSettings = (uint8_t)((segmenter.lineSettings & ~mask) | settings);
     Store(iterator, &segmenter);
     return muni_success;
 }
 
-bool muniSegmentIterator_IsCjAsIdeographicEnabled(const muniSegmentIterator* iterator)
+muniResult muniSegmentIterator_SetLineBreakStrictness(muniSegmentIterator* iterator,
+                                                      muniLineBreakStrictness strictness)
+{
+    return SetLineSettings(iterator, strictness, muni_lineBreakAnywhere, 3u,
+                           (uint8_t)(strictness & 3));
+}
+
+muniLineBreakStrictness
+muniSegmentIterator_GetLineBreakStrictness(const muniSegmentIterator* iterator)
 {
     if (iterator == nullptr)
     {
-        return false;
+        return muni_lineBreakNormal;
     }
     muniSegmenter segmenter = Load(iterator);
-    return segmenter.kind == muni_segmentLine && segmenter.cjAsIdeographic;
+    return segmenter.kind == muni_segmentLine ? muniLineStrictness(&segmenter)
+                                              : muni_lineBreakNormal;
+}
+
+muniResult muniSegmentIterator_SetWritingSystem(muniSegmentIterator* iterator,
+                                                muniWritingSystem writingSystem)
+{
+    return SetLineSettings(iterator, writingSystem, muni_writingChineseJapanese, 4u,
+                           (uint8_t)((writingSystem & 1) << 2));
+}
+
+muniWritingSystem muniSegmentIterator_GetWritingSystem(const muniSegmentIterator* iterator)
+{
+    if (iterator == nullptr)
+    {
+        return muni_writingOther;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    return segmenter.kind == muni_segmentLine ? muniLineWritingSystem(&segmenter)
+                                              : muni_writingOther;
 }
 
 muniResult muniSegmentIterator_Feed(muniSegmentIterator* iterator, const char* text, size_t length,
@@ -232,7 +263,14 @@ static muniResult Next(muniSegmenter* segmenter, size_t* offsetOut)
     case muni_segmentSentence:
         return muniNextSentenceSegment(segmenter, offsetOut);
     case muni_segmentLine:
-        return muniNextLineSegment(segmenter, offsetOut);
+        // The default settings are 0: the default rules test no setting.
+        if (segmenter->lineSettings == 0)
+        {
+            return muniNextLineSegment(segmenter, offsetOut);
+        }
+        return muniLineStrictness(segmenter) == muni_lineBreakAnywhere
+                   ? muniNextLineAnywhereSegment(segmenter, offsetOut)
+                   : muniNextLineTailoredSegment(segmenter, offsetOut);
     default:
         return muni_errorInvalid;
     }

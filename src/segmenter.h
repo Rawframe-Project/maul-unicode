@@ -87,16 +87,25 @@ typedef struct muniSentenceRules
 
 typedef struct muniLineRules
 {
-    uint32_t previousCodePoint; // the code point behind previous
-    uint32_t beforeCodePoint;   // the code point behind before
-    uint8_t actual;             // the previous code point's class after LB1
-    uint8_t previous;           // the previous class after LB9 and LB10
-    uint8_t before;             // the one before that
-    uint8_t lead;               // the last class other than SP
-    uint8_t number;             // where an LB25 number stands
-    bool leadInitialQuote;      // lead is an LB15a initial quotation mark
-    bool sawInfix;              // an LB25 hold has read "OP IS"
-    bool oddRegional;           // an odd number of regional indicators precedes
+    union
+    {
+        struct
+        {
+            uint32_t previousCodePoint; // the code point behind previous
+            uint32_t beforeCodePoint;   // the code point behind before
+        };
+        // muni_lineBreakAnywhere reads only actual and these, and breaks
+        // at grapheme cluster boundaries.
+        muniGraphemeRules grapheme;
+    };
+    uint8_t actual;        // the previous code point's class after LB1
+    uint8_t previous;      // the previous class after LB9 and LB10
+    uint8_t before;        // the one before that
+    uint8_t lead;          // the last class other than SP
+    uint8_t number;        // where an LB25 number stands
+    bool leadInitialQuote; // lead is an LB15a initial quotation mark
+    bool sawInfix;         // an LB25 hold has read "OP IS"
+    bool oddRegional;      // an odd number of regional indicators precedes
 } muniLineRules;
 
 // A run of Thai, Lao, Khmer or Burmese (Line_Break=SA) that a caller's
@@ -123,7 +132,7 @@ typedef struct muniSegmenter
     uint8_t phase;        // a muni_phase value
     bool mandatory;       // the last boundary reported must be taken
     uint8_t holdKind;     // the kind of the open hold
-    bool cjAsIdeographic; // a line iterator resolves CJ as ID
+    uint8_t lineSettings; // a line iterator's strictness, and its writing system << 2
 
     union
     {
@@ -140,6 +149,18 @@ typedef struct muniSegmenter
 
 static_assert(sizeof(muniSegmenter) <= sizeof(muniSegmentIterator),
               "the public iterator must hold the segmenter");
+
+// The parts of lineSettings: a muni_lineBreak value in the low two bits,
+// a muni_writing value in the third.
+static inline uint8_t muniLineStrictness(const muniSegmenter* segmenter)
+{
+    return segmenter->lineSettings & 3u;
+}
+
+static inline uint8_t muniLineWritingSystem(const muniSegmenter* segmenter)
+{
+    return (uint8_t)(segmenter->lineSettings >> 2 & 1u);
+}
 
 // The rules as functions of the segmenter and the next code point: its
 // property value from lookup, the decision about the boundary before it,
@@ -262,10 +283,13 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
 }
 
 // The engine's entry for each rule set, defined in grapheme.c, word.c,
-// sentence.c and line.c.
+// sentence.c, line.c for a line iterator's default settings, and
+// line_tailored.c and line_anywhere.c for the others.
 muniResult muniNextGraphemeSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextWordSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut);
+muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetOut);
+muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut);
 
 #endif // MAUL_UNICODE_SRC_SEGMENTER_H

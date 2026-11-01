@@ -114,14 +114,15 @@ static size_t BreakThai(void* context, const char* run, size_t length, size_t fr
     return FindWordBreak(dictionary, run, length, from);
 }
 
-static void GuideCjAsIdeographic(void)
+static void GuideLineBreakStrictness(void)
 {
     // U+3042, then U+3041 HIRAGANA LETTER SMALL A (Line_Break=CJ).
     const char text[] = "\xE3\x81\x82\xE3\x81\x81";
     muniSegmentIterator lines;
     CHECK(muniInitLineIterator(&lines, text, sizeof(text) - 1, false) == muni_success,
           "a line iterator");
-    if (muniSegmentIterator_EnableCjAsIdeographic(&lines, true) != muni_success)
+    if (muniSegmentIterator_SetLineBreakStrictness(&lines, muni_lineBreakLoose) != muni_success ||
+        muniSegmentIterator_SetWritingSystem(&lines, muni_writingChineseJapanese) != muni_success)
     {
         // lines is not a line iterator, or has already started
     }
@@ -227,7 +228,7 @@ int main(void)
     GuideValidate();
     GuideGraphemes();
     GuideLines();
-    GuideCjAsIdeographic();
+    GuideLineBreakStrictness();
     GuideComplexBreaker();
     GuideLanguageConventions();
     GuideBidi();

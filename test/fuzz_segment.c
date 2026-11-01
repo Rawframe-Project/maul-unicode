@@ -7,7 +7,10 @@
 // strictly, fall on code point starts and end at the length of the text.
 // Word and sentence iterators are also run with class overrides for some
 // of the text's own code points, each given a class the input picks, and
-// line iterators with CJ resolved as ID. Line breaks must be mandatory
+// line iterators at the strictness and writing system the input picks;
+// strict breaks must be a subset of normal ones, and anywhere must break
+// at every grapheme cluster boundary but one just before a hard line
+// break that does not follow one. Line breaks must be mandatory
 // exactly at the end and after BK, CR, LF and NL, and muniSegmentIterator_NextLineBreak fed
 // in pieces must give the breaks and flags muniFindLineBreaks gives.
 // Word and sentence boundaries need not be grapheme boundaries: the
@@ -54,8 +57,15 @@ static muniResult FindLines(const char* text, size_t length, size_t* offsets, si
     return muniFindLineBreaks(text, length, offsets, nullptr, capacity, countOut);
 }
 
+// A line iterator's settings; Chunked leaves the defaults for NULL.
+typedef struct LineSettings
+{
+    muniLineBreakStrictness strictness;
+    muniWritingSystem writingSystem;
+} LineSettings;
+
 static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size_t overrideCount,
-                      bool cjAsIdeographic, const char* text, size_t length, size_t piece,
+                      const LineSettings* line, const char* text, size_t length, size_t piece,
                       size_t* breaks)
 {
     size_t fed = piece < length ? piece : length;
@@ -66,9 +76,12 @@ static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size
         Require(muniSegmentIterator_SetBreakClassOverrides(&iterator, overrides, overrideCount) ==
                 muni_success);
     }
-    if (cjAsIdeographic)
+    if (line != nullptr)
     {
-        Require(muniSegmentIterator_EnableCjAsIdeographic(&iterator, true) == muni_success);
+        Require(muniSegmentIterator_SetLineBreakStrictness(&iterator, line->strictness) ==
+                    muni_success &&
+                muniSegmentIterator_SetWritingSystem(&iterator, line->writingSystem) ==
+                    muni_success);
     }
     size_t count = 0;
     for (;;)
@@ -156,21 +169,77 @@ static size_t BuildOverrides(const char* text, size_t length, uint8_t classCount
     return count;
 }
 
-// With CJ as ID: the line breaks fed in pieces equal the whole text's,
-// rise, fall on code point starts and end at the length.
-static void CheckCjAsIdeographic(const char* text, size_t length, size_t piece)
+// Whether the code point at offset is a hard line break, and the one
+// before it is not: the anywhere level keeps a line together there
+// (LB6), but a break after a hard line break stays mandatory (LB4, LB5).
+static bool BeforeHardBreak(const char* text, size_t length, size_t offset)
+{
+    static const char* const hard[] = {"\r",       "\n",           "\v",          "\f",
+                                       "\xC2\x85", "\xE2\x80\xA8", "\xE2\x80\xA9"};
+    bool before = false;
+    bool after = false;
+    for (size_t i = 0; i < sizeof(hard) / sizeof(hard[0]); i++)
+    {
+        size_t size = strlen(hard[i]);
+        before = before || (offset + size <= length && memcmp(text + offset, hard[i], size) == 0);
+        after = after || (offset >= size && memcmp(text + offset - size, hard[i], size) == 0);
+    }
+    return before && !after;
+}
+
+// At the strictness and writing system the input picks: the line breaks
+// fed in pieces equal the whole text's, rise, fall on code point starts
+// and end at the length. Strict breaks are among the normal ones, and
+// anywhere breaks are the grapheme cluster boundaries but those just
+// before a hard line break that does not follow one.
+static void CheckLineSettings(const char* text, size_t length, size_t piece, uint8_t pick)
 {
     static size_t whole[MAX_BREAKS];
     static size_t pieces[MAX_BREAKS];
-    size_t count = Chunked(muniInitLineIterator, nullptr, 0, true, text, length, length, whole);
+    static size_t other[MAX_BREAKS];
+    LineSettings line = {pick >> 6, pick >> 3 & 1};
+    size_t count = Chunked(muniInitLineIterator, nullptr, 0, &line, text, length, length, whole);
     Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
     for (size_t i = 0; i < count; i++)
     {
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(muniInitLineIterator, nullptr, 0, true, text, length, piece, pieces) == count);
+    Require(Chunked(muniInitLineIterator, nullptr, 0, &line, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+
+    LineSettings strict = {muni_lineBreakStrict, line.writingSystem};
+    LineSettings normal = {muni_lineBreakNormal, line.writingSystem};
+    size_t strictCount =
+        Chunked(muniInitLineIterator, nullptr, 0, &strict, text, length, length, other);
+    size_t normalCount =
+        Chunked(muniInitLineIterator, nullptr, 0, &normal, text, length, length, pieces);
+    size_t k = 0;
+    for (size_t i = 0; i < strictCount; i++)
+    {
+        while (k < normalCount && pieces[k] < other[i])
+        {
+            k++;
+        }
+        Require(k < normalCount && pieces[k] == other[i]);
+    }
+
+    if (line.strictness == muni_lineBreakAnywhere)
+    {
+        size_t graphemeCount = 0;
+        Require(muniFindGraphemeBreaks(text, length, other, MAX_BREAKS, &graphemeCount) ==
+                muni_success);
+        size_t kept = 0;
+        for (size_t i = 0; i < graphemeCount; i++)
+        {
+            if (!BeforeHardBreak(text, length, other[i]))
+            {
+                Require(kept < count && whole[kept] == other[i]);
+                kept++;
+            }
+        }
+        Require(kept == count);
+    }
 }
 
 // The mandatory flags follow segment.h's rule, worked out here from the
@@ -263,14 +332,14 @@ static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const 
     {
         return;
     }
-    size_t count = Chunked(init, overrides, overrideCount, false, text, length, length, whole);
+    size_t count = Chunked(init, overrides, overrideCount, nullptr, text, length, length, whole);
     Require(length == 0 ? count == 0 : count > 0 && whole[count - 1] == length);
     for (size_t i = 0; i < count; i++)
     {
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(init, overrides, overrideCount, false, text, length, piece, pieces) == count);
+    Require(Chunked(init, overrides, overrideCount, nullptr, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
@@ -286,6 +355,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     {
         return 0;
     }
+    // Bits 4 and 5 pick the kind and bits 0 to 2 the piece size; for a
+    // line iterator, bits 6 and 7 pick the strictness and bit 3 the
+    // writing system.
     size_t kind = (size_t)(data[0] >> 4) % 4;
     size_t piece = (size_t)(data[0] % 8) + 1;
     const char* text = (const char*)data + 1;
@@ -300,7 +372,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         Require(i == 0 ? whole[i] > 0 : whole[i] > whole[i - 1]);
         Require(StartsCodePoint(text, length, whole[i]));
     }
-    Require(Chunked(inits[kind], nullptr, 0, false, text, length, piece, pieces) == count);
+    Require(Chunked(inits[kind], nullptr, 0, nullptr, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
     if (kind == 1 || kind == 3)
     {
@@ -308,7 +380,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     if (kind == 3)
     {
-        CheckCjAsIdeographic(text, length, piece);
+        CheckLineSettings(text, length, piece, data[0]);
         CheckMandatory(text, length, piece);
     }
     if (kind == 1 || kind == 2)
