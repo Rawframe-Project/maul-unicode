@@ -201,6 +201,9 @@ static void TestErrorKinds(void)
     CHECK(result.status == muni_errorUtf8Truncated && result.offset == 6, "offset of the error");
     CHECK(muniValidateUtf8(nullptr, 0).status == muni_success, "empty text");
     CHECK(muniValidateUtf8(nullptr, 1).status == muni_errorInvalid, "NULL with a length");
+    CHECK(muniValidateUtf16(nullptr, 0).status == muni_success, "empty UTF-16");
+    result = muniValidateUtf16(nullptr, 1);
+    CHECK(result.status == muni_errorInvalid && result.offset == 0, "NULL units with a length");
 }
 
 // Each conversion refuses a NULL input with a nonzero length and leaves
@@ -235,6 +238,30 @@ static void TestConversionArguments(void)
     result = muniConvertUtf8ToUtf32("a", 1, muni_convertStrict, nullptr, 2, &needed);
     CHECK(result.status == muni_errorInvalid && needed == 7,
           "UTF-8 to UTF-32: no output with a capacity");
+}
+
+// muniDecodeUtf8 refuses no text, a length of 0 and a NULL output, and
+// leaves both outputs as they were.
+static void TestDecodeArguments(void)
+{
+    uint32_t codePoint = 7;
+    size_t size = 7;
+    CHECK(muniDecodeUtf8(nullptr, 1, &codePoint, &size) == muni_errorInvalid && codePoint == 7 &&
+              size == 7,
+          "no text with a length");
+    CHECK(muniDecodeUtf8("a", 0, &codePoint, &size) == muni_errorInvalid && codePoint == 7 &&
+              size == 7,
+          "a length of 0");
+    CHECK(muniDecodeUtf8(nullptr, 0, &codePoint, &size) == muni_errorInvalid && codePoint == 7 &&
+              size == 7,
+          "no text and a length of 0");
+    CHECK(muniDecodeUtf8("a", 1, nullptr, &size) == muni_errorInvalid && size == 7,
+          "no code point out");
+    CHECK(muniDecodeUtf8("a", 1, &codePoint, nullptr) == muni_errorInvalid && codePoint == 7,
+          "no size out");
+    CHECK(muniDecodeUtf8("a", 1, &codePoint, &size) == muni_success && codePoint == 'a' &&
+              size == 1,
+          "the same call with every argument decodes");
 }
 
 static void TestReplacementFollowsTheStandard(void)
@@ -666,6 +693,7 @@ int main(void)
     TestMaximalSubpartsMatchTheReference();
     TestErrorKinds();
     TestConversionArguments();
+    TestDecodeArguments();
     TestReplacementFollowsTheStandard();
     TestConversionsRoundTrip();
     TestUtf32Values();
