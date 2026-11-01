@@ -229,6 +229,20 @@ static void TestLimitsAndErrors(void)
     CHECK(muniComposePair('e', 0x0301) == 0x00E9, "e and acute compose");
     CHECK(muniComposePair(0x1100, 0x1161) == 0xAC00, "Hangul L and V compose");
     CHECK(muniComposePair(0x0915, 0x093C) == 0, "U+0958 is excluded from composition");
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t past = i == 0 ? 0x110000 : UINT32_MAX;
+        first = 1;
+        second = 1;
+        count = 9;
+        CHECK(muniDecomposePair(past, &first, &second, &count) == muni_success && count == 0 &&
+                  first == 0 && second == 0,
+              "past U+10FFFF does not decompose");
+        CHECK(muniComposePair(past, 0x0301) == 0 && muniComposePair('e', past) == 0 &&
+                  muniComposePair(0x1100, past) == 0 && muniComposePair(0xAC00, past) == 0 &&
+                  muniComposePair(past, 0x1161) == 0,
+              "past U+10FFFF composes with nothing, Hangul included");
+    }
 }
 
 // An output that overlaps the text, on either side, is refused and

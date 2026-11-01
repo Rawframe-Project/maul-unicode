@@ -28,6 +28,13 @@ static void TestTable(void)
     CHECK(muniIsPatternSyntax('+') && !muniIsPatternSyntax('a'), "+ is syntax");
     CHECK(muniIsPatternWhiteSpace(' ') && muniIsPatternWhiteSpace(0x2029), "white space");
     CHECK(!muniIsPatternWhiteSpace(0x00A0), "no-break space is not pattern white space");
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t past = i == 0 ? 0x110000 : UINT32_MAX;
+        CHECK(!muniIsIdentifierStart(past) && !muniIsIdentifierContinue(past) &&
+                  !muniIsPatternSyntax(past) && !muniIsPatternWhiteSpace(past),
+              "past U+10FFFF has no identifier property");
+    }
 }
 
 static muniResult Check(const char* text)

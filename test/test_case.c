@@ -40,7 +40,14 @@ static void TestSimple(void)
     CHECK(muniFoldCase(0x03C2) == 0x03C3, "final sigma folds to sigma");
     CHECK(muniGetLowercase(0x10400) == 0x10428, "Deseret, outside the BMP");
     CHECK(muniIsCased('a') && !muniIsCased('1'), "cased");
-    CHECK(muniGetLowercase(0x110000) == 0x110000, "past U+10FFFF");
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t past = i == 0 ? 0x110000 : UINT32_MAX;
+        CHECK(muniGetLowercase(past) == past && muniGetUppercase(past) == past &&
+                  muniGetTitlecase(past) == past && muniFoldCase(past) == past &&
+                  !muniIsCased(past),
+              "past U+10FFFF maps to itself and is not cased");
+    }
 }
 
 // Converts text held alone in a heap allocation of its length, so that
