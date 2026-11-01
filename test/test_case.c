@@ -205,6 +205,84 @@ static void TestLithuanian(void)
           "folding has no Lithuanian rules");
 }
 
+// Greek uppercasing, with the results ICU's Greek rules give.
+static void TestGreek(void)
+{
+    // άδικος, κείμενο, ίριδα
+    CHECK(Converts("\xCE\xAC\xCE\xB4\xCE\xB9\xCE\xBA\xCE\xBF\xCF\x82, "
+                   "\xCE\xBA\xCE\xB5\xCE\xAF\xCE\xBC\xCE\xB5\xCE\xBD\xCE\xBF, "
+                   "\xCE\xAF\xCF\x81\xCE\xB9\xCE\xB4\xCE\xB1",
+                   muni_caseUpper, muni_caseGreek,
+                   "\xCE\x91\xCE\x94\xCE\x99\xCE\x9A\xCE\x9F\xCE\xA3, "
+                   "\xCE\x9A\xCE\x95\xCE\x99\xCE\x9C\xCE\x95\xCE\x9D\xCE\x9F, "
+                   "\xCE\x99\xCE\xA1\xCE\x99\xCE\x94\xCE\x91"),
+          "the tonos goes");
+    // Μαΐου to ΜΑΪΟΥ, and Μάιος to ΜΑΪΟΣ.
+    CHECK(Converts("\xCE\x9C\xCE\xB1\xCE\x90\xCE\xBF\xCF\x85", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x9C\xCE\x91\xCE\xAA\xCE\x9F\xCE\xA5"),
+          "a dialytika stays when its tonos goes");
+    CHECK(Converts("\xCE\x9C\xCE\xAC\xCE\xB9\xCE\xBF\xCF\x82", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x9C\xCE\x91\xCE\xAA\xCE\x9F\xCE\xA3"),
+          "an iota after a vowel that lost its tonos gains a dialytika");
+    // άυλος to ΑΫΛΟΣ.
+    CHECK(Converts("\xCE\xAC\xCF\x85\xCE\xBB\xCE\xBF\xCF\x82", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x91\xCE\xAB\xCE\x9B\xCE\x9F\xCE\xA3"),
+          "so does an upsilon");
+    CHECK(Converts("\xCE\xB1\xCC\x81\xCE\xB9", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x91\xCE\x99\xCC\x88"),
+          "a combining tonos gives a combining dialytika");
+    // ρήματα ή άκλιτες to ΡΗΜΑΤΑ Ή ΑΚΛΙΤΕΣ.
+    CHECK(Converts("\xCF\x81\xCE\xAE\xCE\xBC\xCE\xB1\xCF\x84\xCE\xB1 \xCE\xAE "
+                   "\xCE\xAC\xCE\xBA\xCE\xBB\xCE\xB9\xCF\x84\xCE\xB5\xCF\x82",
+                   muni_caseUpper, muni_caseGreek,
+                   "\xCE\xA1\xCE\x97\xCE\x9C\xCE\x91\xCE\xA4\xCE\x91 \xCE\x89 "
+                   "\xCE\x91\xCE\x9A\xCE\x9B\xCE\x99\xCE\xA4\xCE\x95\xCE\xA3"),
+          "the disjunctive eta keeps its tonos");
+    CHECK(Converts("\xCE\xAE.", muni_caseUpper, muni_caseGreek, "\xCE\x89."),
+          "before punctuation too");
+    CHECK(Converts("\xCE\xB7\xCC\x81", muni_caseUpper, muni_caseGreek, "\xCE\x97\xCC\x81"),
+          "a combining tonos stays combining");
+    CHECK(Converts("\xCE\xAE\xCE\xBB\xCE\xB9\xCE\xBF\xCF\x82", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x97\xCE\x9B\xCE\x99\xCE\x9F\xCE\xA3"),
+          "an eta in a word does not");
+    // ὀδυσσεὺς ᾄδει to ΟΔΥΣΣΕΥΣ ΑΙΔΕΙ, and ῃ to ΗΙ.
+    CHECK(Converts("\xE1\xBD\x80\xCE\xB4\xCF\x85\xCF\x83\xCF\x83\xCE\xB5\xE1\xBD\xBA\xCF\x82 "
+                   "\xE1\xBE\x84\xCE\xB4\xCE\xB5\xCE\xB9",
+                   muni_caseUpper, muni_caseGreek,
+                   "\xCE\x9F\xCE\x94\xCE\xA5\xCE\xA3\xCE\xA3\xCE\x95\xCE\xA5\xCE\xA3 "
+                   "\xCE\x91\xCE\x99\xCE\x94\xCE\x95\xCE\x99"),
+          "polytonic breathings and accents go, a subscript becomes an iota");
+    CHECK(Converts("\xE1\xBF\x83", muni_caseUpper, muni_caseGreek, "\xCE\x97\xCE\x99"),
+          "an eta with a subscript keeps no tonos");
+    CHECK(Converts("\xCE\xB1\xCC\x93\xCC\x81\xCD\x85\xCD\x85", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x91\xCE\x99\xCE\x99"),
+          "combining marks go with the letter, each subscript an iota");
+    CHECK(Converts("\xCE\xAC\xCE\xB9", muni_caseLower, muni_caseGreek, "\xCE\xAC\xCE\xB9") &&
+              Converts("\xCE\xAC\xCE\xB9", muni_caseTitle, muni_caseGreek, "\xCE\x86\xCE\xB9") &&
+              Converts("\xCE\x86\xCE\x99", muni_caseFold, muni_caseGreek, "\xCE\xAC\xCE\xB9"),
+          "lowercasing, titlecasing and folding are the default ones");
+    CHECK(Converts("\xCE\xAC\xCE\xB9", muni_caseUpper, muni_caseDefault, "\xCE\x86\xCE\x99"),
+          "the default rules keep the tonos");
+}
+
+// The Armenian ligature ech yiwn, which ICU's hy rules write with vew.
+static void TestArmenian(void)
+{
+    CHECK(Converts("\xD6\x87", muni_caseUpper, muni_caseArmenian, "\xD4\xB5\xD5\x8E"),
+          "uppercase: ech and capital vew");
+    CHECK(Converts("\xD6\x87", muni_caseTitle, muni_caseArmenian, "\xD4\xB5\xD5\xBE"),
+          "titlecase: ech and small vew");
+    // Երևան to ԵՐԵՎԱՆ.
+    CHECK(Converts("\xD4\xB5\xD6\x80\xD6\x87\xD5\xA1\xD5\xB6", muni_caseUpper, muni_caseArmenian,
+                   "\xD4\xB5\xD5\x90\xD4\xB5\xD5\x8E\xD4\xB1\xD5\x86"),
+          "inside a word");
+    CHECK(Converts("\xD6\x87", muni_caseLower, muni_caseArmenian, "\xD6\x87") &&
+              Converts("\xD6\x87", muni_caseFold, muni_caseArmenian, "\xD5\xA5\xD6\x82"),
+          "lowercasing and folding are the default ones");
+    CHECK(Converts("\xD6\x87", muni_caseUpper, muni_caseDefault, "\xD4\xB5\xD5\x92"),
+          "the default rules write yiwn");
+}
+
 static void TestErrors(void)
 {
     char output[4];
@@ -223,7 +301,7 @@ static void TestErrors(void)
                   .status == muni_errorInvalid,
           "an unknown operation");
     CHECK(
-        muniConvertCase("a", 1, muni_caseLower, 3, muni_convertStrict, output, 4, &needed).status ==
+        muniConvertCase("a", 1, muni_caseLower, 5, muni_convertStrict, output, 4, &needed).status ==
             muni_errorInvalid,
         "an unknown language");
     needed = 7;
@@ -645,6 +723,227 @@ static void TestFullAgainstTheUcd(void)
     CHECK(failures == 0, "the full mappings of every code point alone match the UCD");
 }
 
+// What UnicodeData.txt and Scripts.txt say of the code points below
+// GREEK_LIMIT: letter or not, the canonical decomposition, the simple
+// uppercase, and the Greek script.
+#define GREEK_LIMIT 0x2200
+static uint32_t s_decompositions[GREEK_LIMIT][2];
+static uint32_t s_uppers[GREEK_LIMIT];
+static bool s_letters[GREEK_LIMIT];
+
+static bool LoadGreek(void)
+{
+    FILE* file = UcdOpen("UnicodeData.txt");
+    if (file == nullptr)
+    {
+        return false;
+    }
+    static char buffer[4096];
+    UcdLine line;
+    while (UcdNext(file, buffer, sizeof(buffer), &line))
+    {
+        if (line.first >= GREEK_LIMIT || line.count < 14)
+        {
+            continue;
+        }
+        s_letters[line.first] = line.fields[1][0] == 'L';
+        s_uppers[line.first] = line.fields[11][0] != '\0'
+                                   ? (uint32_t)strtoul(line.fields[11], nullptr, 16)
+                                   : line.first;
+        if (line.fields[4][0] != '\0' && line.fields[4][0] != '<')
+        {
+            char* end = nullptr;
+            s_decompositions[line.first][0] = (uint32_t)strtoul(line.fields[4], &end, 16);
+            s_decompositions[line.first][1] = (uint32_t)strtoul(end, nullptr, 16);
+        }
+    }
+    fclose(file);
+    memset(s_listed, 0, sizeof(s_listed));
+    return UcdFillBinary("Scripts.txt", "Greek", s_listed);
+}
+
+// A Greek letter as Greek uppercasing sees it: the uppercase of its
+// base and the marks its decomposition puts on it.
+typedef struct GreekLetter
+{
+    uint32_t upper; // 0 for no Greek letter
+    bool vowel;
+    bool accent;
+    bool dialytika;
+    bool subscript;
+} GreekLetter;
+
+static GreekLetter ReadGreekLetter(uint32_t letter)
+{
+    GreekLetter read = {0};
+    if (letter >= GREEK_LIMIT || !s_letters[letter] || s_listed[letter] == 0)
+    {
+        return read;
+    }
+    uint32_t base = letter;
+    while (s_decompositions[base][0] != 0)
+    {
+        uint32_t mark = s_decompositions[base][1];
+        read.accent = read.accent || mark == 0x0300 || mark == 0x0301 || mark == 0x0342;
+        read.dialytika = read.dialytika || mark == 0x0308;
+        read.subscript = read.subscript || mark == 0x0345;
+        base = s_decompositions[base][0];
+    }
+    if (base >= 0x370 && base <= 0x3FF)
+    {
+        read.upper = s_uppers[base];
+        uint32_t upper = read.upper;
+        read.vowel = upper == 0x391 || upper == 0x395 || upper == 0x397 || upper == 0x399 ||
+                     upper == 0x39F || upper == 0x3A5 || upper == 0x3A9;
+    }
+    return read;
+}
+
+// Appends a code point's UTF-8 to text.
+static void Append(char* text, size_t* length, uint32_t codePoint)
+{
+    size_t size = 0;
+    (void)muniEncodeUtf8(codePoint, text + *length, 4, &size);
+    *length += size;
+}
+
+// What follows a Greek letter in ExpectedGreekUpper.
+typedef enum After
+{
+    AfterNothing,
+    AfterIota,  // takes a dialytika when the letter is a vowel whose accent went
+    AfterAcute, // a combining acute, which goes with the letter
+} After;
+
+// The Greek uppercase of a letter with nothing before it.
+static size_t ExpectedGreekUpper(GreekLetter letter, After after, char* text)
+{
+    size_t length = 0;
+    bool accent = letter.accent || after == AfterAcute;
+    if (letter.upper == 0x397 && accent && !letter.subscript && after != AfterIota)
+    {
+        // The disjunctive eta keeps its tonos in the form it had.
+        Append(text, &length, letter.accent ? 0x389 : 0x397);
+        if (!letter.accent)
+        {
+            Append(text, &length, 0x301);
+        }
+    }
+    else if (letter.dialytika && (letter.upper == 0x399 || letter.upper == 0x3A5))
+    {
+        Append(text, &length, letter.upper == 0x399 ? 0x3AA : 0x3AB);
+    }
+    else
+    {
+        Append(text, &length, letter.upper);
+        if (letter.dialytika)
+        {
+            Append(text, &length, 0x308);
+        }
+    }
+    if (letter.subscript)
+    {
+        Append(text, &length, 0x399);
+    }
+    if (after == AfterIota)
+    {
+        Append(text, &length, letter.vowel && letter.accent && !letter.dialytika ? 0x3AA : 0x399);
+    }
+    return length;
+}
+
+static bool Gives(const char* text, size_t length, muniCaseOperation operation,
+                  muniCaseLanguage language, const char* expected, size_t expectedLength)
+{
+    char output[64];
+    size_t needed = 0;
+    muniTextResult result = muniConvertCase(text, length, operation, language, muni_convertStrict,
+                                            output, sizeof(output), &needed);
+    return result.status == muni_success && needed == expectedLength &&
+           memcmp(output, expected, needed) == 0;
+}
+
+// Every Greek letter, alone, before an iota and before a combining acute,
+// against its base and marks in UnicodeData.txt; every other code point
+// as the default rules give it, a combining acute after it too.
+static void TestGreekAgainstTheUcd(void)
+{
+    CHECK(LoadGreek(), "UnicodeData.txt and Scripts.txt read");
+    int failures = 0;
+    int letters = 0;
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (c >= 0xD800 && c < 0xE000)
+        {
+            continue;
+        }
+        char input[8];
+        size_t inputLength = 0;
+        Append(input, &inputLength, c);
+        char expected[64];
+        size_t expectedLength = 0;
+        GreekLetter letter = ReadGreekLetter(c);
+        bool inRange = (c >= 0x370 && c <= 0x3FF) || (c >= 0x1F00 && c <= 0x1FFF) || c == 0x2126;
+        if (inRange && letter.upper != 0)
+        {
+            letters += 1;
+            bool same = true;
+            for (After after = AfterNothing; after <= AfterAcute; after++)
+            {
+                size_t length = inputLength;
+                if (after != AfterNothing)
+                {
+                    Append(input, &length, after == AfterIota ? 0x3B9 : 0x301);
+                }
+                expectedLength = ExpectedGreekUpper(letter, after, expected);
+                same = same && Gives(input, length, muni_caseUpper, muni_caseGreek, expected,
+                                     expectedLength);
+            }
+            if (!same && failures++ < 5)
+            {
+                printf("the Greek uppercase of U+%04X differs\n", (unsigned)c);
+            }
+            continue;
+        }
+        for (int operation = muni_caseLower; operation <= muni_caseFold; operation++)
+        {
+            char output[64];
+            size_t needed = 0;
+            muniTextResult result =
+                muniConvertCase(input, inputLength, operation, muni_caseDefault, muni_convertStrict,
+                                output, sizeof(output), &needed);
+            bool same = result.status == muni_success &&
+                        Gives(input, inputLength, operation, muni_caseGreek, output, needed);
+            bool ligature =
+                c == 0x587 && (operation == muni_caseUpper || operation == muni_caseTitle);
+            same = same && (ligature || Gives(input, inputLength, operation, muni_caseArmenian,
+                                              output, needed));
+            if (!same && failures++ < 5)
+            {
+                printf("operation %d of U+%04X differs from the default rules\n", operation,
+                       (unsigned)c);
+            }
+        }
+        if (inRange)
+        {
+            Append(input, &inputLength, 0x301);
+            char output[64];
+            size_t needed = 0;
+            muniTextResult result =
+                muniConvertCase(input, inputLength, muni_caseUpper, muni_caseDefault,
+                                muni_convertStrict, output, sizeof(output), &needed);
+            if ((result.status != muni_success ||
+                 !Gives(input, inputLength, muni_caseUpper, muni_caseGreek, output, needed)) &&
+                failures++ < 5)
+            {
+                printf("U+%04X with an acute differs from the default rules\n", (unsigned)c);
+            }
+        }
+    }
+    CHECK(failures == 0 && letters > 300,
+          "Greek letters follow UnicodeData.txt, the rest the default rules");
+}
+
 #endif
 
 // The two text mappings, with their other arguments fixed.
@@ -745,6 +1044,8 @@ int main(void)
     TestFinalSigma();
     TestNfkcCasefoldLimit();
     TestLithuanian();
+    TestGreek();
+    TestArmenian();
     TestErrors();
     TestOverlap();
     TestNegativeKinds();
@@ -753,6 +1054,7 @@ int main(void)
     TestCasefoldText();
     TestSimpleAgainstTheUcd();
     TestFullAgainstTheUcd();
+    TestGreekAgainstTheUcd();
 #endif
     return s_failures == 0 ? 0 : 1;
 }

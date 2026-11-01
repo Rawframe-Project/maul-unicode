@@ -44,7 +44,7 @@ extern "C"
 // results. Store it beside normalized keys, skeletons and stored
 // verdicts, and recompute them when muniGetResultsVersion differs from
 // the stored value.
-#define MUNI_RESULTS_VERSION 1
+#define MUNI_RESULTS_VERSION 2
 
 // MUNI_API marks the public functions: dllexport or dllimport in a
 // shared Windows build (maul_unicode_EXPORTS is defined while building

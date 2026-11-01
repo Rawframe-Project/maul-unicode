@@ -10,7 +10,7 @@ word breaking: 18488 WordBreak
 sentence breaking: 18379 SentenceBreak
 grapheme breaking: 12422 GraphemeClusterBreak IndicConjunctBreak
 compatibility decomposition: 22623 CompatibilityBlock CompatibilityData
-case: 9775 Case CaseData SoftDotted
+case: 10304 Case CaseData SoftDotted GreekLetters
 security: 36601 Security SecurityData
 emoji, white space and digits: 2058 Emoji WhiteSpace DecimalZeros
 default ignorable: 357 DefaultIgnorable

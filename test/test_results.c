@@ -31,6 +31,7 @@ static const struct
     uint64_t hash;
 } s_history[] = {
     {1, 0x73db1792c2cc9cabull},
+    {2, 0x12c5f69f587e738dull},
 };
 
 static uint64_t s_hash = 0xcbf29ce484222325ull;
@@ -107,8 +108,8 @@ static void HashOutputs(const char* text, size_t length, bool everyVariant)
     static const muniNormalForm forms[] = {muni_nfc, muni_nfd, muni_nfkc, muni_nfkd};
     static const muniCaseOperation operations[] = {muni_caseLower, muni_caseUpper, muni_caseTitle,
                                                    muni_caseFold};
-    static const muniCaseLanguage languages[] = {muni_caseDefault, muni_caseTurkic,
-                                                 muni_caseLithuanian};
+    static const muniCaseLanguage languages[] = {
+        muni_caseDefault, muni_caseTurkic, muni_caseLithuanian, muni_caseGreek, muni_caseArmenian};
     static const muniBidiDirection directions[] = {muni_bidiAuto, muni_bidiLeftToRight,
                                                    muni_bidiRightToLeft};
     size_t needed = 0;
@@ -202,14 +203,16 @@ static bool HashNormalizationTest(void)
 }
 
 // Strings whose results depend on context or tailoring: final sigma,
-// Turkic and Lithuanian dots, title case across words, and skeletons in
-// mixed directions.
+// Turkic and Lithuanian dots, Greek accents, the Armenian ligature, title
+// case across words, and skeletons in mixed directions.
 static void HashContexts(void)
 {
     static const char* const strings[] = {
         "\xCE\x8C\xCE\xA3\xCE\x9F\xCE\xA3 \xCE\xA3\xCE\x91", // Greek, sigma at the ends
         "I\xC4\xB0i\xC4\xB1 \xC4\xB0stanbul",                // dotted and dotless i
         "Ii\xCC\x87 J\xCC\x81 \xC3\x8C",                     // Lithuanian dots
+        "\xE1\xBE\x84 \xCE\xAE \xCE\xAC\xCE\xB9",            // Greek accents
+        "\xD5\xA5\xD6\x87 \xD6\x87",                         // Armenian ligature
         "hello wORLD, 'tis o'neill",                         // title case
         "abc \xD7\x90\xD7\x91\xD7\x92 123 \xD9\xA1\xD9\xA2", // mixed directions
         "paypal p\xD0\xB0yp\xD0\xB0l",                       // Cyrillic a

@@ -2,7 +2,8 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // libFuzzer target for case operations. The first input byte picks the
-// language (default, Turkic or Lithuanian); the rest is the text, with
+// language (default, Turkic, Lithuanian, Greek or Armenian); the rest is
+// the text, with
 // ill-formed bytes replaced. Lowercasing, uppercasing and folding twice
 // give what they give once, with two exceptions by definition:
 // titlecasing, which can turn a combining mark into a letter (U+0345
@@ -49,7 +50,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     static char once[MAX_OUTPUT];
     static char twice[MAX_OUTPUT];
-    muniCaseLanguage language = (muniCaseLanguage)(data[0] % 3);
+    muniCaseLanguage language = (muniCaseLanguage)(data[0] % 5);
     const char* text = (const char*)data + 1;
     size_t length = size - 1;
     for (muniCaseOperation operation = 0; operation <= muni_caseFold; operation++)

@@ -354,6 +354,185 @@ static void WriteSoftDotted(void)
     printf("%-24s %7d bytes  %d ranges\n", "SoftDotted", count * 4 + 2, count);
 }
 
+// Greek uppercasing (muni_caseGreek) drops accents but keeps a dialytika,
+// so it asks of each Greek letter its base's uppercase and which marks
+// its canonical decomposition puts on it. A letter of the Greek script
+// in U+0370..U+03FF, U+1F00..U+1FFF or U+2126 whose decomposition starts
+// with a code point of U+0370..U+03FF gets an entry: that uppercase in
+// the low 10 bits and the GREEK_ flags above (src/tables.h names them);
+// anything else gets 0. The table holds each letter's index among the
+// distinct entries, which take 529 bytes together where the entries
+// alone take 802.
+#define GREEK_VOWEL         0x1000
+#define GREEK_YPOGEGRAMMENI 0x2000
+#define GREEK_ACCENT        0x4000
+#define GREEK_DIALYTIKA     0x8000
+#define GREEK_ENTRIES       401
+#define GREEK_VALUES        255
+#define GREEK_LIMIT         0x2200
+
+// What UnicodeData.txt and Scripts.txt say of the code points below
+// GREEK_LIMIT.
+typedef struct GreekSource
+{
+    uint32_t decompositions[GREEK_LIMIT][2]; // canonical; 0 for none
+    bool letters[GREEK_LIMIT];
+    uint8_t* greek; // Script=Greek, for every code point
+} GreekSource;
+
+static void LoadGreekSource(GreekSource* source)
+{
+    FILE* file = OpenUcd("UnicodeData.txt");
+    char line[MAX_LINE];
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        char* fields[15];
+        if (SplitFields(line, fields, 15) < 15)
+        {
+            continue;
+        }
+        uint32_t codePoint = ParseCodePoint(fields[0], "UnicodeData.txt");
+        if (codePoint >= GREEK_LIMIT)
+        {
+            continue;
+        }
+        source->letters[codePoint] = fields[2][0] == 'L';
+        if (fields[5][0] == '\0' || fields[5][0] == '<')
+        {
+            continue;
+        }
+        int count = 0;
+        for (char* item = strtok(fields[5], " "); item != nullptr; item = strtok(nullptr, " "))
+        {
+            if (count == 2)
+            {
+                Fail("U+%04X: a canonical decomposition longer than 2", codePoint);
+            }
+            source->decompositions[codePoint][count++] = ParseCodePoint(item, "UnicodeData.txt");
+        }
+    }
+    fclose(file);
+    source->greek = Allocate(CODE_POINTS);
+    LoadBinary("Scripts.txt", "Greek", source->greek);
+}
+
+static uint32_t GreekCodePoint(int entry)
+{
+    return entry < 0x90    ? 0x370u + (uint32_t)entry
+           : entry < 0x190 ? 0x1F00u + (uint32_t)(entry - 0x90)
+                           : 0x2126u;
+}
+
+// The flags a mark of a Greek letter's decomposition gives it, or fails
+// for a mark Greek uppercasing does not know.
+static uint32_t GreekMark(uint32_t mark, uint32_t letter)
+{
+    switch (mark)
+    {
+    case 0x0300: // varia
+    case 0x0301: // tonos, oxia
+    case 0x0342: // perispomeni
+        return GREEK_ACCENT;
+    case 0x0308: // dialytika
+        return GREEK_DIALYTIKA;
+    case 0x0345: // ypogegrammeni
+        return GREEK_YPOGEGRAMMENI;
+    case 0x0304: // macron
+    case 0x0306: // vrachy
+    case 0x0313: // psili
+    case 0x0314: // dasia
+        return 0;
+    default:
+        Fail("U+%04X: an unknown mark U+%04X in its decomposition", letter, mark);
+    }
+}
+
+// The entry of a code point, or 0 for no Greek letter.
+static uint16_t GreekEntry(const CaseData* data, const GreekSource* source, uint32_t letter)
+{
+    if (!source->letters[letter] || source->greek[letter] == 0)
+    {
+        return 0;
+    }
+    uint32_t base = letter;
+    uint32_t flags = 0;
+    while (base < GREEK_LIMIT && source->decompositions[base][0] != 0)
+    {
+        if (source->decompositions[base][1] != 0)
+        {
+            flags |= GreekMark(source->decompositions[base][1], letter);
+        }
+        base = source->decompositions[base][0];
+    }
+    if (base < 0x370 || base > 0x3FF)
+    {
+        return 0;
+    }
+    uint32_t upper = data->simple[Upper][base];
+    if (upper > 0x3FF)
+    {
+        Fail("U+%04X: an uppercase past U+03FF", letter);
+    }
+    bool vowel = upper == 0x391 || upper == 0x395 || upper == 0x397 || upper == 0x399 ||
+                 upper == 0x39F || upper == 0x3A5 || upper == 0x3A9;
+    return (uint16_t)(upper | flags | (vowel ? GREEK_VOWEL : 0));
+}
+
+// The index of a value among values, which it joins when new.
+static uint8_t GreekValueIndex(uint16_t* values, int* count, uint16_t value)
+{
+    for (int i = 0; i < *count; i++)
+    {
+        if (values[i] == value)
+        {
+            return (uint8_t)i;
+        }
+    }
+    if (*count == GREEK_VALUES)
+    {
+        Fail("more than %d distinct Greek letter entries", GREEK_VALUES);
+    }
+    values[*count] = value;
+    return (uint8_t)(*count)++;
+}
+
+static void WriteGreekLetters(const CaseData* data)
+{
+    static GreekSource source;
+    LoadGreekSource(&source);
+    uint8_t indexes[GREEK_ENTRIES];
+    uint16_t values[GREEK_VALUES] = {0};
+    int valueCount = 1; // value 0 is no letter
+    int filled = 0;
+    for (int i = 0; i < GREEK_ENTRIES; i++)
+    {
+        uint16_t entry = GreekEntry(data, &source, GreekCodePoint(i));
+        indexes[i] = GreekValueIndex(values, &valueCount, entry);
+        filled += entry != 0 ? 1 : 0;
+    }
+    free(source.greek);
+    FILE* file = CreateOutput("greek_letters.c");
+    fprintf(file, "// SPDX-License-Identifier: MIT\n// Copyright (c) 2026 Sirac Ozmen\n//\n");
+    WriteComment(file, "The Greek letters: see src/tables.h. Generated by tools/munigen from "
+                       "UnicodeData.txt and Scripts.txt in tools/ucd/ (Unicode 18.0.0); do not "
+                       "edit.");
+    fprintf(file, "// clang-format off\n\n#include \"../tables.h\"\n\n");
+    fprintf(file, "const uint8_t muniGreekLetters[%d] = {", GREEK_ENTRIES);
+    for (int i = 0; i < GREEK_ENTRIES; i++)
+    {
+        fprintf(file, "%s%u,", i % 16 == 0 ? "\n    " : " ", indexes[i]);
+    }
+    fprintf(file, "\n};\n\nconst uint16_t muniGreekLetterValues[%d] = {", valueCount);
+    for (int i = 0; i < valueCount; i++)
+    {
+        fprintf(file, "%s0x%04X,", i % 8 == 0 ? "\n    " : " ", values[i]);
+    }
+    fprintf(file, "\n};\n");
+    fclose(file);
+    printf("%-24s %7d bytes  %d letters, %d entries\n", "GreekLetters",
+           GREEK_ENTRIES + valueCount * 2, filled, valueCount);
+}
+
 void WriteCase(void)
 {
     static CaseData data;
@@ -403,6 +582,7 @@ void WriteCase(void)
                "UnicodeData.txt, CaseFolding.txt and DerivedCoreProperties.txt");
     WriteCaseData(&data);
     WriteSoftDotted();
+    WriteGreekLetters(&data);
     for (int kind = 0; kind < 4; kind++)
     {
         free(data.simple[kind]);
