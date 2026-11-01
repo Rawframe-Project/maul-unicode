@@ -541,14 +541,20 @@ static void TestMaps(void)
     CHECK(muniReorderBidiLevels(deep, 3, visual) == muni_errorInvalid && visual[0] != 0,
           "a level above 126, and no map written");
     muniBidiRun runs[3];
-    size_t count = 0;
-    CHECK(muniReorderBidiLine("abc", deep, 3, 0, runs, 3, &count) == muni_errorInvalid,
-          "a line with a level above 126");
+    memset(runs, 0xA5, sizeof(runs));
+    muniBidiRun untouched;
+    memset(&untouched, 0xA5, sizeof(untouched));
+    size_t count = 7;
+    CHECK(muniReorderBidiLine("abc", deep, 3, 0, runs, 3, &count) == muni_errorInvalid &&
+              count == 7 && memcmp(&runs[0], &untouched, sizeof(untouched)) == 0,
+          "a line with a level above 126, and nothing written");
     const uint8_t flat[] = {0, 0};
-    CHECK(muniReorderBidiLine("a ", flat, 2, 2, runs, 3, &count) == muni_errorInvalid,
-          "a paragraph level of 2");
-    CHECK(muniReorderBidiLine("a ", flat, 2, 200, runs, 3, &count) == muni_errorInvalid,
-          "a paragraph level of 200");
+    CHECK(muniReorderBidiLine("a ", flat, 2, 2, runs, 3, &count) == muni_errorInvalid &&
+              count == 7 && memcmp(&runs[0], &untouched, sizeof(untouched)) == 0,
+          "a paragraph level of 2, and nothing written");
+    CHECK(muniReorderBidiLine("a ", flat, 2, 200, runs, 3, &count) == muni_errorInvalid &&
+              count == 7 && memcmp(&runs[0], &untouched, sizeof(untouched)) == 0,
+          "a paragraph level of 200, and nothing written");
     CHECK(muniReorderBidiLine("a ", flat, 2, 1, runs, 3, &count) == muni_success,
           "a paragraph level of 1");
     // A map refused for its entries clears the inverse, which the call

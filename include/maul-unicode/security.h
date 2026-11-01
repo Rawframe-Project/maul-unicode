@@ -120,7 +120,10 @@ extern "C"
     ///                    capacity is 0.
     /// @param capacity    The number of scripts the output can hold;
     ///                    MUNI_MAX_RESOLVED_SCRIPTS always suffice.
-    /// @param countOut    Receives the number of scripts.
+    /// @param countOut    Receives the number of scripts, on success and
+    ///                    when they do not fit. A UTF-8 error and
+    ///                    `muni_errorInvalid` leave it and scriptsOut as
+    ///                    they were.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the scripts do not fit, and then none is written; the
     ///         first UTF-8 error and its offset; `muni_errorInvalid` for

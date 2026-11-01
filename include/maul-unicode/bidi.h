@@ -91,7 +91,9 @@ extern "C"
     /// @param paragraphLevel  The paragraph embedding level, 0 or 1.
     /// @param runsOut         The output. May be NULL when capacity is 0.
     /// @param capacity        The number of runs the output can hold.
-    /// @param countOut        Receives the number of runs.
+    /// @param countOut        Receives the number of runs, on success and
+    ///                        when they do not fit. `muni_errorInvalid`
+    ///                        leaves it and runsOut as they were.
     /// @return `muni_success`; `muni_errorCapacity` when the runs do not
     ///         fit, and then none is written; `muni_errorInvalid` for a
     ///         NULL countOut, a NULL line or levels with a nonzero length,
