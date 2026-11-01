@@ -543,6 +543,73 @@ static void TestNegativeDirection(void)
     CHECK(refused, "a negative direction refused");
 }
 
+// Writes before, "a" with marks acute accents, and after into text, and
+// returns its length.
+static size_t MarksText(char* text, const char* before, int marks, const char* after)
+{
+    size_t length = strlen(before);
+    memcpy(text, before, length);
+    text[length++] = 'a';
+    for (int i = 0; i < marks; i++)
+    {
+        text[length++] = (char)0xCC;
+        text[length++] = (char)0x81;
+    }
+    memcpy(text + length, after, strlen(after));
+    return length + strlen(after);
+}
+
+// A skeleton refused for a run of marks past the segment limit writes
+// the skeleton of the text shown before that run, whole, counts it in
+// neededOut, and writes nothing from the run on. Left to right, that is
+// "pq", as muniNormalize gives; right to left, the run is shown after the
+// Hebrew letters that follow it in the text.
+static void TestLimitLeavesTheRest(void)
+{
+    static const struct
+    {
+        muniBidiDirection direction;
+        const char* before;
+        const char* after;
+        const char* shownBefore; // the text shown before the run, in the same direction
+    } cases[] = {
+        {muni_bidiLeftToRight, "pq", "xyz", "pq"},
+        {muni_bidiRightToLeft, "\xD7\x90\xD7\x91", "\xD7\x92\xD7\x93", "\xD7\x92\xD7\x93"},
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    {
+        uint8_t workspace[256];
+        char expected[256];
+        size_t expectedNeeded = 0;
+        CHECK(muniGetSkeleton(cases[c].shownBefore, strlen(cases[c].shownBefore),
+                              cases[c].direction, workspace, sizeof(workspace), expected,
+                              sizeof(expected), &expectedNeeded)
+                          .status == muni_success &&
+                  expectedNeeded > 0,
+              "the skeleton of the text shown before the run");
+        char text[128];
+        size_t length = MarksText(text, cases[c].before, 40, cases[c].after);
+        char output[256];
+        memset(output, '#', sizeof(output));
+        size_t needed = 7;
+        muniTextResult result = muniGetSkeleton(text, length, cases[c].direction, workspace,
+                                                sizeof(workspace), output, sizeof(output), &needed);
+        CHECK(result.status == muni_errorLimit && needed == expectedNeeded &&
+                  memcmp(output, expected, needed) == 0,
+              "a limit writes the skeleton of the text before the run and counts it");
+        bool untouched = true;
+        for (size_t i = needed < sizeof(output) ? needed : sizeof(output); i < sizeof(output); i++)
+        {
+            untouched = untouched && output[i] == '#';
+        }
+        CHECK(untouched, "a limit writes nothing from the run that hit it on");
+        if (cases[c].direction == muni_bidiLeftToRight)
+        {
+            CHECK(needed == 2 && memcmp(output, "pq", 2) == 0, "left to right, \"pq\"");
+        }
+    }
+}
+
 int main(void)
 {
     CHECK(HashSecurity() == muniSecurityHash, "the Security table matches the generator");
@@ -556,5 +623,6 @@ int main(void)
     TestOverlap();
     TestNegativeDirection();
     TestLongIsolateRun();
+    TestLimitLeavesTheRest();
     return s_failures == 0 ? 0 : 1;
 }

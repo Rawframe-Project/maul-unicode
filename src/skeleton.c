@@ -44,8 +44,18 @@ typedef struct Skeleton
     Stage mapped;          // NFD of the prototypes
     size_t offset;         // where the code point being added starts
     size_t overflow;       // where a stage first outgrew its segment, or SIZE_MAX
+    size_t written;        // the bytes written before the first overflow
     muniWriter writer;
 } Skeleton;
+
+static void FlushMapped(Skeleton* skeleton)
+{
+    for (size_t i = 0; i < skeleton->mapped.count; i++)
+    {
+        muniWriterPut(&skeleton->writer, skeleton->mapped.codePoints[i]);
+    }
+    skeleton->mapped.count = 0;
+}
 
 // Canonical ordering: a mark goes after every mark of the same or a
 // lower class. The caller passes a starter on to an empty stage.
@@ -53,6 +63,23 @@ static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t 
 {
     if (stage->count == MUNI_MAX_NORMALIZATION_SEGMENT)
     {
+        // The skeleton of the text before the segment that outgrew its
+        // stage is written whole and kept; anything after it would follow
+        // a segment with marks missing, so the writer keeps nothing more.
+        // When the first stage overflows, the second still holds the
+        // segment before it.
+        if (skeleton->overflow == SIZE_MAX)
+        {
+            if (stage == &skeleton->decomposed)
+            {
+                FlushMapped(skeleton);
+            }
+            skeleton->written = skeleton->writer.needed;
+            if (skeleton->writer.capacity > skeleton->writer.needed)
+            {
+                skeleton->writer.capacity = skeleton->writer.needed;
+            }
+        }
         skeleton->overflow =
             skeleton->overflow < skeleton->offset ? skeleton->overflow : skeleton->offset;
         return;
@@ -71,15 +98,6 @@ static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t 
 static uint8_t ClassOf(uint32_t codePoint)
 {
     return codePoint < 0x300 ? 0 : muniLookupCombiningClass(codePoint);
-}
-
-static void FlushMapped(Skeleton* skeleton)
-{
-    for (size_t i = 0; i < skeleton->mapped.count; i++)
-    {
-        muniWriterPut(&skeleton->writer, skeleton->mapped.codePoints[i]);
-    }
-    skeleton->mapped.count = 0;
 }
 
 // Adds a code point of a prototype to the second stage.
@@ -395,11 +413,9 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
     }
     FlushDecomposed(&skeleton);
     FlushMapped(&skeleton);
-    // The skeleton follows display order, so the bytes counted before an
-    // error would tell the caller nothing.
     if (skeleton.overflow != SIZE_MAX)
     {
-        *neededOut = 0;
+        *neededOut = skeleton.written;
         return (muniTextResult){muni_errorLimit, skeleton.overflow};
     }
     *neededOut = skeleton.writer.needed;
