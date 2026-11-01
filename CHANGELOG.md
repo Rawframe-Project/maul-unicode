@@ -5,6 +5,14 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.9.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.0...v0.9.1) (2026-11-01)
+
+
+### Fixed
+
+* **properties:** give Left_To_Right past U+10FFFF ([#209](https://github.com/Rawframe-Project/maul-unicode/issues/209)) ([f619833](https://github.com/Rawframe-Project/maul-unicode/commit/f619833f6b95c106c58f9e06df4bbff4bacc7f0f)), closes [#208](https://github.com/Rawframe-Project/maul-unicode/issues/208)
+* **security:** stop a refused skeleton at the segment that hit the limit ([#203](https://github.com/Rawframe-Project/maul-unicode/issues/203)) ([a881576](https://github.com/Rawframe-Project/maul-unicode/commit/a881576828e56c5fa275e582a22dafa7bde71161)), closes [#201](https://github.com/Rawframe-Project/maul-unicode/issues/201)
+
 ## [0.9.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.8.0...v0.9.0) (2026-10-31)
 
 ### Changed
