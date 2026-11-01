@@ -5,6 +5,44 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.9.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.0...v0.9.1) (2026-11-01)
+
+### Changed
+
+- The headers now say what two more refusals leave.
+  `muniReorderBidiLine` leaves `runsOut` and `countOut` as they were on
+  `muni_errorInvalid`, and `muniGetResolvedScripts` leaves `scriptsOut`
+  and `countOut` as they were on `muni_errorInvalid` and on a UTF-8
+  error. Both calls always behaved this way
+  ([#204](https://github.com/Rawframe-Project/maul-unicode/pull/204)).
+- `base.h` now says what the results version tracks: the status and
+  offset of the calls it covers, and their output on success, but not
+  the bytes and counts a refusal leaves. This is why the change to
+  refused skeletons below keeps it at 1
+  ([#206](https://github.com/Rawframe-Project/maul-unicode/pull/206)).
+
+### Fixed
+
+- `muniGetBidiClass` returns Left_To_Right for every value past
+  U+10FFFF, as `properties.h` says. It returned Boundary_Neutral, the
+  class of the noncharacters U+10FFFE and U+10FFFF, which the table
+  carried past them. Only a caller that passes a value that is no code
+  point sees the change: bidi and skeletons read the class only of
+  code points decoded from valid text, so their results and the results
+  version are unchanged
+  ([#209](https://github.com/Rawframe-Project/maul-unicode/pull/209)).
+- `muniGetSkeleton` now stops at the segment that hit the limit when it
+  refuses text with `muni_errorLimit` (a run of combining marks past
+  `MUNI_MAX_NORMALIZATION_SEGMENT`). It writes the skeleton of the text
+  shown before that segment, as far as `textOut` holds it, and
+  `neededOut` gives its length in bytes; nothing from that segment on is
+  written. Before, it went on past the run, dropped the marks that did
+  not fit, wrote the skeleton of the rest of the text and set
+  `neededOut` to 0. `muniNormalize` and `muniGetNfkcCasefold` already
+  stopped this way. A skeleton that succeeds is unchanged, and so is
+  the results version
+  ([#203](https://github.com/Rawframe-Project/maul-unicode/pull/203)).
+
 ## [0.9.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.8.0...v0.9.0) (2026-10-31)
 
 ### Changed
