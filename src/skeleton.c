@@ -19,6 +19,7 @@
 #include "bits.h"
 #include "decompose.h"
 #include "encoding.h"
+#include "invariant.h"
 #include "overlap.h"
 #include "tables.h"
 #include "writer.h"
@@ -340,9 +341,12 @@ static bool NeedsBidi(const uint8_t* text, size_t length, muniBidiDirection dire
     return false;
 }
 
-// Adds each paragraph in display order.
-static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection direction,
-                                uint8_t* workspace)
+// Adds each paragraph in display order. muniGetSkeleton's checks leave
+// muniResolveBidi nothing to refuse: the text is valid UTF-8 and not
+// NULL, the workspace holds 2 * length bytes, the direction is known and
+// each paragraph is at least one byte long.
+static void AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection direction,
+                          uint8_t* workspace)
 {
     uint8_t* levels = workspace;
     skeleton->levels = levels;
@@ -354,10 +358,8 @@ static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirec
         muniResult status = muniResolveBidi((const char*)skeleton->text + start, length - start,
                                             direction, levels + start, workspace + length + start,
                                             &paragraphLength, &paragraphLevel);
-        if (status != muni_success)
-        {
-            return status;
-        }
+        MUNI_ASSERT(status == muni_success);
+        (void)status; // read only by the assert, which Release compiles out
         muniBidiResetLineLevels(skeleton->text + start, levels + start, paragraphLength,
                                 paragraphLevel);
         uint8_t lowest = UINT8_MAX;
@@ -369,7 +371,6 @@ static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirec
         AddStretch(skeleton, start, start + paragraphLength, lowest, false);
         start += paragraphLength;
     }
-    return muni_success;
 }
 
 muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirection direction,
@@ -400,12 +401,7 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
         .text = (const uint8_t*)text, .overflow = SIZE_MAX, .writer = {textOut, capacity, 0}};
     if (NeedsBidi(skeleton.text, length, direction))
     {
-        muniResult status = AddParagraphs(&skeleton, length, direction, workspace);
-        if (status != muni_success)
-        {
-            *neededOut = 0;
-            return (muniTextResult){status, 0};
-        }
+        AddParagraphs(&skeleton, length, direction, workspace);
     }
     else
     {
