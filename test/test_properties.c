@@ -39,8 +39,6 @@ static void TestGeneralCategoryKnownValues(void)
     CHECK(muniGetGeneralCategory('a') == muni_gcLl, "a is Ll");
     CHECK(muniGetGeneralCategory(0x0378) == muni_gcCn, "U+0378 is unassigned");
     CHECK(muniGetGeneralCategory(0x1F600) == muni_gcSo, "U+1F600 is So");
-    CHECK(muniGetGeneralCategory(0x110000) == muni_gcCn, "past U+10FFFF is unassigned");
-    CHECK(muniGetGeneralCategory(UINT32_MAX) == muni_gcCn, "UINT32_MAX is unassigned");
 }
 
 static uint8_t GraphemeBreak(uint32_t codePoint)
@@ -128,11 +126,6 @@ static void TestBreakPropertiesKnownValues(void)
           "the CJK radicals, Script Han, are not Ideographic");
     CHECK(!muniIsIdeographic(0x3005) && !muniIsIdeographic(0x303B),
           "the iteration marks CLDR adds by hand are not Ideographic");
-    CHECK(!muniIsWhiteSpace(0x110000) && !muniIsDefaultIgnorable(0x110000) &&
-              !muniIsExtendedPictographic(0x110000) && !muniIsIdeographic(0x110000) &&
-              !muniIsIdeographic(UINT32_MAX),
-          "past U+10FFFF has no binary property");
-    CHECK(muniGetGraphemeBreak(0x110000) == muni_gcbOther, "past U+10FFFF is Other");
 }
 
 static uint8_t LineBreak(uint32_t codePoint)
@@ -204,7 +197,6 @@ static void TestLayoutPropertiesKnownValues(void)
     CHECK(muniGetMirroringGlyph(0x2215) == 0x29F5, "division slash, a far mirror");
     CHECK(muniGetBracketType('[') == muni_bracketOpen, "[ opens");
     CHECK(muniGetBracketType(0x300B) == muni_bracketClose, "U+300B closes");
-    CHECK(muniGetMirroringGlyph(0x110000) == 0x110000, "past U+10FFFF");
     CHECK(muniGetLineBreak(0x0E01) == muni_lbSa, "Thai U+0E01 is SA");
     CHECK(muniGetEastAsianWidth(0xFF21) == muni_eawFullwidth, "U+FF21 is Fullwidth");
     CHECK(muniGetBidiClass(0x05FF) == muni_bcR, "unassigned U+05FF defaults to R");
@@ -213,7 +205,6 @@ static void TestLayoutPropertiesKnownValues(void)
     CHECK(muniGetScript(0x0627) == MUNI_MAKE_SCRIPT('A', 'r', 'a', 'b'), "U+0627 is Arabic");
     CHECK(muniGetScript(0x0301) == MUNI_SCRIPT_INHERITED, "U+0301 is Inherited");
     CHECK(muniGetScript(0x0378) == MUNI_SCRIPT_UNKNOWN, "U+0378 is Unknown");
-    CHECK(muniGetScript(0x110000) == MUNI_SCRIPT_UNKNOWN, "past U+10FFFF is Unknown");
 }
 
 // Every decimal digit has a value from 0 to 9 and its system's zero
@@ -260,8 +251,44 @@ static void TestDecimalDigits(void)
     CHECK(muniGetDecimalDigitValue(0x1D7D8) == 0 && muniGetDecimalDigitValue(0x1D7E1) == 9,
           "double-struck math digits");
     CHECK(muniGetDecimalDigitValue(0x00B2) == -1 && muniGetDecimalDigitValue(0x2167) == -1 &&
-              muniGetDecimalDigitValue('a') == -1 && muniGetDecimalDigitValue(0x110000) == -1,
+              muniGetDecimalDigitValue('a') == -1,
           "superscripts, Roman numerals and letters are no decimal digits");
+}
+
+// Every value past U+10FFFF, up to UINT32_MAX, gets what properties.h
+// gives it: the value of an unassigned code point outside any block with
+// its own defaults, and itself as its mirror.
+static void TestPastTheLastCodePoint(void)
+{
+    static const uint32_t values[] = {0x110000,   0x110001,   0x1FFFFF,       0x200000,
+                                      0x7FFFFFFF, 0x80000000, UINT32_MAX - 1, UINT32_MAX};
+    int failures = 0;
+    for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); i++)
+    {
+        uint32_t value = values[i];
+        muniScript scripts[2] = {MUNI_SCRIPT_COMMON, MUNI_SCRIPT_COMMON};
+        size_t count = 0;
+        bool valid = muniGetGeneralCategory(value) == muni_gcCn &&
+                     muniGetGraphemeBreak(value) == muni_gcbOther &&
+                     muniGetWordBreak(value) == muni_wbOther &&
+                     muniGetSentenceBreak(value) == muni_sbOther &&
+                     muniGetIndicConjunctBreak(value) == muni_incbNone &&
+                     !muniIsExtendedPictographic(value) && !muniIsEmoji(value) &&
+                     !muniIsEmojiPresentation(value) && !muniIsEmojiModifier(value) &&
+                     !muniIsEmojiModifierBase(value) && !muniIsEmojiComponent(value) &&
+                     !muniIsWhiteSpace(value) && !muniIsDefaultIgnorable(value) &&
+                     !muniIsIdeographic(value) && muniGetDecimalDigitValue(value) == -1 &&
+                     muniGetLineBreak(value) == muni_lbXx &&
+                     muniGetEastAsianWidth(value) == muni_eawNeutral &&
+                     muniGetBidiClass(value) == muni_bcL && muniGetMirroringGlyph(value) == value &&
+                     muniGetBracketType(value) == muni_bracketNone &&
+                     muniGetCombiningClass(value) == 0 &&
+                     muniGetScript(value) == MUNI_SCRIPT_UNKNOWN &&
+                     muniGetScriptExtensions(value, scripts, 2, &count) == muni_success &&
+                     count == 1 && scripts[0] == MUNI_SCRIPT_UNKNOWN;
+        failures += valid ? 0 : 1;
+    }
+    CHECK(failures == 0, "past U+10FFFF answers as an unassigned code point");
 }
 
 int main(void)
@@ -274,5 +301,6 @@ int main(void)
     TestBreakPropertiesKnownValues();
     TestScriptExtensionsBound();
     TestDecimalDigits();
+    TestPastTheLastCodePoint();
     return s_failures == 0 ? 0 : 1;
 }
