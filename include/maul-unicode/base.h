@@ -39,7 +39,9 @@ extern "C"
 // give for some text, or to the verdict of muniCheckIdentifier,
 // muniGetRestrictionLevel, muniCheckMixedNumbers or
 // muniGetResolvedScripts, a new Unicode version included, and with
-// nothing else. Store it beside normalized keys, skeletons and stored
+// nothing else. What they give is the status and offset they return and,
+// on success, the output; the bytes and counts a refusal leaves are not
+// results. Store it beside normalized keys, skeletons and stored
 // verdicts, and recompute them when muniGetResultsVersion differs from
 // the stored value.
 #define MUNI_RESULTS_VERSION 1
@@ -165,8 +167,10 @@ extern "C"
     /// some text, or to the verdict of muniCheckIdentifier,
     /// muniGetRestrictionLevel, muniCheckMixedNumbers or
     /// muniGetResolvedScripts, in any release, and stays the same
-    /// otherwise. A program that stores their results stores it beside
-    /// them and recomputes them when it changes.
+    /// otherwise: their status and offset, and their output on success,
+    /// but not the bytes and counts a refusal leaves. A program that
+    /// stores their results stores it beside them and recomputes them
+    /// when it changes.
     ///
     /// @return The results version, MUNI_RESULTS_VERSION of the library.
     /// @par Thread safety
