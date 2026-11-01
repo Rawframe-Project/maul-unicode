@@ -55,8 +55,12 @@ extern "C"
         // dialytika and adds one where an accent removed from the first
         // vowel of a diphthong kept the vowels apart ("άι" to "ΑΪ"), and
         // keeps the accent of the disjunctive eta "ή" standing alone; an
-        // iota subscript becomes a capital iota. Lowercasing, titlecasing
-        // and folding follow the default rules.
+        // iota subscript becomes a capital iota. The eta stands alone when
+        // no cased letter precedes or follows it past case-ignorable
+        // characters, the context of the final sigma; a character both
+        // cased and case-ignorable, such as U+0345 or U+037A, counts as a
+        // cased letter there, where ICU skips it as case-ignorable.
+        // Lowercasing, titlecasing and folding follow the default rules.
         muni_caseGreek = 3,
         // Armenian: the ligature "և" (U+0587) uppercases to "ԵՎ" and
         // titlecases to "Եվ", where the default rules give "ԵՒ" and "Եւ".

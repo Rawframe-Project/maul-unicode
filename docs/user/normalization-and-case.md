@@ -16,7 +16,7 @@ The same text can be encoded more than one way, and text that differs only in ca
 
 - `muni_caseTurkic` for Turkish and Azerbaijani: dotted and dotless i.
 - `muni_caseLithuanian`: the dot of an i is kept under other accents.
-- `muni_caseGreek`: uppercasing drops accents and breathings but keeps a dialytika, and adds one where a dropped accent kept two vowels apart ("Μάιος" uppercases to "ΜΑΪΟΣ"); the eta that means "or" keeps its accent ("ή" to "Ή"); an iota subscript becomes a capital iota. Greek capitals are written this way; the default rules keep every accent. Lowercasing, titlecasing and folding are the default ones.
+- `muni_caseGreek`: uppercasing drops accents and breathings but keeps a dialytika, and adds one where a dropped accent kept two vowels apart ("Μάιος" uppercases to "ΜΑΪΟΣ"); the eta that means "or" keeps its accent when it stands alone ("ή" to "Ή"): no cased letter precedes or follows it past case-ignorable characters, the context of the final sigma, and a character both cased and case-ignorable, such as U+0345 or U+037A, counts as a cased letter there, where ICU skips it as case-ignorable; an iota subscript becomes a capital iota. Greek capitals are written this way; the default rules keep every accent. Lowercasing, titlecasing and folding are the default ones.
 - `muni_caseArmenian`: the ligature "և" uppercases to "ԵՎ" and titlecases to "Եվ", as Eastern Armenian spells it, where the default rules give "ԵՒ" and "Եւ".
 
 `muniGetLowercase`, `muniGetUppercase`, `muniGetTitlecase` and `muniFoldCase` are the simple mappings of one code point; `muniIsCased` tells whether a code point has case.
