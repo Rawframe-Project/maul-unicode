@@ -7,21 +7,62 @@ may change the API, the ABI and every data format.
 
 ## [0.9.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.8.0...v0.9.0) (2026-10-31)
 
+### Changed
 
-### ⚠ BREAKING CHANGES
+- **Breaking:** the enumerations of kinds, modes and choices are
+  `int32_t` instead of `uint8_t`, as the Maul family's rule for
+  enumerations asks, and `muniBreakClassOverride.value` is an
+  `int32_t`. Their values and numbers are unchanged. This changes the
+  binary interface, so a program built against 0.8.0 is built again;
+  code that stores these values in a `uint8_t` keeps working, since
+  every value fits. A negative value, such as -1, is refused with
+  `muni_errorInvalid`, as a value past the last one is. The 16 types
+  are `muniBidiDirection`, `muniConvertMode`, `muniNormalForm`,
+  `muniQuickCheck`, the nine property kinds (`muniGeneralCategory` to
+  `muniBracketType`), `muniRestrictionLevel`, `muniCaseOperation` and
+  `muniCaseLanguage`. `muniScript` stays a `uint32_t`, since it is a
+  packed script tag, and bidi levels stay `uint8_t`
+  ([#196](https://github.com/Rawframe-Project/maul-unicode/pull/196)).
 
-* the kind, mode and choice enumerations are `int32_t` instead of `uint8_t`, and `muniBreakClassOverride.value` is an `int32_t`. This changes the binary interface; code that stores these values in a `uint8_t` keeps working after a recompile, since every value fits. `MUNI_SCRIPT` is renamed `MUNI_MAKE_SCRIPT`. A negative kind is now refused with `muni_errorInvalid`. | 0.8.0 | Next | |---|---| | `typedef uint8_t muniBidiDirection` (and the 15 other kinds) | `typedef int32_t muniBidiDirection` | | `muniBreakClassOverride.value`: `uint8_t` | `int32_t` | | `MUNI_SCRIPT('L', 'a', 't', 'n')` | `MUNI_MAKE_SCRIPT('L', 'a', 't', 'n')` |
+  | 0.8.0 | 0.9.0 |
+  |---|---|
+  | `typedef uint8_t muniBidiDirection` (and the 15 other kinds) | `typedef int32_t muniBidiDirection` |
+  | `muniBreakClassOverride.value`: `uint8_t` | `int32_t` |
+
+- **Breaking:** `MUNI_SCRIPT` is renamed `MUNI_MAKE_SCRIPT`, as the
+  family names a helper that makes a value:
+  `MUNI_SCRIPT('L', 'a', 't', 'n')` becomes
+  `MUNI_MAKE_SCRIPT('L', 'a', 't', 'n')`. It is still a macro, so it
+  works in constant expressions. `MUNI_SCRIPT_COMMON`,
+  `MUNI_SCRIPT_INHERITED` and `MUNI_SCRIPT_UNKNOWN` keep their names
+  ([#196](https://github.com/Rawframe-Project/maul-unicode/pull/196)).
 
 ### Fixed
 
-* **bidi:** clear the inverse map when muniInvertBidiMap refuses a map ([#192](https://github.com/Rawframe-Project/maul-unicode/issues/192)) ([38c3c2a](https://github.com/Rawframe-Project/maul-unicode/commit/38c3c2a511b0a8a057712cc90c4c96c7ee7b8788)), closes [#188](https://github.com/Rawframe-Project/maul-unicode/issues/188)
-* **build:** configure again when the version header changes ([#200](https://github.com/Rawframe-Project/maul-unicode/issues/200)) ([11282e2](https://github.com/Rawframe-Project/maul-unicode/commit/11282e2ed7d59c906984a77ae2879da45d0da628)), closes [#199](https://github.com/Rawframe-Project/maul-unicode/issues/199)
-* refuse an output that overlaps an input of its type ([#191](https://github.com/Rawframe-Project/maul-unicode/issues/191)) ([1bfa6fe](https://github.com/Rawframe-Project/maul-unicode/commit/1bfa6fec1357b86cbad208fd3e4143d22e6e838f)), closes [#189](https://github.com/Rawframe-Project/maul-unicode/issues/189)
-
-
-### Changed
-
-* make the kind enumerations int32_t and name MUNI_MAKE_SCRIPT ([#196](https://github.com/Rawframe-Project/maul-unicode/issues/196)) ([aede197](https://github.com/Rawframe-Project/maul-unicode/commit/aede197c21f14d46e4c8a238afdeac795b020743)), closes [#186](https://github.com/Rawframe-Project/maul-unicode/issues/186) [#187](https://github.com/Rawframe-Project/maul-unicode/issues/187)
+- `muniNormalize`, `muniConvertCase`, `muniGetNfkcCasefold`,
+  `muniGetSkeleton` and `muniInvertBidiMap` refuse an output that
+  overlaps their input with `muni_errorInvalid`, before they write
+  anything. Before, transforming text in place returned
+  `muni_success` with a corrupted result, and inverting a map in place
+  destroyed the map. Text cannot be transformed in place: write the
+  result to another buffer. A call that kept its input and output
+  apart behaves as before, and results are unchanged
+  ([#191](https://github.com/Rawframe-Project/maul-unicode/pull/191)).
+- `muniInvertBidiMap` clears `inverseOut` over its whole count when it
+  refuses a map with an entry out of range or a repeated entry. It used
+  to leave a mix of its working marks and partial entries, which the
+  header called unspecified. A NULL argument or an `inverseOut` that
+  overlaps the map still leaves it as it was
+  ([#192](https://github.com/Rawframe-Project/maul-unicode/pull/192)).
+- The header of `muniSegmentIterator_NextLineBreak` said a
+  `muni_errorBusy` refusal sets `mandatoryOut` to false. The call
+  leaves it as it was, as it always did, and the header now says so
+  ([#179](https://github.com/Rawframe-Project/maul-unicode/pull/179)).
+- A change to the version in `include/maul-unicode/base.h` now
+  configures an existing build directory again, so the CMake project
+  version, the package version file and the pkg-config file follow it.
+  Before, they kept the version of the first configure
+  ([#200](https://github.com/Rawframe-Project/maul-unicode/pull/200)).
 
 ## [0.8.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.7.0...v0.8.0) (2026-10-29)
 
