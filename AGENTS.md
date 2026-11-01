@@ -53,6 +53,7 @@ Follow the [repository standard's Tests section](https://github.com/Rawframe-Pro
 - Inputs that could be read past their end go in a heap allocation of exactly their length, so AddressSanitizer sees an overread; the bidi, case and security suites show how.
 - Every C snippet of `docs/user/` appears unchanged in `test/test_guide.c` or `test/test_guide_harfbuzz.c`; `tools/check_guide.py` enforces it.
 - A fuzz finding becomes a test in its module's suite with the minimized input.
+- A table is checked against the Unicode file it comes from, read by the test through `test/ucd.h`, for every code point; the generator's hash alone cannot catch a misread file.
 - Data suites read `tools/ucd/` through `MUNI_UCD_DATA`. Tests that call `fopen` need `_CRT_SECURE_NO_WARNINGS` on Windows, which `CMakeLists.txt` sets for the data suites.
 
 ## Documentation
