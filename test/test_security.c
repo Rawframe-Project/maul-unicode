@@ -543,6 +543,66 @@ static void TestNegativeDirection(void)
     CHECK(refused, "a negative direction refused");
 }
 
+// Writes before, "a" with marks acute accents, and after into text, and
+// returns its length.
+static size_t MarksText(char* text, const char* before, int marks, const char* after)
+{
+    size_t length = strlen(before);
+    memcpy(text, before, length);
+    text[length++] = 'a';
+    for (int i = 0; i < marks; i++)
+    {
+        text[length++] = (char)0xCC;
+        text[length++] = (char)0x81;
+    }
+    memcpy(text + length, after, strlen(after));
+    return length + strlen(after);
+}
+
+// A skeleton refused for a run of marks past the segment limit writes
+// only bytes a success would have written before that run, in display
+// order, and neededOut says how many.
+static void TestLimitLeavesTheRest(void)
+{
+    static const struct
+    {
+        muniBidiDirection direction;
+        const char* before;
+        const char* after;
+    } cases[] = {
+        {muni_bidiLeftToRight, "pq", "xyz"},
+        {muni_bidiRightToLeft, "\xD7\x90\xD7\x91", "\xD7\x92\xD7\x93"},
+    };
+    for (size_t c = 0; c < sizeof(cases) / sizeof(cases[0]); c++)
+    {
+        char text[128];
+        char shorter[128];
+        size_t length = MarksText(text, cases[c].before, 40, cases[c].after);
+        size_t shorterLength = MarksText(shorter, cases[c].before, 30, cases[c].after);
+        uint8_t workspace[256];
+        char success[256];
+        size_t successNeeded = 0;
+        CHECK(muniGetSkeleton(shorter, shorterLength, cases[c].direction, workspace,
+                              sizeof(workspace), success, sizeof(success), &successNeeded)
+                      .status == muni_success,
+              "30 marks fit");
+        char output[256];
+        memset(output, '#', sizeof(output));
+        size_t needed = 7;
+        muniTextResult result = muniGetSkeleton(text, length, cases[c].direction, workspace,
+                                                sizeof(workspace), output, sizeof(output), &needed);
+        CHECK(result.status == muni_errorLimit && needed < successNeeded &&
+                  memcmp(output, success, needed) == 0,
+              "a limit writes the start of the skeleton and counts it");
+        bool untouched = true;
+        for (size_t i = needed < sizeof(output) ? needed : sizeof(output); i < sizeof(output); i++)
+        {
+            untouched = untouched && output[i] == '#';
+        }
+        CHECK(untouched, "a limit writes nothing from the run that hit it on");
+    }
+}
+
 int main(void)
 {
     CHECK(HashSecurity() == muniSecurityHash, "the Security table matches the generator");
@@ -556,5 +616,6 @@ int main(void)
     TestOverlap();
     TestNegativeDirection();
     TestLongIsolateRun();
+    TestLimitLeavesTheRest();
     return s_failures == 0 ? 0 : 1;
 }

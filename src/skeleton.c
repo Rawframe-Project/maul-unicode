@@ -44,6 +44,7 @@ typedef struct Skeleton
     Stage mapped;          // NFD of the prototypes
     size_t offset;         // where the code point being added starts
     size_t overflow;       // where a stage first outgrew its segment, or SIZE_MAX
+    size_t written;        // the bytes written before the first overflow
     muniWriter writer;
 } Skeleton;
 
@@ -53,6 +54,17 @@ static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t 
 {
     if (stage->count == MUNI_MAX_NORMALIZATION_SEGMENT)
     {
+        // The bytes written so far are the start of the skeleton in
+        // display order; anything after them would follow a segment with
+        // marks missing, so the writer keeps nothing more.
+        if (skeleton->overflow == SIZE_MAX)
+        {
+            skeleton->written = skeleton->writer.needed;
+            if (skeleton->writer.capacity > skeleton->writer.needed)
+            {
+                skeleton->writer.capacity = skeleton->writer.needed;
+            }
+        }
         skeleton->overflow =
             skeleton->overflow < skeleton->offset ? skeleton->overflow : skeleton->offset;
         return;
@@ -395,11 +407,9 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
     }
     FlushDecomposed(&skeleton);
     FlushMapped(&skeleton);
-    // The skeleton follows display order, so the bytes counted before an
-    // error would tell the caller nothing.
     if (skeleton.overflow != SIZE_MAX)
     {
-        *neededOut = 0;
+        *neededOut = skeleton.written;
         return (muniTextResult){muni_errorLimit, skeleton.overflow};
     }
     *neededOut = skeleton.writer.needed;

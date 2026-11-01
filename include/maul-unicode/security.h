@@ -83,9 +83,13 @@ extern "C"
     /// @param neededOut      Receives the number of bytes the whole skeleton
     ///                       needs on success and when the output is too small,
     ///                       where it may exceed capacity, or SIZE_MAX when
-    ///                       that does not fit in a size_t. 0 on every other
-    ///                       error, except `muni_errorInvalid`, which leaves it
-    ///                       as it was.
+    ///                       that does not fit in a size_t. On
+    ///                       `muni_errorLimit`, the number of bytes of the
+    ///                       skeleton, in display order, written before the
+    ///                       segment that hit the limit, which textOut holds
+    ///                       as far as they fit; nothing from that segment on
+    ///                       is written. 0 on every other error, except
+    ///                       `muni_errorInvalid`, which leaves it as it was.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the skeleton does not fit (the bytes that fit are
     ///         written), or with offset 0 and neededOut 0 when
@@ -93,8 +97,8 @@ extern "C"
     ///         read; the first UTF-8 error and its offset;
     ///         `muni_errorLimit` when a segment outgrows
     ///         MUNI_MAX_NORMALIZATION_SEGMENT, and the offset of the code
-    ///         point being read then, with part of the skeleton possibly
-    ///         written;
+    ///         point being read then, with the start of the skeleton
+    ///         written as neededOut says;
     ///         `muni_errorInvalid` for a NULL argument, an unknown
     ///         direction or a textOut that overlaps text.
     /// @par Thread safety
