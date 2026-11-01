@@ -85,11 +85,12 @@ extern "C"
     ///                       where it may exceed capacity, or SIZE_MAX when
     ///                       that does not fit in a size_t. On
     ///                       `muni_errorLimit`, the number of bytes of the
-    ///                       skeleton, in display order, written before the
-    ///                       segment that hit the limit, which textOut holds
-    ///                       as far as they fit; nothing from that segment on
-    ///                       is written. 0 on every other error, except
-    ///                       `muni_errorInvalid`, which leaves it as it was.
+    ///                       skeleton of the text shown before the segment
+    ///                       that hit the limit, in display order, which
+    ///                       textOut holds as far as they fit; nothing from
+    ///                       that segment on is written. 0 on every other
+    ///                       error, except `muni_errorInvalid`, which leaves
+    ///                       it as it was.
     /// @return `muni_success` and the length; `muni_errorCapacity` when
     ///         the skeleton does not fit (the bytes that fit are
     ///         written), or with offset 0 and neededOut 0 when

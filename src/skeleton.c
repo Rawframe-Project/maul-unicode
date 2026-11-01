@@ -48,17 +48,32 @@ typedef struct Skeleton
     muniWriter writer;
 } Skeleton;
 
+static void FlushMapped(Skeleton* skeleton)
+{
+    for (size_t i = 0; i < skeleton->mapped.count; i++)
+    {
+        muniWriterPut(&skeleton->writer, skeleton->mapped.codePoints[i]);
+    }
+    skeleton->mapped.count = 0;
+}
+
 // Canonical ordering: a mark goes after every mark of the same or a
 // lower class. The caller passes a starter on to an empty stage.
 static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t markClass)
 {
     if (stage->count == MUNI_MAX_NORMALIZATION_SEGMENT)
     {
-        // The bytes written so far are the start of the skeleton in
-        // display order; anything after them would follow a segment with
-        // marks missing, so the writer keeps nothing more.
+        // The skeleton of the text before the segment that outgrew its
+        // stage is written whole and kept; anything after it would follow
+        // a segment with marks missing, so the writer keeps nothing more.
+        // When the first stage overflows, the second still holds the
+        // segment before it.
         if (skeleton->overflow == SIZE_MAX)
         {
+            if (stage == &skeleton->decomposed)
+            {
+                FlushMapped(skeleton);
+            }
             skeleton->written = skeleton->writer.needed;
             if (skeleton->writer.capacity > skeleton->writer.needed)
             {
@@ -83,15 +98,6 @@ static void Place(Skeleton* skeleton, Stage* stage, uint32_t codePoint, uint8_t 
 static uint8_t ClassOf(uint32_t codePoint)
 {
     return codePoint < 0x300 ? 0 : muniLookupCombiningClass(codePoint);
-}
-
-static void FlushMapped(Skeleton* skeleton)
-{
-    for (size_t i = 0; i < skeleton->mapped.count; i++)
-    {
-        muniWriterPut(&skeleton->writer, skeleton->mapped.codePoints[i]);
-    }
-    skeleton->mapped.count = 0;
 }
 
 // Adds a code point of a prototype to the second stage.
