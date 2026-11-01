@@ -8,6 +8,11 @@
 
 #include "line_rules.h"
 
+static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
+{
+    return muniLineLookup(segmenter, codePoint, true);
+}
+
 static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     return muniLineDecide(segmenter, value, codePoint, true);

@@ -2,9 +2,9 @@
 // Copyright (c) 2026 Sirac Ozmen
 //
 // The rules of line breaking, UAX #14 rules LB1 to LB31, shared by the
-// default rules in line.c and the tailored ones in line_tailored.c. Classes are resolved by LB1
-// in the lookup. Rule LB9 folds combining marks and ZWJ into the class
-// before them, so most rules look at the previous class after LB9 and,
+// default rules in line.c and the tailored ones in line_tailored.c.
+// Classes are resolved by LB1 in the lookup. Rule LB9 folds combining
+// marks and ZWJ into the class before them, so most rules look at the previous class after LB9 and,
 // for a few, the one before it; rules of the form "X SP* ×" look at the
 // last class other than SP. Other properties (General_Category, East
 // Asian width, Extended_Pictographic) are read from the code points
@@ -24,7 +24,9 @@
 //
 // Each of line.c and line_tailored.c calls the rule loop once, so the
 // compiler inlines the rules into it; a second call in one file gets the
-// loop outlined, with the rules called through pointers.
+// loop outlined, with the rules called through pointers. The lookup and
+// muniLineDecide take a constant tailored, false in line.c, so the
+// default loop reads no setting.
 
 #ifndef MAUL_UNICODE_SRC_LINE_RULES_H
 #define MAUL_UNICODE_SRC_LINE_RULES_H
@@ -142,9 +144,10 @@ static inline bool IsAksara(uint8_t value, uint32_t codePoint)
     return value == muni_lbAk || value == muni_lbAs || codePoint == DOTTED_CIRCLE;
 }
 
-// LB1, without a tailoring: AI, SG and XX are AL; SA is CM for marks and
-// AL otherwise; CJ is NS, or ID at the loose level.
-static inline uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
+// LB1: AI, SG and XX are AL; SA is CM for marks and AL otherwise; CJ is
+// NS, or ID at the loose level, which only a tailored loop asks about.
+static inline uint8_t muniLineLookup(const muniSegmenter* segmenter, uint32_t codePoint,
+                                     bool tailored)
 {
     uint8_t value = muniLookupLineBreak(codePoint);
     switch (value)
@@ -159,7 +162,8 @@ static inline uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
         return category == muni_gcMn || category == muni_gcMc ? muni_lbCm : muni_lbAl;
     }
     case muni_lbCj:
-        return muniLineStrictness(segmenter) == muni_lineBreakLoose ? muni_lbId : muni_lbNs;
+        return tailored && muniLineStrictness(segmenter) == muni_lineBreakLoose ? muni_lbId
+                                                                                : muni_lbNs;
     default:
         return value;
     }

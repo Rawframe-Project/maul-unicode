@@ -65,7 +65,16 @@ extern "C"
     {
         // The rules of UAX #14, with Line_Break=CJ resolved as NS. With
         // the Chinese or Japanese writing system, a line may also break
-        // before U+301C and U+30A0.
+        // before U+301C and U+30A0. CSS Text 3 in its Candidate
+        // Recommendation Draft of 14 August 2026, section 5.2
+        // (https://www.w3.org/TR/css-text-3/#line-break-property; the
+        // dated draft is linked from docs/internals/segmentation.md),
+        // says: "The following breaks are forbidden for normal and strict
+        // line breaking and allowed in loose: breaks before Japanese
+        // small kana or the Katakana-Hiragana prolonged sound mark, i.e.
+        // characters from the Unicode line breaking class CJ." ICU4C's
+        // normal rules and earlier CSS drafts allow those breaks in
+        // normal; here only loose does.
         muni_lineBreakNormal = 0,
         // As normal, without the breaks before U+301C and U+30A0.
         muni_lineBreakStrict = 1,
