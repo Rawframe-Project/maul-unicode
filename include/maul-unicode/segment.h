@@ -357,6 +357,42 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_NextLineBreak(
         muniSegmentIterator* iterator, size_t* offsetOut, bool* mandatoryOut);
 
+    // What a cut of text keeps whole. A later release may add units, such
+    // as words.
+    typedef int32_t muniTextUnit;
+
+    enum
+    {
+        // A code point, or a maximal ill-formed UTF-8 subpart.
+        muni_unitCodePoint = 0,
+        // A grapheme cluster (UAX #29), what a user sees as one character:
+        // a base and its combining marks, an emoji sequence joined by
+        // U+200D, a pair of regional indicators.
+        muni_unitGraphemeCluster = 1,
+    };
+
+    /// Gives the length of the longest prefix of UTF-8 text that is at
+    /// most budget bytes long and ends at a boundary of unit, for cutting
+    /// text to fit a buffer without splitting a character. With
+    /// muni_unitGraphemeCluster it reads at most one cluster past the
+    /// budget.
+    ///
+    /// @param text       The text. May be NULL when length is 0. Each
+    ///                   maximal ill-formed subpart counts as one U+FFFD.
+    /// @param length     The text's length in bytes.
+    /// @param budget     The most bytes the prefix may have; the whole text
+    ///                   when it is length or more.
+    /// @param unit       muni_unitCodePoint or muni_unitGraphemeCluster.
+    /// @param lengthOut  Receives the prefix's length, 0 when the first
+    ///                   unit is longer than budget. `muni_errorInvalid`
+    ///                   leaves it as it was.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL text with
+    ///         a nonzero length, a NULL lengthOut or an unknown unit.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniCutUtf8(const char* text, size_t length, size_t budget,
+                                                   muniTextUnit unit, size_t* lengthOut);
+
     /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.
     ///

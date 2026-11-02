@@ -1150,6 +1150,117 @@ static void TestNegativeClasses(void)
     CHECK(refused, "a negative class in an override refused, and the iterator still works");
 }
 
+// The cut muniCutUtf8 should give: the last boundary within budget among
+// the code points muniDecodeUtf8 steps over or the clusters
+// muniFindGraphemeBreaks reports.
+static size_t ExpectedCut(const char* text, size_t length, size_t budget, muniTextUnit unit)
+{
+    size_t fit = 0;
+    if (unit == muni_unitCodePoint)
+    {
+        size_t offset = 0;
+        while (offset < length)
+        {
+            uint32_t codePoint;
+            size_t size;
+            (void)muniDecodeUtf8(text + offset, length - offset, &codePoint, &size);
+            offset += size;
+            fit = offset <= budget ? offset : fit;
+        }
+        return fit;
+    }
+    size_t breaks[64];
+    size_t count = 0;
+    if (muniFindGraphemeBreaks(text, length, breaks, 64, &count) != muni_success)
+    {
+        return SIZE_MAX;
+    }
+    for (size_t i = 0; i < count; i++)
+    {
+        fit = breaks[i] <= budget ? breaks[i] : fit;
+    }
+    return fit;
+}
+
+// muniCutUtf8 keeps a code point or a cluster whole: not a sequence cut
+// in two, a base cut from its mark, an emoji sequence joined by U+200D cut
+// at the joiner or a flag cut between its regional indicators. Each text
+// is a heap allocation of exactly its length, so a read past it is seen,
+// and every budget gives the boundary the stepping and the break finder
+// agree on.
+static void TestCut(void)
+{
+    static const struct
+    {
+        const char* text;
+        size_t budget;
+        size_t codePoint;
+        size_t cluster;
+        const char* what;
+    } s_cases[] = {
+        {"abc", 2, 2, 2, "ASCII"},
+        {"a\xC3\xA9", 2, 1, 1, "not inside a two-byte sequence"},
+        {"e\xCC\x81x", 2, 1, 0, "not between a base and its mark"},
+        {"e\xCC\x81x", 3, 3, 3, "a base and its mark"},
+        {"\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9!", 10, 7, 0,
+         "not inside an emoji ZWJ sequence"},
+        {"\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7", 7, 4, 0, "not between two regional indicators"},
+        {"\xE1\x80"
+         "A",
+         1, 0, 0, "a maximal ill-formed subpart is one unit"},
+        {"\xE1\x80"
+         "A",
+         2, 2, 2, "and fits whole"},
+        {"abc", 3, 3, 3, "a budget of the whole text"},
+        {"abc", 9, 3, 3, "a budget past the text"},
+        {"abc", 0, 0, 0, "a budget of 0"},
+    };
+    for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
+    {
+        size_t length = strlen(s_cases[i].text);
+        char* text = malloc(length);
+        CHECK(text != nullptr, "allocation");
+        if (text == nullptr)
+        {
+            return;
+        }
+        memcpy(text, s_cases[i].text, length);
+        size_t codePoint = 99;
+        size_t cluster = 99;
+        CHECK(muniCutUtf8(text, length, s_cases[i].budget, muni_unitCodePoint, &codePoint) ==
+                      muni_success &&
+                  codePoint == s_cases[i].codePoint &&
+                  muniCutUtf8(text, length, s_cases[i].budget, muni_unitGraphemeCluster,
+                              &cluster) == muni_success &&
+                  cluster == s_cases[i].cluster,
+              s_cases[i].what);
+        size_t failures = 0;
+        for (size_t budget = 0; budget <= length + 1; budget++)
+        {
+            for (muniTextUnit unit = muni_unitCodePoint; unit <= muni_unitGraphemeCluster; unit++)
+            {
+                size_t fit = 99;
+                failures += muniCutUtf8(text, length, budget, unit, &fit) == muni_success &&
+                                    fit == ExpectedCut(text, length, budget, unit)
+                                ? 0
+                                : 1;
+            }
+        }
+        CHECK(failures == 0, "every budget cuts at the last boundary within it");
+        free(text);
+    }
+    size_t fit = 7;
+    CHECK(muniCutUtf8(nullptr, 0, 5, muni_unitGraphemeCluster, &fit) == muni_success && fit == 0,
+          "empty text");
+    fit = 7;
+    CHECK(muniCutUtf8(nullptr, 1, 5, muni_unitCodePoint, &fit) == muni_errorInvalid && fit == 7,
+          "no text with a length is refused and leaves the length");
+    CHECK(muniCutUtf8("a", 1, 5, muni_unitCodePoint, nullptr) == muni_errorInvalid,
+          "no length out");
+    CHECK(muniCutUtf8("a", 1, 5, 2, &fit) == muni_errorInvalid && fit == 7, "an unknown unit");
+    CHECK(muniCutUtf8("a", 1, 5, -1, &fit) == muni_errorInvalid && fit == 7, "a negative unit");
+}
+
 int main(void)
 {
     TestConformance();
@@ -1168,5 +1279,6 @@ int main(void)
     TestAnywhere();
     TestInvalidArguments();
     TestFeedingRules();
+    TestCut();
     return s_failures == 0 ? 0 : 1;
 }

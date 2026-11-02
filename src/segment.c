@@ -7,6 +7,7 @@
 
 #include "maul-unicode/segment.h"
 
+#include "encoding.h"
 #include "segmenter.h"
 
 #include <stddef.h>
@@ -370,4 +371,53 @@ muniResult muniFindLineBreaks(const char* text, size_t length, size_t* offsetsOu
                               bool* mandatoryOut, size_t capacity, size_t* countOut)
 {
     return Find(muni_segmentLine, text, length, offsetsOut, mandatoryOut, capacity, countOut);
+}
+
+// The longest prefix of text, below its length, that fits budget and
+// ends at a code point boundary.
+static size_t CutAtCodePoint(const char* text, size_t length, size_t budget)
+{
+    size_t fit = 0;
+    for (;;) // fit stays within budget, below length, so a step has text
+    {
+        uint32_t codePoint;
+        size_t size;
+        (void)muniStepUtf8((const uint8_t*)text + fit, length - fit, &codePoint, &size);
+        if (fit + size > budget)
+        {
+            return fit;
+        }
+        fit += size;
+    }
+}
+
+// The same at a grapheme cluster boundary: the last boundary within
+// budget, found by reading up to the first one past it.
+static size_t CutAtCluster(const char* text, size_t length, size_t budget)
+{
+    muniSegmenter segmenter;
+    memset(&segmenter, 0, sizeof(segmenter));
+    segmenter.kind = muni_segmentGrapheme;
+    muniCursorInit(&segmenter.cursor, text, length, false);
+    size_t fit = 0;
+    size_t offset;
+    while (Next(&segmenter, &offset) == muni_success && offset <= budget)
+    {
+        fit = offset;
+    }
+    return fit;
+}
+
+muniResult muniCutUtf8(const char* text, size_t length, size_t budget, muniTextUnit unit,
+                       size_t* lengthOut)
+{
+    if ((text == nullptr && length != 0) || lengthOut == nullptr ||
+        (unit != muni_unitCodePoint && unit != muni_unitGraphemeCluster))
+    {
+        return muni_errorInvalid;
+    }
+    *lengthOut = budget >= length             ? length
+                 : unit == muni_unitCodePoint ? CutAtCodePoint(text, length, budget)
+                                              : CutAtCluster(text, length, budget);
+    return muni_success;
 }

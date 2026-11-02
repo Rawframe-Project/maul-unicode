@@ -28,7 +28,7 @@ overlap:
 nfkc_casefold: case_map decompose encoding invariant normalizer overlap tables
 properties: tables
 script_runs: cursor invariant tables
-segment: segmenter
+segment: encoding segmenter
 segmenter: cursor invariant
 security: bits encoding tables
 sentence: segmenter tables
