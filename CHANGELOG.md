@@ -5,6 +5,13 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.12.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.11.0...v0.12.0) (2026-11-02)
+
+
+### Added
+
+* **segment:** tell what kind of word a word segment is ([#231](https://github.com/Rawframe-Project/maul-unicode/issues/231)) ([a383bee](https://github.com/Rawframe-Project/maul-unicode/commit/a383bee9abacf39549552cda97fbe1b2f56d1060)), closes [#216](https://github.com/Rawframe-Project/maul-unicode/issues/216)
+
 ## [0.11.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.10.0...v0.11.0) (2026-11-02)
 
 ### Added
