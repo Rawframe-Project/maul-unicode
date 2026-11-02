@@ -967,8 +967,23 @@ static void TestStrictnessLevels(void)
         {"\xEF\xBF\xA5\xE3\x81\x82", 3, false, false, false, false, false, true,
          "￥ あ: after a wide prefix"},
         {"$\xE3\x81\x82", 0, false, false, false, false, false, false, "$ あ: a narrow prefix"},
+        {"a\xEF\xBC\x85", 1, false, false, false, false, false, true,
+         "a ％: a wide postfix after a letter"},
+        {"1\xE2\x80\xB0", 1, false, false, false, false, false, true, "1 ‰: an ambiguous postfix"},
+        {"\xE3\x81\x82\xEF\xB9\xAA", 3, false, false, false, false, false, true,
+         "あ ﹪: a wide postfix"},
+        {"\xE2\x82\xAC\xE3\x81\x82", 3, false, false, false, false, false, true,
+         "€ あ: after an ambiguous prefix"},
+        {"\xEF\xB9\xA9\xE3\x81\x82", 3, false, false, false, false, false, true,
+         "﹩ あ: after a wide prefix"},
+        {"\xEF\xBF\xA5\xE2\x80\xA6", 3, false, false, false, false, false, true,
+         "￥ U+2026: before an ellipsis"},
         {"\xEF\xBF\xA5\xEF\xBC\x89", 0, false, false, false, false, false, false,
          "￥ ）: LB13 after a prefix"},
+        {"\xEF\xBF\xA5\xE3\x80\x81", 0, false, false, false, false, false, false,
+         "￥ 、: LB13 after a prefix"},
+        {"\xEF\xBF\xA5\xEF\xBC\x81", 3, false, false, false, false, false, true,
+         "￥ ！: centered punctuation, whatever LB13 says"},
         {"\xEF\xBC\x88\xE3\x80\x9C", 0, false, false, false, false, false, false,
          "（ U+301C: LB14 keeps an opening bracket"},
         {"\xE2\x80\x9C\xE3\x80\x9C", 0, false, false, false, false, false, false,
@@ -1024,6 +1039,12 @@ static void TestAnywhere(void)
          "between flags, not inside one"},
         {"a\nb", {2, 3}, 2, "not before a line feed"},
         {"a\r\nb", {3, 4}, 2, "not inside CR LF"},
+        {"a\xE2\x80\xA8"
+         "b",
+         {4, 5},
+         2,
+         "not before a line separator, after it"},
+        {"a\fb", {2, 3}, 2, "not before a form feed, after it"},
     };
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
     {
@@ -1045,6 +1066,12 @@ static void TestAnywhere(void)
               muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) == muni_success &&
               offset == 3 && mandatory,
           "a line feed stays a mandatory break");
+    CHECK(muniInitLineIterator(&iterator, "a\fb", 3, false) == muni_success &&
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakAnywhere) ==
+                  muni_success &&
+              muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) == muni_success &&
+              offset == 2 && mandatory,
+          "so does a form feed (LB4)");
 }
 
 // Every segment call refuses a NULL iterator, output or text with a
