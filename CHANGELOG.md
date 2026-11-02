@@ -5,6 +5,19 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.13.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.12.0...v0.13.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **segment:** muniCutUtf8 is removed. muniMeasureUtf8 with maxUnits SIZE_MAX gives the same cut, and also counts units, stops at a count of them and counts UTF-16 units through muni_unitUtf16.
+* **encoding:** muniConvertUtf8ToUtf16, muniConvertUtf16ToUtf8, muniConvertUtf8ToUtf32 and muniConvertUtf32ToUtf8 report the offset of the first code point not written on muni_errorCapacity, not the input length.
+
+### Added
+
+* **encoding:** say where a conversion stopped when the output is full ([#241](https://github.com/Rawframe-Project/maul-unicode/issues/241)) ([c624ec1](https://github.com/Rawframe-Project/maul-unicode/commit/c624ec133dbed0c439d2de2f3767fd1b2d8cec79)), closes [#238](https://github.com/Rawframe-Project/maul-unicode/issues/238)
+* **segment:** measure UTF-8 in UTF-16 units, code points or clusters ([#243](https://github.com/Rawframe-Project/maul-unicode/issues/243)) ([2ce3e43](https://github.com/Rawframe-Project/maul-unicode/commit/2ce3e432e534b3704d5eead0336ec154f07c4d0c)), closes [#239](https://github.com/Rawframe-Project/maul-unicode/issues/239)
+
 ## [0.12.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.11.0...v0.12.0) (2026-11-02)
 
 ### Added
