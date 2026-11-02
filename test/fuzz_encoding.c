@@ -100,6 +100,38 @@ static void* Allocate(size_t bytes)
     return malloc(bytes == 0 ? 1 : bytes);
 }
 
+// Stepping through UTF-16 units with muniDecodeUtf16 meets its first
+// unpaired surrogate where validation stops, and gives, code point by
+// code point, what replacing conversion writes.
+static void CheckUtf16Stepping(const uint16_t* units, size_t count, muniTextResult validation,
+                               const char* replaced, size_t length)
+{
+    size_t offset = 0;
+    size_t written = 0;
+    bool refused = false;
+    while (offset < count)
+    {
+        uint32_t codePoint;
+        size_t size;
+        muniResult status = muniDecodeUtf16(units + offset, count - offset, &codePoint, &size);
+        Require(size >= 1 && size <= 2 && offset + size <= count);
+        Require(status == muni_success || status == muni_errorUtf16Surrogate);
+        if (status != muni_success && !refused)
+        {
+            Require(validation.status == status && validation.offset == offset);
+            refused = true;
+        }
+        char encoded[4];
+        size_t encodedSize = 0;
+        Require(muniEncodeUtf8(codePoint, encoded, sizeof(encoded), &encodedSize) == muni_success);
+        Require(written + encodedSize <= length &&
+                memcmp(replaced + written, encoded, encodedSize) == 0);
+        written += encodedSize;
+        offset += size;
+    }
+    Require(written == length && (refused || validation.status == muni_success));
+}
+
 // The input read as UTF-16 units, which may hold any surrogate: strict
 // conversion fails exactly where validation does, with the bytes of the
 // units before; replacement never fails, gives valid UTF-8, and gives the
@@ -123,6 +155,7 @@ static void CheckUtf16(const uint8_t* data, size_t size)
                     .status == muni_success &&
             written == length);
     Require(muniValidateUtf8(replaced, length).status == muni_success);
+    CheckUtf16Stepping(units, count, validation, replaced, length);
 
     char* strict = Allocate(length);
     size_t strictLength = 0;

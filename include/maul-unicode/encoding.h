@@ -84,6 +84,24 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniDecodeUtf8(const char* bytes, size_t length,
                                                       uint32_t* codePointOut, size_t* sizeOut);
 
+    /// Decodes the code point at the start of a UTF-16 text.
+    ///
+    /// @param units         The text. May be NULL when length is 0.
+    /// @param length        The number of 16-bit code units available.
+    /// @param codePointOut  Receives the code point, or U+FFFD for an
+    ///                      unpaired surrogate.
+    /// @param sizeOut       Receives the units consumed: 2 for a surrogate
+    ///                      pair, otherwise 1, an unpaired surrogate
+    ///                      included. `muni_errorInvalid` leaves both
+    ///                      outputs as they were.
+    /// @return `muni_success`, `muni_errorUtf16Surrogate` for an unpaired
+    ///         surrogate, or `muni_errorInvalid` when length is 0 or an
+    ///         out-parameter is NULL.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniDecodeUtf16(const uint16_t* units, size_t length,
+                                                       uint32_t* codePointOut, size_t* sizeOut);
+
     /// Encodes one code point as UTF-8.
     ///
     /// @param codePoint  A Unicode scalar value.
