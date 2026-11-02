@@ -396,8 +396,8 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult
     muniSegmentIterator_GetWordKind(const muniSegmentIterator* iterator, muniWordKind* kindOut);
 
-    // What a cut of text keeps whole. A later release may add units, such
-    // as words.
+    // A unit of text that muniMeasureUtf8 counts. A later release may add
+    // units, such as words.
     typedef int32_t muniTextUnit;
 
     enum
@@ -408,29 +408,48 @@ extern "C"
         // a base and its combining marks, an emoji sequence joined by
         // U+200D, a pair of regional indicators.
         muni_unitGraphemeCluster = 1,
+        // A UTF-16 code unit, as Java, JavaScript, Windows, AppKit and
+        // UIKit count text: one for a code point up to U+FFFF or a maximal
+        // ill-formed UTF-8 subpart, two past U+FFFF. In UTF-8 text its
+        // boundaries are the code point boundaries.
+        muni_unitUtf16 = 2,
     };
 
-    /// Gives the length of the longest prefix of UTF-8 text that is at
-    /// most budget bytes long and ends at a boundary of unit, for cutting
-    /// text to fit a buffer without splitting a character. With
-    /// muni_unitGraphemeCluster it reads at most one cluster past the
-    /// budget.
+    /// Finds the longest prefix of UTF-8 text that ends at a boundary of
+    /// unit and has at most maxBytes bytes and at most maxUnits units, and
+    /// gives its length in bytes and in units. One walk serves four uses:
+    /// a byte offset as a count of units (maxBytes is the offset, maxUnits
+    /// SIZE_MAX), a count of units as a byte offset (maxBytes SIZE_MAX,
+    /// maxUnits the count), text cut to fit a buffer without splitting a
+    /// character (maxBytes the buffer's size, maxUnits SIZE_MAX), and the
+    /// units of a whole text. With muni_unitGraphemeCluster it reads at
+    /// most one cluster past the prefix.
     ///
     /// @param text       The text. May be NULL when length is 0. Each
     ///                   maximal ill-formed subpart counts as one U+FFFD.
     /// @param length     The text's length in bytes.
-    /// @param budget     The most bytes the prefix may have; the whole text
-    ///                   when it is length or more.
-    /// @param unit       muni_unitCodePoint or muni_unitGraphemeCluster.
-    /// @param lengthOut  Receives the prefix's length, 0 when the first
-    ///                   unit is longer than budget. `muni_errorInvalid`
-    ///                   leaves it as it was.
+    /// @param unit       muni_unitCodePoint, muni_unitGraphemeCluster or
+    ///                   muni_unitUtf16.
+    /// @param maxBytes   The most bytes the prefix may have; the whole text
+    ///                   when it is length or more. When it falls inside a
+    ///                   code point or a cluster, the prefix ends at the
+    ///                   boundary before it.
+    /// @param maxUnits   The most units the prefix may have. When it falls
+    ///                   inside a code point, between the two UTF-16 units of
+    ///                   one past U+FFFF, the prefix ends before that code
+    ///                   point, so it has one unit fewer.
+    /// @param bytesOut   Receives the prefix's length in bytes, 0 when the
+    ///                   first unit does not fit. May be NULL.
+    /// @param unitsOut   Receives the prefix's length in units. May be
+    ///                   NULL. `muni_errorInvalid` leaves both as they were.
     /// @return `muni_success`, or `muni_errorInvalid` for a NULL text with
-    ///         a nonzero length, a NULL lengthOut or an unknown unit.
+    ///         a nonzero length or an unknown unit.
     /// @par Thread safety
     /// Safe from any thread.
-    MUNI_NODISCARD MUNI_API muniResult muniCutUtf8(const char* text, size_t length, size_t budget,
-                                                   muniTextUnit unit, size_t* lengthOut);
+    MUNI_NODISCARD MUNI_API muniResult muniMeasureUtf8(const char* text, size_t length,
+                                                       muniTextUnit unit, size_t maxBytes,
+                                                       size_t maxUnits, size_t* bytesOut,
+                                                       size_t* unitsOut);
 
     /// Writes the grapheme cluster boundaries of a whole UTF-8 text into a caller
     /// array: every boundary after the start, the end included.

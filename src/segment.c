@@ -393,51 +393,79 @@ muniResult muniSegmentIterator_GetWordKind(const muniSegmentIterator* iterator,
     return muni_success;
 }
 
-// The longest prefix of text, below its length, that fits budget and
-// ends at a code point boundary.
-static size_t CutAtCodePoint(const char* text, size_t length, size_t budget)
+// The longest prefix of text that fits maxBytes and maxUnits and ends at
+// a code point boundary, each code point weighing one unit, or with
+// utf16, two past U+FFFF.
+static size_t MeasureCodePoints(const char* text, size_t length, bool utf16, size_t maxBytes,
+                                size_t maxUnits, size_t* unitsOut)
 {
-    size_t fit = 0;
-    for (;;) // fit stays within budget, below length, so a step has text
+    size_t bytes = 0;
+    size_t units = 0;
+    while (bytes < length)
     {
         uint32_t codePoint;
         size_t size;
-        (void)muniStepUtf8((const uint8_t*)text + fit, length - fit, &codePoint, &size);
-        if (fit + size > budget)
+        muniResult status =
+            muniStepUtf8((const uint8_t*)text + bytes, length - bytes, &codePoint, &size);
+        size_t weight = utf16 && status == muni_success && codePoint > 0xFFFF ? 2 : 1;
+        if (size > maxBytes - bytes || weight > maxUnits - units)
         {
-            return fit;
+            break;
         }
-        fit += size;
+        bytes += size;
+        units += weight;
     }
+    *unitsOut = units;
+    return bytes;
 }
 
-// The same at a grapheme cluster boundary: the last boundary within
-// budget, found by reading up to the first one past it.
-static size_t CutAtCluster(const char* text, size_t length, size_t budget)
+// The same at grapheme cluster boundaries: the last that fits, found by
+// reading up to the first one past it.
+static size_t MeasureClusters(const char* text, size_t length, size_t maxBytes, size_t maxUnits,
+                              size_t* unitsOut)
 {
     muniSegmenter segmenter;
     memset(&segmenter, 0, sizeof(segmenter));
     segmenter.kind = muni_segmentGrapheme;
     muniCursorInit(&segmenter.cursor, text, length, false);
-    size_t fit = 0;
+    size_t bytes = 0;
+    size_t units = 0;
     size_t offset;
-    while (Next(&segmenter, &offset) == muni_success && offset <= budget)
+    while (units < maxUnits && Next(&segmenter, &offset) == muni_success && offset <= maxBytes)
     {
-        fit = offset;
+        bytes = offset;
+        units++;
     }
-    return fit;
+    *unitsOut = units;
+    return bytes;
 }
 
-muniResult muniCutUtf8(const char* text, size_t length, size_t budget, muniTextUnit unit,
-                       size_t* lengthOut)
+muniResult muniMeasureUtf8(const char* text, size_t length, muniTextUnit unit, size_t maxBytes,
+                           size_t maxUnits, size_t* bytesOut, size_t* unitsOut)
 {
-    if ((text == nullptr && length != 0) || lengthOut == nullptr ||
-        (unit != muni_unitCodePoint && unit != muni_unitGraphemeCluster))
+    if ((text == nullptr && length != 0) ||
+        (unit != muni_unitCodePoint && unit != muni_unitGraphemeCluster && unit != muni_unitUtf16))
     {
         return muni_errorInvalid;
     }
-    *lengthOut = budget >= length             ? length
-                 : unit == muni_unitCodePoint ? CutAtCodePoint(text, length, budget)
-                                              : CutAtCluster(text, length, budget);
+    size_t bytes = length;
+    size_t units = 0;
+    if (maxBytes < length || maxUnits < length || unitsOut != nullptr)
+    {
+        // A cut that fits whole and counts nothing needs no walk: a unit is
+        // at least a byte.
+        bytes = unit == muni_unitGraphemeCluster
+                    ? MeasureClusters(text, length, maxBytes, maxUnits, &units)
+                    : MeasureCodePoints(text, length, unit == muni_unitUtf16, maxBytes, maxUnits,
+                                        &units);
+    }
+    if (bytesOut != nullptr)
+    {
+        *bytesOut = bytes;
+    }
+    if (unitsOut != nullptr)
+    {
+        *unitsOut = units;
+    }
     return muni_success;
 }

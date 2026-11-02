@@ -343,11 +343,13 @@ static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const 
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
-// muniCutUtf8 at a few budgets gives the last grapheme boundary within
-// each, of those the break finder reported, and the last code point
-// boundary, of those muniDecodeUtf8 steps over.
-static void CheckCut(const char* text, size_t length, const size_t* breaks, size_t count,
-                     uint8_t salt)
+// muniMeasureUtf8 at a few byte limits gives the last grapheme boundary
+// within each, of those the break finder reported, and the last code
+// point boundary, of those muniDecodeUtf8 steps over. Over the whole text
+// it counts the clusters reported, the code points UTF-32 needs and the
+// units UTF-16 needs.
+static void CheckMeasure(const char* text, size_t length, const size_t* breaks, size_t count,
+                         uint8_t salt)
 {
     for (size_t k = 0; k < 4; k++)
     {
@@ -367,11 +369,27 @@ static void CheckCut(const char* text, size_t length, const size_t* breaks, size
             codePoint = offset <= budget ? offset : codePoint;
         }
         size_t fit = SIZE_MAX;
-        Require(muniCutUtf8(text, length, budget, muni_unitGraphemeCluster, &fit) == muni_success &&
+        Require(muniMeasureUtf8(text, length, muni_unitGraphemeCluster, budget, SIZE_MAX, &fit,
+                                nullptr) == muni_success &&
                 fit == cluster);
-        Require(muniCutUtf8(text, length, budget, muni_unitCodePoint, &fit) == muni_success &&
+        Require(muniMeasureUtf8(text, length, muni_unitCodePoint, budget, SIZE_MAX, &fit,
+                                nullptr) == muni_success &&
                 fit == codePoint);
     }
+    size_t bytes = 0;
+    size_t units = 0;
+    size_t needed = 0;
+    Require(muniMeasureUtf8(text, length, muni_unitGraphemeCluster, SIZE_MAX, SIZE_MAX, &bytes,
+                            &units) == muni_success &&
+            bytes == length && units == count);
+    (void)muniConvertUtf8ToUtf32(text, length, muni_convertReplace, nullptr, 0, &needed);
+    Require(muniMeasureUtf8(text, length, muni_unitCodePoint, SIZE_MAX, SIZE_MAX, &bytes, &units) ==
+                muni_success &&
+            bytes == length && units == needed);
+    (void)muniConvertUtf8ToUtf16(text, length, muni_convertReplace, nullptr, 0, &needed);
+    Require(muniMeasureUtf8(text, length, muni_unitUtf16, SIZE_MAX, SIZE_MAX, &bytes, &units) ==
+                muni_success &&
+            bytes == length && units == needed);
 }
 
 // The kind a code point gives a word segment, from the public
@@ -479,7 +497,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
     if (kind == 0)
     {
-        CheckCut(text, length, whole, count, data[0]);
+        CheckMeasure(text, length, whole, count, data[0]);
     }
     if (kind == 1)
     {

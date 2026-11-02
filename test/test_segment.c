@@ -1180,24 +1180,35 @@ static void TestNegativeClasses(void)
     CHECK(refused, "a negative class in an override refused, and the iterator still works");
 }
 
-// The cut muniCutUtf8 should give: the last boundary within budget among
-// the code points muniDecodeUtf8 steps over or the clusters
-// muniFindGraphemeBreaks reports.
-static size_t ExpectedCut(const char* text, size_t length, size_t budget, muniTextUnit unit)
+// What muniMeasureUtf8 should give: the last boundary within both limits
+// among the code points muniDecodeUtf8 steps over (weighed as UTF-16
+// units for muni_unitUtf16) or the clusters muniFindGraphemeBreaks
+// reports, and its count of units.
+static size_t ExpectedMeasure(const char* text, size_t length, muniTextUnit unit, size_t maxBytes,
+                              size_t maxUnits, size_t* unitsOut)
 {
-    size_t fit = 0;
-    if (unit == muni_unitCodePoint)
+    size_t bytes = 0;
+    size_t units = 0;
+    if (unit != muni_unitGraphemeCluster)
     {
         size_t offset = 0;
+        size_t count = 0;
         while (offset < length)
         {
             uint32_t codePoint;
             size_t size;
-            (void)muniDecodeUtf8(text + offset, length - offset, &codePoint, &size);
+            bool decoded =
+                muniDecodeUtf8(text + offset, length - offset, &codePoint, &size) == muni_success;
             offset += size;
-            fit = offset <= budget ? offset : fit;
+            count += unit == muni_unitUtf16 && decoded && codePoint > 0xFFFF ? 2 : 1;
+            if (offset <= maxBytes && count <= maxUnits)
+            {
+                bytes = offset;
+                units = count;
+            }
         }
-        return fit;
+        *unitsOut = units;
+        return bytes;
     }
     size_t breaks[64];
     size_t count = 0;
@@ -1205,25 +1216,27 @@ static size_t ExpectedCut(const char* text, size_t length, size_t budget, muniTe
     {
         return SIZE_MAX;
     }
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < count && breaks[i] <= maxBytes && i < maxUnits; i++)
     {
-        fit = breaks[i] <= budget ? breaks[i] : fit;
+        bytes = breaks[i];
+        units = i + 1;
     }
-    return fit;
+    *unitsOut = units;
+    return bytes;
 }
 
-// muniCutUtf8 keeps a code point or a cluster whole: not a sequence cut
-// in two, a base cut from its mark, an emoji sequence joined by U+200D cut
-// at the joiner or a flag cut between its regional indicators. Each text
-// is a heap allocation of exactly its length, so a read past it is seen,
-// and every budget gives the boundary the stepping and the break finder
-// agree on.
-static void TestCut(void)
+// muniMeasureUtf8 keeps a code point or a cluster whole: not a sequence
+// cut in two, a base cut from its mark, an emoji sequence joined by U+200D
+// cut at the joiner or a flag cut between its regional indicators. Each
+// text is a heap allocation of exactly its length, so a read past it is
+// seen, and every pair of limits gives the boundary the stepping and the
+// break finder agree on, with and without a count of units.
+static void TestMeasureLimits(void)
 {
     static const struct
     {
         const char* text;
-        size_t budget;
+        size_t maxBytes;
         size_t codePoint;
         size_t cluster;
         const char* what;
@@ -1241,9 +1254,9 @@ static void TestCut(void)
         {"\xE1\x80"
          "A",
          2, 2, 2, "and fits whole"},
-        {"abc", 3, 3, 3, "a budget of the whole text"},
-        {"abc", 9, 3, 3, "a budget past the text"},
-        {"abc", 0, 0, 0, "a budget of 0"},
+        {"abc", 3, 3, 3, "a limit of the whole text"},
+        {"abc", 9, 3, 3, "a limit past the text"},
+        {"abc", 0, 0, 0, "a limit of 0"},
     };
     for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
     {
@@ -1257,38 +1270,108 @@ static void TestCut(void)
         memcpy(text, s_cases[i].text, length);
         size_t codePoint = 99;
         size_t cluster = 99;
-        CHECK(muniCutUtf8(text, length, s_cases[i].budget, muni_unitCodePoint, &codePoint) ==
-                      muni_success &&
+        CHECK(muniMeasureUtf8(text, length, muni_unitCodePoint, s_cases[i].maxBytes, SIZE_MAX,
+                              &codePoint, nullptr) == muni_success &&
                   codePoint == s_cases[i].codePoint &&
-                  muniCutUtf8(text, length, s_cases[i].budget, muni_unitGraphemeCluster,
-                              &cluster) == muni_success &&
+                  muniMeasureUtf8(text, length, muni_unitGraphemeCluster, s_cases[i].maxBytes,
+                                  SIZE_MAX, &cluster, nullptr) == muni_success &&
                   cluster == s_cases[i].cluster,
               s_cases[i].what);
         size_t failures = 0;
-        for (size_t budget = 0; budget <= length + 1; budget++)
+        for (muniTextUnit unit = muni_unitCodePoint; unit <= muni_unitUtf16; unit++)
         {
-            for (muniTextUnit unit = muni_unitCodePoint; unit <= muni_unitGraphemeCluster; unit++)
+            for (size_t maxBytes = 0; maxBytes <= length + 1; maxBytes++)
             {
-                size_t fit = 99;
-                failures += muniCutUtf8(text, length, budget, unit, &fit) == muni_success &&
-                                    fit == ExpectedCut(text, length, budget, unit)
-                                ? 0
-                                : 1;
+                for (size_t maxUnits = 0; maxUnits <= length + 2; maxUnits++)
+                {
+                    size_t limit = maxUnits == length + 2 ? SIZE_MAX : maxUnits;
+                    size_t units = 99;
+                    size_t expectedUnits = 0;
+                    size_t expected =
+                        ExpectedMeasure(text, length, unit, maxBytes, limit, &expectedUnits);
+                    size_t bytes = 99;
+                    size_t alone = 99;
+                    failures += muniMeasureUtf8(text, length, unit, maxBytes, limit, &bytes,
+                                                &units) == muni_success &&
+                                        muniMeasureUtf8(text, length, unit, maxBytes, limit, &alone,
+                                                        nullptr) == muni_success &&
+                                        bytes == expected && alone == expected &&
+                                        units == expectedUnits
+                                    ? 0
+                                    : 1;
+                }
             }
         }
-        CHECK(failures == 0, "every budget cuts at the last boundary within it");
+        CHECK(failures == 0, "every pair of limits stops at the last boundary within both");
         free(text);
     }
-    size_t fit = 7;
-    CHECK(muniCutUtf8(nullptr, 0, 5, muni_unitGraphemeCluster, &fit) == muni_success && fit == 0,
+}
+
+// The four uses the header names, on "a", U+1F600 and "é": one, four and
+// two bytes, one, two and one UTF-16 units.
+static void TestMeasureUses(void)
+{
+    static const char text[] = "a\xF0\x9F\x98\x80\xC3\xA9";
+    size_t bytes = 99;
+    size_t units = 99;
+    CHECK(muniMeasureUtf8(text, 7, muni_unitUtf16, 5, SIZE_MAX, &bytes, &units) == muni_success &&
+              bytes == 5 && units == 3,
+          "a byte offset as UTF-16 units");
+    CHECK(muniMeasureUtf8(text, 7, muni_unitCodePoint, 5, SIZE_MAX, &bytes, &units) ==
+                  muni_success &&
+              bytes == 5 && units == 2,
+          "a byte offset as code points");
+    CHECK(muniMeasureUtf8(text, 7, muni_unitUtf16, 3, SIZE_MAX, &bytes, &units) == muni_success &&
+              bytes == 1 && units == 1,
+          "an offset inside a code point counts the units before it");
+    CHECK(muniMeasureUtf8(text, 7, muni_unitUtf16, SIZE_MAX, 3, &bytes, &units) == muni_success &&
+              bytes == 5 && units == 3,
+          "UTF-16 units as a byte offset");
+    CHECK(muniMeasureUtf8(text, 7, muni_unitUtf16, SIZE_MAX, 2, &bytes, &units) == muni_success &&
+              bytes == 1 && units == 1,
+          "a count inside a surrogate pair ends before the pair");
+    CHECK(muniMeasureUtf8(text, 7, muni_unitUtf16, SIZE_MAX, 9, &bytes, &units) == muni_success &&
+              bytes == 7 && units == 4,
+          "a count past the text ends at its end");
+    units = 99;
+    CHECK(muniMeasureUtf8(text, 7, muni_unitCodePoint, 6, SIZE_MAX, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 5 && units == 99,
+          "a cut to a buffer");
+    // e and U+0301, x, a flag: three clusters of 3, 1 and 8 bytes.
+    static const char clusters[] = "e\xCC\x81x\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7";
+    CHECK(muniMeasureUtf8(clusters, 12, muni_unitGraphemeCluster, SIZE_MAX, SIZE_MAX, &bytes,
+                          &units) == muni_success &&
+              bytes == 12 && units == 3,
+          "the clusters of a whole text");
+    CHECK(muniMeasureUtf8(clusters, 12, muni_unitGraphemeCluster, SIZE_MAX, 2, &bytes, &units) ==
+                  muni_success &&
+              bytes == 4 && units == 2,
+          "where a count of clusters ends");
+}
+
+static void TestMeasureRefusals(void)
+{
+    size_t bytes = 7;
+    size_t units = 7;
+    CHECK(muniMeasureUtf8(nullptr, 0, muni_unitGraphemeCluster, 5, SIZE_MAX, &bytes, &units) ==
+                  muni_success &&
+              bytes == 0 && units == 0,
           "empty text");
-    fit = 7;
-    CHECK(muniCutUtf8(nullptr, 1, 5, muni_unitCodePoint, &fit) == muni_errorInvalid && fit == 7,
-          "no text with a length is refused and leaves the length");
-    CHECK(muniCutUtf8("a", 1, 5, muni_unitCodePoint, nullptr) == muni_errorInvalid,
-          "no length out");
-    CHECK(muniCutUtf8("a", 1, 5, 2, &fit) == muni_errorInvalid && fit == 7, "an unknown unit");
-    CHECK(muniCutUtf8("a", 1, 5, -1, &fit) == muni_errorInvalid && fit == 7, "a negative unit");
+    bytes = 7;
+    units = 7;
+    CHECK(muniMeasureUtf8(nullptr, 1, muni_unitCodePoint, 5, SIZE_MAX, &bytes, &units) ==
+                  muni_errorInvalid &&
+              bytes == 7 && units == 7,
+          "no text with a length is refused and leaves the outputs");
+    CHECK(muniMeasureUtf8("a", 1, 3, 5, SIZE_MAX, &bytes, &units) == muni_errorInvalid &&
+              bytes == 7 && units == 7,
+          "an unknown unit");
+    CHECK(muniMeasureUtf8("a", 1, -1, 5, SIZE_MAX, &bytes, &units) == muni_errorInvalid &&
+              bytes == 7 && units == 7,
+          "a negative unit");
+    CHECK(muniMeasureUtf8("a", 1, muni_unitUtf16, 5, SIZE_MAX, nullptr, nullptr) == muni_success,
+          "no outputs");
 }
 
 // Collects the boundaries of a word iterator over text and the kind of
@@ -1429,6 +1512,8 @@ int main(void)
     TestInvalidArguments();
     TestFeedingRules();
     TestWordKinds();
-    TestCut();
+    TestMeasureLimits();
+    TestMeasureUses();
+    TestMeasureRefusals();
     return s_failures == 0 ? 0 : 1;
 }
