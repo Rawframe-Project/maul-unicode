@@ -31,7 +31,8 @@ may change the API, the ABI and every data format.
   clusters. Normal and strict keep CJ with what precedes it, as the CSS
   Text 3 Candidate Recommendation Draft of 14 August 2026 says; ICU4C's
   normal rules and earlier CSS drafts break before CJ in normal. The
-  default level breaks as before, at the same cost
+  default level breaks as before, at nearly the same cost (0.15% more
+  instructions on the bench)
   ([#221](https://github.com/Rawframe-Project/maul-unicode/pull/221)).
 - `muniConvertCase` takes two more languages. `muni_caseGreek`
   uppercases Greek as it is written in capitals: accents and breathings
