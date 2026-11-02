@@ -5,7 +5,8 @@
 // answers that agree with each other: validation and strict conversion
 // report the same error at the same offset; valid text survives round
 // trips through UTF-16 and UTF-32 byte for byte; replacement never
-// fails; decoding step by step reaches the offset validation reports.
+// fails; decoding step by step reaches the offset validation reports;
+// into an output too small, each conversion stops at a code point.
 // The same bytes are also read as UTF-16 units and as UTF-32 values,
 // which may hold any surrogate or value past U+10FFFF.
 
@@ -100,6 +101,113 @@ static void* Allocate(size_t bytes)
     return malloc(bytes == 0 ? 1 : bytes);
 }
 
+// A conversion in replace mode, with the size of its input and output
+// units and the units the code point at the start of its input takes.
+typedef struct
+{
+    muniTextResult (*convert)(const void* input, size_t length, void* output, size_t capacity,
+                              size_t* neededOut);
+    size_t inputSize;
+    size_t outputSize;
+    size_t (*step)(const void* input, size_t length);
+} Conversion;
+
+static muniTextResult Utf8ToUtf16(const void* input, size_t length, void* output, size_t capacity,
+                                  size_t* neededOut)
+{
+    return muniConvertUtf8ToUtf16(input, length, muni_convertReplace, output, capacity, neededOut);
+}
+
+static muniTextResult Utf8ToUtf32(const void* input, size_t length, void* output, size_t capacity,
+                                  size_t* neededOut)
+{
+    return muniConvertUtf8ToUtf32(input, length, muni_convertReplace, output, capacity, neededOut);
+}
+
+static muniTextResult Utf16ToUtf8(const void* input, size_t length, void* output, size_t capacity,
+                                  size_t* neededOut)
+{
+    return muniConvertUtf16ToUtf8(input, length, muni_convertReplace, output, capacity, neededOut);
+}
+
+static muniTextResult Utf32ToUtf8(const void* input, size_t length, void* output, size_t capacity,
+                                  size_t* neededOut)
+{
+    return muniConvertUtf32ToUtf8(input, length, muni_convertReplace, output, capacity, neededOut);
+}
+
+static size_t StepUtf8(const void* input, size_t length)
+{
+    uint32_t codePoint;
+    size_t size = 0;
+    (void)muniDecodeUtf8(input, length, &codePoint, &size);
+    return size;
+}
+
+static size_t StepUtf16(const void* input, size_t length)
+{
+    uint32_t codePoint;
+    size_t size = 0;
+    (void)muniDecodeUtf16(input, length, &codePoint, &size);
+    return size;
+}
+
+static size_t StepUtf32(const void* input, size_t length)
+{
+    (void)input;
+    (void)length;
+    return 1;
+}
+
+static const Conversion s_utf8ToUtf16 = {Utf8ToUtf16, 1, sizeof(uint16_t), StepUtf8};
+static const Conversion s_utf8ToUtf32 = {Utf8ToUtf32, 1, sizeof(uint32_t), StepUtf8};
+static const Conversion s_utf16ToUtf8 = {Utf16ToUtf8, sizeof(uint16_t), 1, StepUtf16};
+static const Conversion s_utf32ToUtf8 = {Utf32ToUtf8, sizeof(uint32_t), 1, StepUtf32};
+
+// Into an output too small, a conversion stops at a code point: it
+// reports the whole size and the offset of the first code point not
+// written, writes the conversion of the input before that offset and
+// nothing after it, and the code point at the offset would not have fit.
+// Each output is a heap allocation of exactly its capacity.
+static void CheckStops(const Conversion* conversion, const void* input, size_t length, uint8_t salt)
+{
+    size_t needed = 0;
+    (void)conversion->convert(input, length, nullptr, 0, &needed);
+    uint8_t* whole = Allocate(conversion->outputSize * needed);
+    size_t written = 0;
+    Require(conversion->convert(input, length, whole, needed, &written).status == muni_success &&
+            written == needed);
+    for (size_t k = 0; k < 3; k++)
+    {
+        size_t capacity = (salt * 31u + k * (needed / 3 + 1)) % (needed + 1);
+        size_t bytes = conversion->outputSize * capacity;
+        uint8_t* output = Allocate(bytes);
+        memset(output, 0xA5, bytes);
+        size_t total = 0;
+        muniTextResult result = conversion->convert(input, length, output, capacity, &total);
+        Require(result.status == (capacity < needed ? muni_errorCapacity : muni_success) &&
+                total == needed && result.offset <= length);
+        size_t prefix = 0;
+        (void)conversion->convert(input, result.offset, nullptr, 0, &prefix);
+        size_t prefixBytes = conversion->outputSize * prefix;
+        Require(prefix <= capacity && memcmp(output, whole, prefixBytes) == 0);
+        for (size_t i = prefixBytes; i < bytes; i++)
+        {
+            Require(output[i] == 0xA5);
+        }
+        if (result.offset < length)
+        {
+            const uint8_t* rest = (const uint8_t*)input + conversion->inputSize * result.offset;
+            size_t next = result.offset + conversion->step(rest, length - result.offset);
+            size_t more = 0;
+            (void)conversion->convert(input, next, nullptr, 0, &more);
+            Require(more > capacity);
+        }
+        free(output);
+    }
+    free(whole);
+}
+
 // Stepping through UTF-16 units with muniDecodeUtf16 meets its first
 // unpaired surrogate where validation stops, and gives, code point by
 // code point, what replacing conversion writes.
@@ -156,6 +264,7 @@ static void CheckUtf16(const uint8_t* data, size_t size)
             written == length);
     Require(muniValidateUtf8(replaced, length).status == muni_success);
     CheckUtf16Stepping(units, count, validation, replaced, length);
+    CheckStops(&s_utf16ToUtf8, units, count, size == 0 ? 0 : data[0]);
 
     char* strict = Allocate(length);
     size_t strictLength = 0;
@@ -214,6 +323,7 @@ static void CheckUtf32(const uint8_t* data, size_t size)
     Require(muniConvertUtf32ToUtf8(values, count, muni_convertReplace, replaced, length, &written)
                     .status == muni_success &&
             written == length);
+    CheckStops(&s_utf32ToUtf8, values, count, size == 0 ? 0 : data[0]);
     size_t strictLength = 0;
     muniTextResult strict =
         muniConvertUtf32ToUtf8(values, count, muni_convertStrict, nullptr, 0, &strictLength);
@@ -249,6 +359,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     muniTextResult validation = muniValidateUtf8(text, size);
     CheckStepping(text, size, validation);
     CheckIdentifier(text, size);
+    uint8_t salt = size == 0 ? 0 : data[0];
+    CheckStops(&s_utf8ToUtf16, text, size, salt);
+    CheckStops(&s_utf8ToUtf32, text, size, salt);
 
     uint16_t* units = malloc(sizeof(uint16_t) * (size + 1));
     size_t unitCount = 0;
