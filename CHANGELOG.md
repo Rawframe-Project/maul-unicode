@@ -5,6 +5,15 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.11.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.10.0...v0.11.0) (2026-11-02)
+
+
+### Added
+
+* **encoding:** decode one code point from UTF-16 ([#228](https://github.com/Rawframe-Project/maul-unicode/issues/228)) ([5ac77e5](https://github.com/Rawframe-Project/maul-unicode/commit/5ac77e58f13cf825aa2dc8aacbbf4127e3348cef)), closes [#218](https://github.com/Rawframe-Project/maul-unicode/issues/218)
+* **normalize:** give the full decomposition of one code point ([#227](https://github.com/Rawframe-Project/maul-unicode/issues/227)) ([0d09156](https://github.com/Rawframe-Project/maul-unicode/commit/0d09156e60f8897bbbe3656e1677ec5811e2c4d0)), closes [#215](https://github.com/Rawframe-Project/maul-unicode/issues/215)
+* **segment:** cut UTF-8 to a byte budget at a code point or cluster ([#230](https://github.com/Rawframe-Project/maul-unicode/issues/230)) ([b4b06b6](https://github.com/Rawframe-Project/maul-unicode/commit/b4b06b68ad2debcf2a3914f6e84635e253e3b389)), closes [#217](https://github.com/Rawframe-Project/maul-unicode/issues/217)
+
 ## [0.10.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.1...v0.10.0) (2026-11-02)
 
 ### ⚠ BREAKING CHANGES
