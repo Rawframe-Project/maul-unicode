@@ -373,6 +373,26 @@ muniResult muniFindLineBreaks(const char* text, size_t length, size_t* offsetsOu
     return Find(muni_segmentLine, text, length, offsetsOut, mandatoryOut, capacity, countOut);
 }
 
+muniResult muniSegmentIterator_GetWordKind(const muniSegmentIterator* iterator,
+                                           muniWordKind* kindOut)
+{
+    if (iterator == nullptr || kindOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter = Load(iterator);
+    if (segmenter.kind != muni_segmentWord)
+    {
+        return muni_errorInvalid;
+    }
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    *kindOut = segmenter.rules.word.reportedKind;
+    return muni_success;
+}
+
 // The longest prefix of text, below its length, that fits budget and
 // ends at a code point boundary.
 static size_t CutAtCodePoint(const char* text, size_t length, size_t budget)

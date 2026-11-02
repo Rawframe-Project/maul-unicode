@@ -90,7 +90,8 @@ set(MUNI_SOURCES
     src/script_runs.c
     src/segment.c
     src/sentence.c
-    src/word.c)
+    src/word.c
+    src/word_kind.c)
 set(MUNI_NORMALIZATION_SOURCES
     src/decompose.c
     src/normalize.c

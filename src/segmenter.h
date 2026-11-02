@@ -72,6 +72,8 @@ typedef struct muniWordRules
     uint8_t previous;       // the previous one after rule WB4, which skips Extend
     uint8_t before;         // the one before that, after rule WB4
     bool oddRegional;       // an odd number of regional indicators precedes
+    uint8_t kind;           // the muniWordKind of the segment so far
+    uint8_t reportedKind;   // the muniWordKind of the segment last reported
     uint32_t overrideCount; // the entries of the segmenter's overrides
 } muniWordRules;
 
@@ -169,6 +171,9 @@ typedef uint8_t (*muniLookupRule)(const muniSegmenter* segmenter, uint32_t codeP
 typedef muniDecision (*muniDecideRule)(const muniSegmenter* segmenter, uint8_t value,
                                        uint32_t codePoint);
 typedef void (*muniAbsorbRule)(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint);
+// Called just before a boundary is reported, before the code point after
+// it is absorbed; NULL for a rule set that keeps nothing per segment.
+typedef void (*muniBoundaryRule)(muniSegmenter* segmenter);
 
 // The class overrides give a code point, or value when they do not name
 // it: a binary search, so a long table costs a logarithm per code point.
@@ -194,10 +199,16 @@ static inline uint8_t muniOverrideClass(const muniBreakClassOverride* overrides,
     return low < count && overrides[low].codePoint == codePoint ? overrides[low].value : value;
 }
 
-// Reports a boundary.
+// Reports a boundary, after the rule set's boundary rule, if it has one
+// and the code point after the boundary is not yet absorbed.
 static inline muniResult muniSegmenterReport(muniSegmenter* segmenter, size_t offset,
-                                             bool mandatory, size_t* offsetOut)
+                                             bool mandatory, size_t* offsetOut,
+                                             muniBoundaryRule boundary)
 {
+    if (boundary != nullptr)
+    {
+        boundary(segmenter);
+    }
     // Every boundary lies after at least one code point.
     MUNI_ASSERT(offset > 0);
     segmenter->mandatory = mandatory;
@@ -208,14 +219,15 @@ static inline muniResult muniSegmenterReport(muniSegmenter* segmenter, size_t of
 // The end of the text: a hold resolves with muni_segmentEnd, then the end
 // itself is a boundary unless the text is empty.
 static inline muniResult muniSegmenterEnd(muniSegmenter* segmenter, size_t* offsetOut,
-                                          muniDecideRule resolve)
+                                          muniDecideRule resolve, muniBoundaryRule boundary)
 {
     if (segmenter->holding)
     {
         segmenter->holding = false;
         if (resolve(segmenter, muni_segmentEnd, 0) != muni_decideJoin)
         {
-            return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut);
+            return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut,
+                                       boundary);
         }
     }
     if (!segmenter->started || segmenter->endReported)
@@ -223,14 +235,15 @@ static inline muniResult muniSegmenterEnd(muniSegmenter* segmenter, size_t* offs
         return muni_done;
     }
     segmenter->endReported = true;
-    return muniSegmenterReport(segmenter, segmenter->cursor.offset, true, offsetOut);
+    return muniSegmenterReport(segmenter, segmenter->cursor.offset, true, offsetOut, boundary);
 }
 
 // Finds the next boundary: muni_success and its offset, muni_done after
 // the end, or muni_needMoreText.
 static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* offsetOut,
                                            muniLookupRule lookup, muniDecideRule decide,
-                                           muniDecideRule resolve, muniAbsorbRule absorb)
+                                           muniDecideRule resolve, muniAbsorbRule absorb,
+                                           muniBoundaryRule boundary)
 {
     for (;;)
     {
@@ -243,7 +256,7 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
         }
         if (status == muni_done)
         {
-            return muniSegmenterEnd(segmenter, offsetOut, resolve);
+            return muniSegmenterEnd(segmenter, offsetOut, resolve, boundary);
         }
         uint8_t value = lookup(segmenter, codePoint);
         muniDecision decision = muni_decideJoin;
@@ -256,7 +269,8 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
                 // The hold failed: report it, and decide about this code
                 // point on the next call.
                 segmenter->holding = false;
-                return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut);
+                return muniSegmenterReport(segmenter, segmenter->heldOffset, false, offsetOut,
+                                           boundary);
             }
             segmenter->holding = decision == muni_decideContinue;
         }
@@ -271,13 +285,17 @@ static inline muniResult muniSegmenterNext(muniSegmenter* segmenter, size_t* off
             segmenter->holdKind = (uint8_t)(decision - muni_decideHold);
             segmenter->heldOffset = offset;
         }
+        if (decision <= muni_decideMandatory && boundary != nullptr)
+        {
+            boundary(segmenter);
+        }
         absorb(segmenter, value, codePoint);
         segmenter->started = true;
         muniCursorAdvance(&segmenter->cursor, size);
         if (decision <= muni_decideMandatory)
         {
             return muniSegmenterReport(segmenter, offset, decision == muni_decideMandatory,
-                                       offsetOut);
+                                       offsetOut, nullptr);
         }
     }
 }

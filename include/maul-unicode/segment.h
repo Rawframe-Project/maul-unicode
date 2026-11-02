@@ -12,7 +12,8 @@
 // none. Offsets are in bytes from the start of the whole text. Each
 // maximal ill-formed UTF-8 subpart counts as one U+FFFD. Word boundaries
 // are the positions UAX #29 defines; between two of them may lie a word,
-// a run of spaces or a punctuation mark, which the caller tells apart.
+// a run of spaces or a punctuation mark, which
+// muniSegmentIterator_GetWordKind tells apart.
 //
 // Text may arrive in pieces. An iterator initialized with more text to
 // follow stops with muni_needMoreText when the next boundary depends on
@@ -356,6 +357,44 @@ extern "C"
     /// Safe from any thread; an iterator is used by one thread at a time.
     MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_NextLineBreak(
         muniSegmentIterator* iterator, size_t* offsetOut, bool* mandatoryOut);
+
+    // What a word segment holds: the highest kind among its code points.
+    // ICU's word rule statuses give a segment of letters or digits alone
+    // the same kind; on a mixed one ICU reports the rule it matched last,
+    // so it calls "ab12" a number and "__" a letter. A later release may
+    // add kinds.
+    typedef int32_t muniWordKind;
+
+    enum
+    {
+        // No word: spaces, punctuation, symbols, a line break.
+        muni_wordNone = 0,
+        // A number: Word_Break=Numeric, with its connectors.
+        muni_wordNumber = 1,
+        // Letters (Word_Break=ALetter or Hebrew_Letter), possibly with
+        // digits, or the letters of Thai, Lao, Khmer or Burmese.
+        muni_wordLetter = 2,
+        // Katakana or hiragana.
+        muni_wordKana = 3,
+        // Ideographs (Ideographic=Yes).
+        muni_wordIdeograph = 4,
+    };
+
+    /// Tells what kind of word the segment ending at the boundary a word
+    /// iterator last reported holds: the text between that boundary and
+    /// the one before it, or the start of the text.
+    ///
+    /// @param iterator  An iterator from muniInitWordIterator.
+    /// @param kindOut   Receives the kind; muni_wordNone before the first
+    ///                  boundary. Left as it was unless the call returns
+    ///                  `muni_success`.
+    /// @return `muni_success`; `muni_errorBusy` when called from inside the
+    ///         iterator's word segmenter; `muni_errorInvalid` for a NULL
+    ///         argument or an iterator of another kind.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time.
+    MUNI_NODISCARD MUNI_API muniResult
+    muniSegmentIterator_GetWordKind(const muniSegmentIterator* iterator, muniWordKind* kindOut);
 
     // What a cut of text keeps whole. A later release may add units, such
     // as words.

@@ -22,7 +22,7 @@ if (muniInitGraphemeIterator(&iterator, text, length, false) == muni_success)
 }
 ```
 
-`muniInitWordIterator` and `muniInitSentenceIterator` work the same way. `muniFindGraphemeBreaks`, `muniFindWordBreaks` and `muniFindSentenceBreaks` write every boundary of a whole text into an array instead, which is faster when the text is at hand.
+`muniInitWordIterator` and `muniInitSentenceIterator` work the same way. After each boundary of a word iterator, `muniSegmentIterator_GetWordKind` tells what the segment before it holds: no word (spaces, punctuation, symbols), a number, letters, kana or ideographs, the highest among its code points. ICU's word rule statuses agree on a segment of letters or digits alone; on a mixed segment ICU reports the rule it matched last, so it calls "ab12" a number. Word movement and double-click selection skip the segments of kind `muni_wordNone`; letters with digits count as letters, and a superscript digit such as "²" is no number. `muniFindGraphemeBreaks`, `muniFindWordBreaks` and `muniFindSentenceBreaks` write every boundary of a whole text into an array instead, which is faster when the text is at hand.
 
 To cut text to fit a buffer, `muniCutUtf8` gives the length of the longest prefix within a byte budget that ends at a code point or, with `muni_unitGraphemeCluster`, a grapheme cluster boundary. Cutting at a code point keeps the text well formed; cutting at a cluster also keeps a letter with its accents, an emoji sequence or a flag whole, which is what a text field or a preedit string should show.
 
