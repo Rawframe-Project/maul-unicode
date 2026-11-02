@@ -7,15 +7,50 @@ may change the API, the ABI and every data format.
 
 ## [0.10.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.1...v0.10.0) (2026-11-02)
 
-
 ### ⚠ BREAKING CHANGES
 
-* **line:** `muniSegmentIterator_EnableCjAsIdeographic(iterator, true)` is `muniSegmentIterator_SetLineBreakStrictness(iterator, muni_lineBreakLoose)`, which also adds loose's other breaks; `muniSegmentIterator_IsCjAsIdeographicEnabled` is gone, and `muniSegmentIterator_GetLineBreakStrictness` tells the level. A new iterator breaks as before.
+- Line iterators take a strictness level and a writing system in place
+  of the CJ switch. `muniSegmentIterator_EnableCjAsIdeographic(iterator,
+  true)` becomes `muniSegmentIterator_SetLineBreakStrictness(iterator,
+  muni_lineBreakLoose)`, which also adds loose's other breaks.
+  `muniSegmentIterator_IsCjAsIdeographicEnabled` is removed;
+  `muniSegmentIterator_GetLineBreakStrictness` reports the level. A new
+  iterator breaks as before
+  ([#221](https://github.com/Rawframe-Project/maul-unicode/pull/221)).
 
 ### Added
 
-* **case:** uppercase Greek and the Armenian ligature by language rules ([#223](https://github.com/Rawframe-Project/maul-unicode/issues/223)) ([c2afc93](https://github.com/Rawframe-Project/maul-unicode/commit/c2afc93728b94ac63c3fe032b363569e669b2777)), closes [#214](https://github.com/Rawframe-Project/maul-unicode/issues/214)
-* **line:** break at the strictness levels of CSS line-break ([#221](https://github.com/Rawframe-Project/maul-unicode/issues/221)) ([5dcb17c](https://github.com/Rawframe-Project/maul-unicode/commit/5dcb17c20a7f8179e83722c3c5d4edd45f8e0415)), closes [#213](https://github.com/Rawframe-Project/maul-unicode/issues/213)
+- Line iterators break at the levels of CSS's `line-break` property:
+  strict, normal (the default), loose and anywhere, set with
+  `muniSegmentIterator_SetLineBreakStrictness` before the first break.
+  `muniSegmentIterator_SetWritingSystem` with
+  `muni_writingChineseJapanese` turns on the rules CSS keeps for Chinese
+  and Japanese. Loose breaks before small kana and the prolonged sound
+  mark (Line_Break=CJ), before iteration marks and between characters
+  such as two ellipses; anywhere breaks between any two grapheme
+  clusters. Normal and strict keep CJ with what precedes it, as the CSS
+  Text 3 Candidate Recommendation Draft of 14 August 2026 says; ICU4C's
+  normal rules and earlier CSS drafts break before CJ in normal. The
+  default level breaks as before, at the same cost
+  ([#221](https://github.com/Rawframe-Project/maul-unicode/pull/221)).
+- `muniConvertCase` takes two more languages. `muni_caseGreek`
+  uppercases Greek as it is written in capitals: accents and breathings
+  go, a dialytika stays and appears where a dropped accent kept two
+  vowels apart ("Μάιος" to "ΜΑΪΟΣ"), the disjunctive eta "ή" keeps its
+  tonos when it stands alone, and an iota subscript becomes a capital
+  iota; it follows ICU's Greek rules. `muni_caseArmenian` uppercases
+  the ligature "և" to "ԵՎ" and titlecases it to "Եվ". Lowercasing,
+  titlecasing (but the ligature) and folding follow the default rules
+  ([#223](https://github.com/Rawframe-Project/maul-unicode/pull/223)).
+
+### Changed
+
+- The results version is 2: calls to `muniConvertCase` with
+  `muni_caseGreek` or `muni_caseArmenian`, which were refused, now give
+  results. No result of the earlier languages changes, so stored keys
+  and skeletons stay valid; a caller that stores the results version
+  sees it move once
+  ([#223](https://github.com/Rawframe-Project/maul-unicode/pull/223)).
 
 ## [0.9.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.0...v0.9.1) (2026-11-01)
 
