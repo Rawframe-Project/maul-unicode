@@ -28,7 +28,10 @@
 
 #include "munigen.h"
 
-#define MAX_MAPPING  18
+#include "maul-unicode/normalize.h"
+
+// A mapping is never longer than the full decomposition it starts.
+#define MAX_MAPPING  MUNI_MAX_DECOMPOSITION
 #define MAX_MAPPINGS 8192
 #define MAX_PAIRS    2048
 #define MAX_SINGLES  2048
@@ -302,6 +305,49 @@ static bool UsesCompatibility(const Normalization* data, uint32_t c)
     return false;
 }
 
+// The length of the full decomposition of c: every canonical mapping
+// applied, and with compatibility every compatibility one too; Hangul
+// syllables give two or three jamo.
+static int FullLength(const Normalization* data, uint32_t c, bool compatibility)
+{
+    if (IsHangulSyllable(c))
+    {
+        return (c - 0xAC00) % 28 == 0 ? 2 : 3;
+    }
+    const Mapping* mapping = MappingOf(data, c);
+    if (mapping->length == 0 || (mapping->compatibility && !compatibility))
+    {
+        return 1;
+    }
+    int length = 0;
+    for (int i = 0; i < mapping->length; i++)
+    {
+        length += FullLength(data, mapping->codePoints[i], compatibility);
+    }
+    return length;
+}
+
+// Fails unless every full NFD and NFKD decomposition fits
+// MUNI_MAX_DECOMPOSITION, which the library's buffers rely on and
+// normalize.h promises: a Unicode version with a longer one has to raise
+// it on purpose.
+static void CheckFullLengths(const Normalization* data)
+{
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        for (int compatibility = 0; compatibility <= 1; compatibility++)
+        {
+            int length = FullLength(data, c, compatibility != 0);
+            if (length > MUNI_MAX_DECOMPOSITION)
+            {
+                Fail("U+%04X: a full %s decomposition of %d code points, more than "
+                     "MUNI_MAX_DECOMPOSITION (%d)",
+                     c, compatibility ? "NFKD" : "NFD", length, MUNI_MAX_DECOMPOSITION);
+            }
+        }
+    }
+}
+
 // Checks the quick-check values the library derives against the UCD's.
 static void CheckQuickCheck(const Normalization* data, uint8_t* flags)
 {
@@ -466,6 +512,7 @@ void WriteNormalization(void)
     data.excluded = Allocate(CODE_POINTS);
     LoadMappings(&data);
     LoadDerived("Full_Composition_Exclusion", nullptr, data.excluded);
+    CheckFullLengths(&data);
     CollectCanonical(&data);
     for (uint32_t c = 0; c < CODE_POINTS; c++)
     {
