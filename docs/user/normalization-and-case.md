@@ -8,7 +8,7 @@ The same text can be encoded more than one way, and text that differs only in ca
 
 `muniCheckNormalization` tells quickly whether text is already in a form: yes, no, or maybe (only normalizing tells). Most text already is, which saves the copy.
 
-`muniDecomposePair` and `muniComposePair` work on single code points one level deep, the way shapers ask for them.
+`muniDecomposePair` and `muniComposePair` work on single code points one level deep, the way shapers ask for them. `muniGetDecomposition` gives a code point's full NFD or NFKD, every mapping applied; an array of `MUNI_MAX_DECOMPOSITION` code points always holds it.
 
 ## Case
 

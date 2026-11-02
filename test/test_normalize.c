@@ -489,8 +489,11 @@ static void TestNegativeKinds(void)
         char output[4] = {7, 7, 7, 7};
         size_t needed = 99;
         muniQuickCheck answer = muni_quickCheckMaybe;
+        uint32_t parts[1] = {7};
         refused =
             refused &&
+            muniGetDecomposition(0x00E9, s_negative[i], parts, 1, &needed) == muni_errorInvalid &&
+            parts[0] == 7 &&
             muniNormalize("a", 1, s_negative[i], muni_convertStrict, output, 4, &needed).status ==
                 muni_errorInvalid &&
             muniNormalize("a", 1, muni_nfc, s_negative[i], output, 4, &needed).status ==
@@ -501,6 +504,105 @@ static void TestNegativeKinds(void)
     CHECK(refused, "a negative form or mode refused");
 }
 
+static void TestDecomposition(void)
+{
+    uint32_t parts[MUNI_MAX_DECOMPOSITION];
+    size_t count = 0;
+    CHECK(muniGetDecomposition(0x01D5, muni_nfd, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                  muni_success &&
+              count == 3 && parts[0] == 'U' && parts[1] == 0x0308 && parts[2] == 0x0304,
+          "U with diaeresis and macron, through U+00DC");
+    CHECK(muniGetDecomposition(0xAC01, muni_nfd, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                  muni_success &&
+              count == 3 && parts[0] == 0x1100 && parts[1] == 0x1161 && parts[2] == 0x11A8,
+          "a Hangul LVT syllable gives its three jamo");
+    CHECK(muniGetDecomposition(0xFB01, muni_nfd, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                  muni_success &&
+              count == 1 && parts[0] == 0xFB01,
+          "the fi ligature has no canonical decomposition");
+    CHECK(muniGetDecomposition(0xFB01, muni_nfkd, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                  muni_success &&
+              count == 2 && parts[0] == 'f' && parts[1] == 'i',
+          "but a compatibility one");
+    CHECK(muniGetDecomposition(0xFDFA, muni_nfkd, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                  muni_success &&
+              count == MUNI_MAX_DECOMPOSITION,
+          "U+FDFA fills MUNI_MAX_DECOMPOSITION");
+    parts[1] = 7;
+    CHECK(muniGetDecomposition(0x00E9, muni_nfd, parts, 1, &count) == muni_errorCapacity &&
+              count == 2 && parts[0] == 'e' && parts[1] == 7,
+          "too small: the one that fits, the count it needs");
+    CHECK(muniGetDecomposition(0x00E9, muni_nfd, nullptr, 0, &count) == muni_errorCapacity &&
+              count == 2,
+          "measured with no output");
+    count = 9;
+    parts[0] = 7;
+    CHECK(muniGetDecomposition(0x00E9, muni_nfc, parts, 1, &count) == muni_errorInvalid &&
+              muniGetDecomposition(0x00E9, muni_nfkc, parts, 1, &count) == muni_errorInvalid &&
+              muniGetDecomposition(0x00E9, 4, parts, 1, &count) == muni_errorInvalid &&
+              muniGetDecomposition(0x00E9, muni_nfd, nullptr, 1, &count) == muni_errorInvalid &&
+              count == 9 && parts[0] == 7,
+          "a composed or unknown form, or no output with a capacity, writes nothing");
+    CHECK(muniGetDecomposition(0x00E9, muni_nfd, parts, 1, nullptr) == muni_errorInvalid &&
+              parts[0] == 7,
+          "no count");
+    for (int i = 0; i < 2; i++)
+    {
+        uint32_t past = i == 0 ? 0x110000 : UINT32_MAX;
+        CHECK(muniGetDecomposition(past, muni_nfkd, parts, 1, &count) == muni_success &&
+                  count == 1 && parts[0] == past,
+              "past U+10FFFF gives itself");
+    }
+}
+
+// The decomposition of every code point is what normalizing it alone to
+// NFD or NFKD gives, and MUNI_MAX_DECOMPOSITION is the longest.
+static void TestDecompositionEverywhere(void)
+{
+    int failures = 0;
+    size_t longest = 0;
+    for (uint32_t c = 0; c <= 0x10FFFF; c++)
+    {
+        if (c >= 0xD800 && c < 0xE000)
+        {
+            continue;
+        }
+        char input[4];
+        size_t inputLength = 0;
+        (void)muniEncodeUtf8(c, input, sizeof(input), &inputLength);
+        for (int k = 0; k < 2; k++)
+        {
+            muniNormalForm form = k == 0 ? muni_nfd : muni_nfkd;
+            uint32_t parts[MUNI_MAX_DECOMPOSITION];
+            size_t count = 0;
+            bool same = muniGetDecomposition(c, form, parts, MUNI_MAX_DECOMPOSITION, &count) ==
+                        muni_success;
+            char expected[MUNI_MAX_DECOMPOSITION * 4];
+            size_t expectedLength = 0;
+            same = same && muniNormalize(input, inputLength, form, muni_convertStrict, expected,
+                                         sizeof(expected), &expectedLength)
+                                   .status == muni_success;
+            char given[MUNI_MAX_DECOMPOSITION * 4];
+            size_t givenLength = 0;
+            for (size_t i = 0; same && i < count; i++)
+            {
+                size_t size = 0;
+                same = muniEncodeUtf8(parts[i], given + givenLength, 4, &size) == muni_success;
+                givenLength += size;
+            }
+            same =
+                same && givenLength == expectedLength && memcmp(given, expected, givenLength) == 0;
+            if (!same && failures++ < 5)
+            {
+                printf("the decomposition of U+%04X, form %d, differs\n", (unsigned)c, (int)form);
+            }
+            longest = count > longest ? count : longest;
+        }
+    }
+    CHECK(failures == 0 && longest == MUNI_MAX_DECOMPOSITION,
+          "every decomposition is the code point's NFD or NFKD, the longest the bound");
+}
+
 int main(void)
 {
     TestCheckArguments();
@@ -509,6 +611,8 @@ int main(void)
     TestEdges();
     TestOverlap();
     TestNegativeKinds();
+    TestDecomposition();
+    TestDecompositionEverywhere();
 #ifdef MUNI_UCD_DATA
     TestQuickCheckEverywhere();
     TestPairsAgainstTheUcd();
