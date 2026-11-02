@@ -7,12 +7,32 @@ may change the API, the ABI and every data format.
 
 ## [0.11.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.10.0...v0.11.0) (2026-11-02)
 
-
 ### Added
 
-* **encoding:** decode one code point from UTF-16 ([#228](https://github.com/Rawframe-Project/maul-unicode/issues/228)) ([5ac77e5](https://github.com/Rawframe-Project/maul-unicode/commit/5ac77e58f13cf825aa2dc8aacbbf4127e3348cef)), closes [#218](https://github.com/Rawframe-Project/maul-unicode/issues/218)
-* **normalize:** give the full decomposition of one code point ([#227](https://github.com/Rawframe-Project/maul-unicode/issues/227)) ([0d09156](https://github.com/Rawframe-Project/maul-unicode/commit/0d09156e60f8897bbbe3656e1677ec5811e2c4d0)), closes [#215](https://github.com/Rawframe-Project/maul-unicode/issues/215)
-* **segment:** cut UTF-8 to a byte budget at a code point or cluster ([#230](https://github.com/Rawframe-Project/maul-unicode/issues/230)) ([b4b06b6](https://github.com/Rawframe-Project/maul-unicode/commit/b4b06b68ad2debcf2a3914f6e84635e253e3b389)), closes [#217](https://github.com/Rawframe-Project/maul-unicode/issues/217)
+- `muniGetDecomposition` writes the full decomposition of one code
+  point, canonical (`muni_nfd`) or compatibility (`muni_nfkd`), every
+  mapping applied, in canonical order; Hangul syllables give their jamo
+  and a code point that does not decompose gives itself. It reports the
+  count it needs, with `muni_errorCapacity` when the output is too
+  small. `MUNI_MAX_DECOMPOSITION` (18, for U+FDFA in NFKD), now public
+  in `normalize.h`, always suffices for this Unicode version; a release
+  with a new Unicode version may raise it
+  ([#227](https://github.com/Rawframe-Project/maul-unicode/pull/227)).
+- `muniDecodeUtf16`, the counterpart of `muniDecodeUtf8`, decodes the
+  code point at the start of UTF-16 units: a surrogate pair takes two
+  units, anything else one. An unpaired surrogate gives
+  `muni_errorUtf16Surrogate` with U+FFFD and one unit, as
+  `muniConvertUtf16ToUtf8` replaces it, so a decoding loop always makes
+  progress
+  ([#228](https://github.com/Rawframe-Project/maul-unicode/pull/228)).
+- `muniCutUtf8` gives the length of the longest prefix of UTF-8 text
+  within a byte budget that ends at a boundary of a unit:
+  `muni_unitCodePoint`, where each maximal ill-formed subpart counts as
+  one, or `muni_unitGraphemeCluster`, which keeps a letter with its
+  accents, an emoji ZWJ sequence or a flag whole, for text fields and
+  preedit strings. The unit is an enumeration so that a later release
+  can add words
+  ([#230](https://github.com/Rawframe-Project/maul-unicode/pull/230)).
 
 ## [0.10.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.1...v0.10.0) (2026-11-02)
 
