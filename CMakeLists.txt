@@ -263,6 +263,8 @@ if(MAUL_UNICODE_BUILD_TOOLS)
                            tools/munigen/properties.c tools/munigen/security.c
                            tools/munigen/table.c tools/munigen/ucd.c)
     maul_apply_flags(munigen)
+    # It checks the generated tables against bounds the public headers name.
+    target_include_directories(munigen PRIVATE include)
     # The generator uses standard fopen, which the Windows C runtime
     # reports as deprecated in favor of its own fopen_s.
     if(WIN32)

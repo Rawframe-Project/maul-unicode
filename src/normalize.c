@@ -138,6 +138,24 @@ muniTextResult muniCheckNormalization(const char* text, size_t length, muniNorma
     return (muniTextResult){muni_success, length};
 }
 
+muniResult muniGetDecomposition(uint32_t codePoint, muniNormalForm form, uint32_t* codePointsOut,
+                                size_t capacity, size_t* countOut)
+{
+    if ((codePointsOut == nullptr && capacity != 0) || countOut == nullptr ||
+        (form != muni_nfd && form != muni_nfkd))
+    {
+        return muni_errorInvalid;
+    }
+    uint32_t parts[MUNI_MAX_DECOMPOSITION];
+    size_t count = muniDecomposeFully(codePoint, form == muni_nfkd, parts);
+    for (size_t i = 0; i < count && i < capacity; i++)
+    {
+        codePointsOut[i] = parts[i];
+    }
+    *countOut = count;
+    return count <= capacity ? muni_success : muni_errorCapacity;
+}
+
 muniResult muniDecomposePair(uint32_t codePoint, uint32_t* firstOut, uint32_t* secondOut,
                              size_t* countOut)
 {
