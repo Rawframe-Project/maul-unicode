@@ -8,8 +8,12 @@
 // ICU's Unicode version assigns is also normalized to the four forms,
 // which the normalization stability policy keeps the same across
 // versions, and lowercased, uppercased and folded, by default and
-// Turkic rules, unless a mapping reaches a character added since or
-// Final_Sigma meets a character both cased and case-ignorable.
+// Turkic rules, and lowercased and uppercased by Lithuanian, Greek and
+// Armenian rules, unless a mapping reaches a character added since or
+// Final_Sigma, or the Greek disjunctive eta, which asks the same of the
+// text around it, meets a character both cased and case-ignorable.
+// Greek uppercasing is not idempotent, so its output is uppercased
+// again and compared too: fuzz_case leaves its second pass to ICU.
 //
 // Such input is also segmented into grapheme clusters, words, sentences
 // and lines, and laid out by bidi, when no character in it has a
@@ -200,28 +204,72 @@ static int32_t FoldTurkic(UChar* dest, int32_t capacity, const UChar* source, in
     return u_strFoldCase(dest, capacity, source, length, U_FOLD_CASE_EXCLUDE_SPECIAL_I, error);
 }
 
-// Whether a text has a capital sigma and a character both cased and
-// case-ignorable, such as U+02E3. Final_Sigma asks whether the sigma
-// is followed by case-ignorables and then a cased letter, which such a
-// character is on its own; ICU skips it as case-ignorable first.
-static bool AmbiguousSigma(const UChar* units, int32_t count)
+// Whether a text has a capital sigma, or an eta in any form, and a
+// character both cased and case-ignorable, such as U+02E3. Final_Sigma
+// asks whether the sigma is preceded by a cased letter and then
+// case-ignorables, and followed by case-ignorables and then a cased
+// letter, which such a character is on its own; ICU skips it as
+// case-ignorable first. Greek uppercasing asks the same of an eta with a
+// tonos, which keeps the tonos when the context says it stands alone.
+static void AmbiguousContext(const UChar* units, int32_t count, bool* sigmaOut, bool* etaOut)
 {
     bool sigma = false;
+    bool eta = false;
     bool both = false;
+    UErrorCode error = U_ZERO_ERROR;
+    const UNormalizer2* nfd = unorm2_getNFDInstance(&error);
     for (int32_t i = 0; i < count;)
     {
         UChar32 c;
         U16_NEXT(units, i, count, c);
         sigma = sigma || c == 0x03A3;
+        UChar decomposition[8];
+        int32_t length =
+            U_SUCCESS(error) ? unorm2_getDecomposition(nfd, c, decomposition, 8, &error) : -1;
+        UChar32 base = length > 0 ? decomposition[0] : c;
+        eta = eta || base == 0x0397 || base == 0x03B7;
         both = both || (u_hasBinaryProperty(c, UCHAR_CASED) &&
                         u_hasBinaryProperty(c, UCHAR_CASE_IGNORABLE));
     }
-    return sigma && both;
+    *sigmaOut = sigma && both;
+    *etaOut = eta && both;
+}
+
+// Greek uppercasing of its own output, ours and ICU's, which keeps the
+// Greek marks after U+0345 and U+00B5 on the first pass and drops some
+// once they follow a capital. The first pass gave once and icuOnce
+// alike; the same skips apply to the second.
+static void CompareGreekSecondPass(const char* once, size_t onceLength, const UChar* icuOnce,
+                                   int32_t icuCount)
+{
+    static char ours[MAX_BYTES];
+    static char theirs[MAX_BYTES];
+    static UChar mapped[MAX_UNITS];
+    bool ambiguousSigma = false;
+    bool ambiguousEta = false;
+    AmbiguousContext(icuOnce, icuCount, &ambiguousSigma, &ambiguousEta);
+    size_t needed = 0;
+    muniTextResult result = muniConvertCase(once, onceLength, muni_caseUpper, muni_caseGreek,
+                                            muni_convertStrict, ours, MAX_BYTES, &needed);
+    if (ambiguousEta || (result.status == muni_success && !OutputKnown(ours, needed)))
+    {
+        return;
+    }
+    UErrorCode error = U_ZERO_ERROR;
+    int32_t count = u_strToUpper(mapped, MAX_UNITS, icuOnce, icuCount, "el", &error);
+    int32_t theirLength = 0;
+    if (result.status != muni_success || U_FAILURE(error) ||
+        !IcuToUtf8(mapped, count, theirs, &theirLength) || !Same(ours, needed, theirs, theirLength))
+    {
+        Differ("Greek uppercase of its output");
+    }
 }
 
 static void CompareCase(const char* text, size_t length, const UChar* units, int32_t unitCount)
 {
-    bool ambiguousSigma = AmbiguousSigma(units, unitCount);
+    bool ambiguousSigma = false;
+    bool ambiguousEta = false;
+    AmbiguousContext(units, unitCount, &ambiguousSigma, &ambiguousEta);
     static char ours[MAX_BYTES];
     static char theirs[MAX_BYTES];
     static UChar mapped[MAX_UNITS];
@@ -241,6 +289,10 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
         {"Turkic fold", muni_caseFold, muni_caseTurkic, FoldTurkic, "tr"},
         {"Lithuanian lowercase", muni_caseLower, muni_caseLithuanian, u_strToLower, "lt"},
         {"Lithuanian uppercase", muni_caseUpper, muni_caseLithuanian, u_strToUpper, "lt"},
+        {"Greek lowercase", muni_caseLower, muni_caseGreek, u_strToLower, "el"},
+        {"Greek uppercase", muni_caseUpper, muni_caseGreek, u_strToUpper, "el"},
+        {"Armenian lowercase", muni_caseLower, muni_caseArmenian, u_strToLower, "hy"},
+        {"Armenian uppercase", muni_caseUpper, muni_caseArmenian, u_strToUpper, "hy"},
     };
     for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
     {
@@ -253,15 +305,21 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
             s_cases[i].icu(mapped, MAX_UNITS, units, unitCount, s_cases[i].locale, &error);
         int32_t theirLength = 0;
         if ((result.status == muni_success && !OutputKnown(ours, needed)) ||
-            (ambiguousSigma && s_cases[i].operation == muni_caseLower))
+            (ambiguousSigma && s_cases[i].operation == muni_caseLower) ||
+            (ambiguousEta && s_cases[i].language == muni_caseGreek &&
+             s_cases[i].operation == muni_caseUpper))
         {
-            continue; // a mapping added since ICU's version, or Final_Sigma
+            continue; // a mapping added since ICU's version, Final_Sigma or the eta
         }
         if (result.status != muni_success || U_FAILURE(error) ||
             !IcuToUtf8(mapped, count, theirs, &theirLength) ||
             !Same(ours, needed, theirs, theirLength))
         {
             Differ(s_cases[i].name);
+        }
+        if (s_cases[i].language == muni_caseGreek && s_cases[i].operation == muni_caseUpper)
+        {
+            CompareGreekSecondPass(ours, needed, mapped, count);
         }
     }
 }
