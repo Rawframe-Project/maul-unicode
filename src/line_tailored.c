@@ -20,5 +20,5 @@ static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32
 
 muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
-    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb);
+    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, nullptr);
 }

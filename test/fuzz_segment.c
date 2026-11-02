@@ -374,6 +374,78 @@ static void CheckCut(const char* text, size_t length, const size_t* breaks, size
     }
 }
 
+// The kind a code point gives a word segment, from the public
+// properties: the segment's kind is the highest of its code points',
+// whatever boundaries were held on the way.
+static muniWordKind KindOf(uint32_t codePoint)
+{
+    switch (muniGetWordBreak(codePoint))
+    {
+    case muni_wbNumeric:
+        return muni_wordNumber;
+    case muni_wbALetter:
+    case muni_wbHebrewLetter:
+        return muni_wordLetter;
+    case muni_wbKatakana:
+        return muni_wordKana;
+    case muni_wbOther:
+        break;
+    default:
+        return muni_wordNone;
+    }
+    if (muniIsIdeographic(codePoint))
+    {
+        return muni_wordIdeograph;
+    }
+    if (muniGetScript(codePoint) == MUNI_MAKE_SCRIPT('H', 'i', 'r', 'a'))
+    {
+        return muni_wordKana;
+    }
+    return muniGetLineBreak(codePoint) == muni_lbSa ? muni_wordLetter : muni_wordNone;
+}
+
+// A word iterator fed in pieces gives each segment the highest kind of
+// its code points.
+static void CheckWordKinds(const char* text, size_t length, size_t piece)
+{
+    muniSegmentIterator iterator;
+    size_t fed = length < piece ? length : piece;
+    Require(muniInitWordIterator(&iterator, text, fed, fed < length) == muni_success);
+    size_t start = 0;
+    for (;;)
+    {
+        size_t offset;
+        muniResult status = muniSegmentIterator_NextBreak(&iterator, &offset);
+        if (status == muni_needMoreText)
+        {
+            size_t next = length - fed < piece ? length - fed : piece;
+            Require(muniSegmentIterator_Feed(&iterator, text + fed, next, fed + next < length) ==
+                    muni_success);
+            fed += next;
+            continue;
+        }
+        if (status == muni_done)
+        {
+            return;
+        }
+        Require(status == muni_success);
+        muniWordKind expected = muni_wordNone;
+        for (size_t at = start; at < offset;)
+        {
+            uint32_t codePoint;
+            size_t size;
+            (void)muniDecodeUtf8(text + at, offset - at, &codePoint, &size);
+            muniWordKind kind = KindOf(codePoint);
+            expected = kind > expected ? kind : expected;
+            at += size;
+        }
+        muniWordKind kind = 77;
+        Require(muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_success &&
+                kind == expected);
+        start = offset;
+    }
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -408,6 +480,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     if (kind == 0)
     {
         CheckCut(text, length, whole, count, data[0]);
+    }
+    if (kind == 1)
+    {
+        CheckWordKinds(text, length, piece);
     }
     if (kind == 1 || kind == 3)
     {

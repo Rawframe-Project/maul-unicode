@@ -142,5 +142,5 @@ static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
 muniResult muniNextGraphemeSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     // Decide never holds, so Decide stands in for the resolve rule too.
-    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb);
+    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb, nullptr);
 }

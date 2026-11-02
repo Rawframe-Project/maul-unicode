@@ -524,6 +524,9 @@ static size_t ReentrantBreaker(void* context, const char* run, size_t length, si
     else
     {
         ExpectBusy(reentry, muniSegmentIterator_SetBreakClassOverrides(iterator, posix, 1));
+        muniWordKind kind = 77;
+        ExpectBusy(reentry, muniSegmentIterator_GetWordKind(iterator, &kind));
+        reentry->written += kind != 77;
     }
     return ToyBreaker((void*)reentry->stops, run, length, from);
 }
@@ -1261,6 +1264,125 @@ static void TestCut(void)
     CHECK(muniCutUtf8("a", 1, 5, -1, &fit) == muni_errorInvalid && fit == 7, "a negative unit");
 }
 
+// Collects the boundaries of a word iterator over text and the kind of
+// each segment, fed whole or one byte at a time; returns the count.
+static size_t CollectKinds(const char* text, size_t length, bool bytewise, size_t* offsets,
+                           muniWordKind* kinds)
+{
+    muniSegmentIterator iterator;
+    size_t fed = bytewise ? (length > 0 ? 1 : 0) : length;
+    if (muniInitWordIterator(&iterator, text, fed, fed < length) != muni_success)
+    {
+        return SIZE_MAX;
+    }
+    size_t count = 0;
+    for (;;)
+    {
+        size_t offset;
+        muniResult status = muniSegmentIterator_NextBreak(&iterator, &offset);
+        if (status == muni_needMoreText)
+        {
+            if (muniSegmentIterator_Feed(&iterator, text + fed, 1, fed + 1 < length) !=
+                muni_success)
+            {
+                return SIZE_MAX;
+            }
+            fed += 1;
+            continue;
+        }
+        if (status != muni_success || count == 16 ||
+            muniSegmentIterator_GetWordKind(&iterator, &kinds[count]) != muni_success)
+        {
+            return status == muni_done ? count : SIZE_MAX;
+        }
+        offsets[count++] = offset;
+    }
+}
+
+// A word segment's kind is the highest of its code points': letters with
+// digits are letters, connectors and marks join but make no word, and a
+// held boundary gives the text after it to the next segment when the hold
+// fails. Fed one byte at a time, the iterator gives the same kinds.
+static void TestWordKinds(void)
+{
+    enum
+    {
+        N = muni_wordNone,
+        D = muni_wordNumber,
+        L = muni_wordLetter,
+        K = muni_wordKana,
+        I = muni_wordIdeograph,
+    };
+    static const struct
+    {
+        const char* text;
+        size_t count;
+        size_t offsets[8];
+        muniWordKind kinds[8];
+        const char* what;
+    } s_cases[] = {
+        {"abc 123", 3, {3, 4, 7}, {L, N, D}, "a word, a space, a number"},
+        {"ab12 12ab", 3, {4, 5, 9}, {L, N, L}, "letters with digits are letters"},
+        {"\xC2\xB2", 1, {2}, {N}, "a superscript digit is no number"},
+        {"a.b", 1, {3}, {L}, "a joined hold"},
+        {"a.", 2, {1, 2}, {L, N}, "a hold that fails at the end"},
+        {"a.1", 3, {1, 2, 3}, {L, N, D}, "a hold that fails before a digit"},
+        {"3.14 3.", 4, {4, 5, 6, 7}, {D, N, D, N}, "numbers, joined and not"},
+        {"foo_bar _", 3, {7, 8, 9}, {L, N, N}, "a connector joins but makes no word"},
+        {"e\xCC\x81 \xCC\x81", 2, {3, 6}, {L, N}, "a mark joins but makes no word"},
+        {"\xCC\x81"
+         "a",
+         2,
+         {2, 3},
+         {N, L},
+         "a mark at the start makes no word"},
+        {"\xD7\x90\"\xD7\x91", 1, {5}, {L}, "a Hebrew acronym"},
+        {"\xE3\x82\xAB\xE3\x83\x8A", 1, {6}, {K}, "katakana"},
+        {"\xE3\x81\xB2\xE3\x82\x89", 2, {3, 6}, {K, K}, "hiragana"},
+        {"\xE6\xBC\xA2\xE5\xAD\x97", 2, {3, 6}, {I, I}, "ideographs"},
+        {"\xE0\xB8\x81", 1, {3}, {L}, "a Thai letter"},
+        {"\r\n!", 2, {2, 3}, {N, N}, "a line break and a mark of punctuation"},
+    };
+    for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
+    {
+        size_t length = strlen(s_cases[i].text);
+        for (int bytewise = 0; bytewise <= 1; bytewise++)
+        {
+            size_t offsets[16];
+            muniWordKind kinds[16];
+            size_t count = CollectKinds(s_cases[i].text, length, bytewise != 0, offsets, kinds);
+            CHECK(count == s_cases[i].count &&
+                      memcmp(offsets, s_cases[i].offsets, count * sizeof(size_t)) == 0 &&
+                      memcmp(kinds, s_cases[i].kinds, count * sizeof(muniWordKind)) == 0,
+                  s_cases[i].what);
+        }
+    }
+    // The word rules skip the property lookups for Word_Break=Other below
+    // U+0E01, which holds while no code point there makes a word.
+    size_t early = 0;
+    for (uint32_t c = 0; c < 0x0E01; c++)
+    {
+        early +=
+            muniGetWordBreak(c) == muni_wbOther &&
+            (muniIsIdeographic(c) || muniGetScript(c) == MUNI_MAKE_SCRIPT('H', 'i', 'r', 'a') ||
+             muniGetLineBreak(c) == muni_lbSa);
+    }
+    CHECK(early == 0, "no Word_Break=Other code point below U+0E01 makes a word");
+    muniSegmentIterator iterator;
+    muniWordKind kind = 77;
+    CHECK(muniInitWordIterator(&iterator, "ab", 2, false) == muni_success &&
+              muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_success &&
+              kind == muni_wordNone,
+          "no kind before the first boundary");
+    kind = 77;
+    CHECK(muniSegmentIterator_GetWordKind(nullptr, &kind) == muni_errorInvalid && kind == 77,
+          "no iterator");
+    CHECK(muniSegmentIterator_GetWordKind(&iterator, nullptr) == muni_errorInvalid, "no kind out");
+    CHECK(muniInitGraphemeIterator(&iterator, "ab", 2, false) == muni_success &&
+              muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_errorInvalid && kind == 77,
+          "a grapheme iterator has no word kinds");
+}
+
 int main(void)
 {
     TestConformance();
@@ -1279,6 +1401,7 @@ int main(void)
     TestAnywhere();
     TestInvalidArguments();
     TestFeedingRules();
+    TestWordKinds();
     TestCut();
     return s_failures == 0 ? 0 : 1;
 }

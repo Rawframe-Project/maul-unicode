@@ -34,5 +34,6 @@ security: bits encoding tables
 sentence: segmenter tables
 skeleton: bidi_line bits decompose encoding invariant overlap tables writer
 tables:
-word: complex segmenter tables
+word: complex segmenter tables word_kind
+word_kind: tables
 writer:

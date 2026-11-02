@@ -68,5 +68,5 @@ static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     // Decide never holds, so Decide stands in for the resolve rule too.
-    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb);
+    return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb, nullptr);
 }
