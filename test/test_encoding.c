@@ -460,9 +460,6 @@ static void TestUtf16Pairs(void)
     free(units);
 }
 
-// Strict conversion from UTF-8 stops at the first error with its offset
-// and the units or code points of the text before it. The text is a heap
-// allocation of exactly its length.
 // muniDecodeUtf16 takes a pair whole and anything else one unit at a
 // time: an unpaired surrogate is U+FFFD and one unit, as conversion
 // replaces it, and a high surrogate at the end is decoded without a read
@@ -527,6 +524,9 @@ static void TestDecodeUtf16(void)
     CHECK(failures == 0, "every unit and every pair decode as conversion reads them");
 }
 
+// Strict conversion from UTF-8 stops at the first error with its offset
+// and the units or code points of the text before it. The text is a heap
+// allocation of exactly its length.
 static void TestStrictUtf8Errors(void)
 {
     static const char source[] = "a\xC3\xA9\xF0\x9F\x98\x80\xFF"
