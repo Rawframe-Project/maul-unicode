@@ -165,6 +165,29 @@ muniTextResult muniValidateUtf8(const char* bytes, size_t length)
     return (muniTextResult){muni_success, length};
 }
 
+// Decodes the code point at the start of length (at least 1) units: a
+// surrogate pair takes two, anything else one, and an unpaired surrogate
+// gives U+FFFD and muni_errorUtf16Surrogate.
+static muniResult StepUtf16(const uint16_t* units, size_t length, uint32_t* codePointOut,
+                            size_t* sizeOut)
+{
+    uint32_t unit = units[0];
+    *sizeOut = 1;
+    if ((unit & 0xF800) != 0xD800) // no surrogate, as most units
+    {
+        *codePointOut = unit;
+        return muni_success;
+    }
+    if (IsHighSurrogate(unit) && length > 1 && IsLowSurrogate(units[1]))
+    {
+        *codePointOut = 0x10000 + ((unit - 0xD800) << 10) + (units[1] - 0xDC00u);
+        *sizeOut = 2;
+        return muni_success;
+    }
+    *codePointOut = MUNI_REPLACEMENT_CHARACTER;
+    return muni_errorUtf16Surrogate;
+}
+
 muniTextResult muniValidateUtf16(const uint16_t* units, size_t length)
 {
     if (units == nullptr && length != 0)
@@ -174,17 +197,14 @@ muniTextResult muniValidateUtf16(const uint16_t* units, size_t length)
     size_t offset = 0;
     while (offset < length)
     {
-        uint32_t unit = units[offset];
-        if (IsHighSurrogate(unit) && offset + 1 < length && IsLowSurrogate(units[offset + 1]))
+        uint32_t codePoint;
+        size_t size;
+        muniResult status = StepUtf16(units + offset, length - offset, &codePoint, &size);
+        if (status != muni_success)
         {
-            offset += 2;
-            continue;
+            return (muniTextResult){status, offset};
         }
-        if (IsHighSurrogate(unit) || IsLowSurrogate(unit))
-        {
-            return (muniTextResult){muni_errorUtf16Surrogate, offset};
-        }
-        offset += 1;
+        offset += size;
     }
     return (muniTextResult){muni_success, length};
 }
@@ -196,6 +216,16 @@ muniResult muniDecodeUtf8(const char* bytes, size_t length, uint32_t* codePointO
         return muni_errorInvalid;
     }
     return muniStepUtf8((const uint8_t*)bytes, length, codePointOut, sizeOut);
+}
+
+muniResult muniDecodeUtf16(const uint16_t* units, size_t length, uint32_t* codePointOut,
+                           size_t* sizeOut)
+{
+    if (units == nullptr || length == 0 || codePointOut == nullptr || sizeOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    return StepUtf16(units, length, codePointOut, sizeOut);
 }
 
 // Writes the UTF-8 form of a scalar value into four bytes and returns its
@@ -322,21 +352,13 @@ muniTextResult muniConvertUtf16ToUtf8(const uint16_t* units, size_t length, muni
     size_t offset = 0;
     while (offset < length)
     {
-        uint32_t codePoint = units[offset];
-        size_t size = 1;
-        if (IsHighSurrogate(codePoint) && offset + 1 < length && IsLowSurrogate(units[offset + 1]))
+        uint32_t codePoint;
+        size_t size;
+        muniResult status = StepUtf16(units + offset, length - offset, &codePoint, &size);
+        if (status != muni_success && mode == muni_convertStrict)
         {
-            codePoint = 0x10000 + ((codePoint - 0xD800) << 10) + (units[offset + 1] - 0xDC00u);
-            size = 2;
-        }
-        else if (IsHighSurrogate(codePoint) || IsLowSurrogate(codePoint))
-        {
-            if (mode == muni_convertStrict)
-            {
-                *neededOut = needed;
-                return (muniTextResult){muni_errorUtf16Surrogate, offset};
-            }
-            codePoint = MUNI_REPLACEMENT_CHARACTER;
+            *neededOut = needed;
+            return (muniTextResult){status, offset};
         }
         uint8_t encoded[4];
         size_t encodedSize = EncodeUtf8Unchecked(codePoint, encoded);

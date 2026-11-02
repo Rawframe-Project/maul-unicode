@@ -264,6 +264,27 @@ static void TestDecodeArguments(void)
           "the same call with every argument decodes");
 }
 
+// muniDecodeUtf16 refuses no text, a length of 0 and a NULL output, and
+// leaves both outputs as they were.
+static void TestDecodeUtf16Arguments(void)
+{
+    static const uint16_t a[] = {0x0061};
+    uint32_t codePoint = 7;
+    size_t size = 7;
+    CHECK(muniDecodeUtf16(nullptr, 1, &codePoint, &size) == muni_errorInvalid && codePoint == 7 &&
+              size == 7,
+          "UTF-16: no text with a length");
+    CHECK(muniDecodeUtf16(a, 0, &codePoint, &size) == muni_errorInvalid && codePoint == 7 &&
+              size == 7,
+          "UTF-16: a length of 0");
+    CHECK(muniDecodeUtf16(a, 1, nullptr, &size) == muni_errorInvalid && size == 7,
+          "UTF-16: no code point out");
+    CHECK(muniDecodeUtf16(a, 1, &codePoint, nullptr) == muni_errorInvalid && codePoint == 7,
+          "UTF-16: no size out");
+    CHECK(muniDecodeUtf16(a, 1, &codePoint, &size) == muni_success && codePoint == 'a' && size == 1,
+          "UTF-16: the same call with every argument decodes");
+}
+
 static void TestReplacementFollowsTheStandard(void)
 {
     // The example of U+FFFD substitution in chapter 3 of the Unicode
@@ -442,6 +463,70 @@ static void TestUtf16Pairs(void)
 // Strict conversion from UTF-8 stops at the first error with its offset
 // and the units or code points of the text before it. The text is a heap
 // allocation of exactly its length.
+// muniDecodeUtf16 takes a pair whole and anything else one unit at a
+// time: an unpaired surrogate is U+FFFD and one unit, as conversion
+// replaces it, and a high surrogate at the end is decoded without a read
+// past it. Every unit before an "a" and every high surrogate before every
+// low one decode as conversion to UTF-8 reads them.
+static void TestDecodeUtf16(void)
+{
+    static const struct
+    {
+        uint16_t units[2];
+        size_t length;
+        muniResult status;
+        uint32_t codePoint;
+        size_t size;
+        const char* what;
+    } s_cases[] = {
+        {{0xD83D, 0xDE00}, 2, muni_success, 0x1F600, 2, "a pair"},
+        {{0xDBFF, 0xDFFF}, 2, muni_success, 0x10FFFF, 2, "the last pair"},
+        {{0xD83D, 0x0061}, 2, muni_errorUtf16Surrogate, 0xFFFD, 1, "a high surrogate alone"},
+        {{0xDE00, 0xD83D}, 2, muni_errorUtf16Surrogate, 0xFFFD, 1, "a pair in the wrong order"},
+        {{0xD83D, 0}, 1, muni_errorUtf16Surrogate, 0xFFFD, 1, "a high surrogate at the end"},
+        {{0xFFFD, 0}, 1, muni_success, 0xFFFD, 1, "U+FFFD itself"},
+        {{0xFFFF, 0}, 1, muni_success, 0xFFFF, 1, "a noncharacter"},
+    };
+    for (size_t i = 0; i < sizeof(s_cases) / sizeof(s_cases[0]); i++)
+    {
+        uint16_t* units = CopyUnits(s_cases[i].units, s_cases[i].length);
+        uint32_t codePoint = 0;
+        size_t size = 0;
+        CHECK(units != nullptr &&
+                  muniDecodeUtf16(units, s_cases[i].length, &codePoint, &size) ==
+                      s_cases[i].status &&
+                  codePoint == s_cases[i].codePoint && size == s_cases[i].size,
+              s_cases[i].what);
+        free(units);
+    }
+    size_t failures = 0;
+    for (uint32_t high = 0; high <= 0xFFFF; high++)
+    {
+        uint32_t lowFirst = high >= 0xD800 && high <= 0xDBFF ? 0xDC00 : 0x0061;
+        uint32_t lowLast = high >= 0xD800 && high <= 0xDBFF ? 0xDFFF : 0x0061;
+        for (uint32_t low = lowFirst; low <= lowLast; low++)
+        {
+            uint16_t units[2] = {(uint16_t)high, (uint16_t)low};
+            uint32_t codePoint = 0;
+            size_t size = 0;
+            muniResult status = muniDecodeUtf16(units, 2, &codePoint, &size);
+            char bytes[8];
+            char encoded[4];
+            size_t needed = 0;
+            size_t encodedSize = 0;
+            bool same =
+                muniConvertUtf16ToUtf8(units, size, muni_convertReplace, bytes, sizeof(bytes),
+                                       &needed)
+                        .status == muni_success &&
+                muniEncodeUtf8(codePoint, encoded, sizeof(encoded), &encodedSize) == muni_success &&
+                needed == encodedSize && memcmp(bytes, encoded, needed) == 0 &&
+                (status == muni_success) == (muniValidateUtf16(units, size).status == muni_success);
+            failures += same ? 0 : 1;
+        }
+    }
+    CHECK(failures == 0, "every unit and every pair decode as conversion reads them");
+}
+
 static void TestStrictUtf8Errors(void)
 {
     static const char source[] = "a\xC3\xA9\xF0\x9F\x98\x80\xFF"
@@ -694,12 +779,14 @@ int main(void)
     TestErrorKinds();
     TestConversionArguments();
     TestDecodeArguments();
+    TestDecodeUtf16Arguments();
     TestReplacementFollowsTheStandard();
     TestConversionsRoundTrip();
     TestUtf32Values();
     TestCapacityReportsTheTotal();
     TestUtf16Surrogates();
     TestUtf16Pairs();
+    TestDecodeUtf16();
     TestStrictUtf8Errors();
     TestEncode();
     TestEncodeCapacity();
