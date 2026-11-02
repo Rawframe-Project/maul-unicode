@@ -5,6 +5,18 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.10.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.1...v0.10.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **line:** `muniSegmentIterator_EnableCjAsIdeographic(iterator, true)` is `muniSegmentIterator_SetLineBreakStrictness(iterator, muni_lineBreakLoose)`, which also adds loose's other breaks; `muniSegmentIterator_IsCjAsIdeographicEnabled` is gone, and `muniSegmentIterator_GetLineBreakStrictness` tells the level. A new iterator breaks as before.
+
+### Added
+
+* **case:** uppercase Greek and the Armenian ligature by language rules ([#223](https://github.com/Rawframe-Project/maul-unicode/issues/223)) ([c2afc93](https://github.com/Rawframe-Project/maul-unicode/commit/c2afc93728b94ac63c3fe032b363569e669b2777)), closes [#214](https://github.com/Rawframe-Project/maul-unicode/issues/214)
+* **line:** break at the strictness levels of CSS line-break ([#221](https://github.com/Rawframe-Project/maul-unicode/issues/221)) ([5dcb17c](https://github.com/Rawframe-Project/maul-unicode/commit/5dcb17c20a7f8179e83722c3c5d4edd45f8e0415)), closes [#213](https://github.com/Rawframe-Project/maul-unicode/issues/213)
+
 ## [0.9.1](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.0...v0.9.1) (2026-11-01)
 
 ### Changed
