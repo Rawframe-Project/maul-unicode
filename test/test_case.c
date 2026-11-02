@@ -261,6 +261,29 @@ static void TestGreek(void)
               Converts("\xCE\xAC\xCE\xB9", muni_caseTitle, muni_caseGreek, "\xCE\x86\xCE\xB9") &&
               Converts("\xCE\x86\xCE\x99", muni_caseFold, muni_caseGreek, "\xCE\xAC\xCE\xB9"),
           "lowercasing, titlecasing and folding are the default ones");
+    // U+0345 and U+00B5 are no Greek letters but uppercase to one, so the
+    // Greek marks after them stay, and an accent or a second dialytika
+    // goes when the capital is uppercased again; one dialytika stays both
+    // times. ICU 74.2 gives the same.
+    CHECK(Converts("\xCD\x85\xCC\x81", muni_caseUpper, muni_caseGreek, "\xCE\x99\xCC\x81") &&
+              Converts("\xCE\x99\xCC\x81", muni_caseUpper, muni_caseGreek, "\xCE\x99"),
+          "a lone ypogegrammeni keeps the accent after it, its capital iota does not");
+    CHECK(Converts("\xC2\xB5\xCC\x81", muni_caseUpper, muni_caseGreek, "\xCE\x9C\xCC\x81") &&
+              Converts("\xCE\x9C\xCC\x81", muni_caseUpper, muni_caseGreek, "\xCE\x9C"),
+          "so does the micro sign, and its capital mu");
+    CHECK(Converts("\xCD\x85\xCC\x88", muni_caseUpper, muni_caseGreek, "\xCE\x99\xCC\x88") &&
+              Converts("\xCE\x99\xCC\x88", muni_caseUpper, muni_caseGreek, "\xCE\x99\xCC\x88"),
+          "a dialytika after them stays on both passes");
+    CHECK(Converts("\xCD\x85\xCC\x88\xCC\x81", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x99\xCC\x88\xCC\x81") &&
+              Converts("\xCE\x99\xCC\x88\xCC\x81", muni_caseUpper, muni_caseGreek,
+                       "\xCE\x99\xCC\x88"),
+          "an accent after the dialytika goes on the second pass too");
+    CHECK(Converts("\xC2\xB5\xCC\x88\xCC\x88", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x9C\xCC\x88\xCC\x88") &&
+              Converts("\xCE\x9C\xCC\x88\xCC\x88", muni_caseUpper, muni_caseGreek,
+                       "\xCE\x9C\xCC\x88"),
+          "and a second dialytika");
     CHECK(Converts("\xCE\xAC\xCE\xB9", muni_caseUpper, muni_caseDefault, "\xCE\x86\xCE\x99"),
           "the default rules keep the tonos");
 }

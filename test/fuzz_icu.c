@@ -12,6 +12,8 @@
 // Armenian rules, unless a mapping reaches a character added since or
 // Final_Sigma, or the Greek disjunctive eta, which asks the same of the
 // text around it, meets a character both cased and case-ignorable.
+// Greek uppercasing is not idempotent, so its output is uppercased
+// again and compared too: fuzz_case leaves its second pass to ICU.
 //
 // Such input is also segmented into grapheme clusters, words, sentences
 // and lines, and laid out by bidi, when no character in it has a
@@ -233,6 +235,36 @@ static void AmbiguousContext(const UChar* units, int32_t count, bool* sigmaOut, 
     *etaOut = eta && both;
 }
 
+// Greek uppercasing of its own output, ours and ICU's, which keeps the
+// Greek marks after U+0345 and U+00B5 on the first pass and drops some
+// once they follow a capital. The first pass gave once and icuOnce
+// alike; the same skips apply to the second.
+static void CompareGreekSecondPass(const char* once, size_t onceLength, const UChar* icuOnce,
+                                   int32_t icuCount)
+{
+    static char ours[MAX_BYTES];
+    static char theirs[MAX_BYTES];
+    static UChar mapped[MAX_UNITS];
+    bool ambiguousSigma = false;
+    bool ambiguousEta = false;
+    AmbiguousContext(icuOnce, icuCount, &ambiguousSigma, &ambiguousEta);
+    size_t needed = 0;
+    muniTextResult result = muniConvertCase(once, onceLength, muni_caseUpper, muni_caseGreek,
+                                            muni_convertStrict, ours, MAX_BYTES, &needed);
+    if (ambiguousEta || (result.status == muni_success && !OutputKnown(ours, needed)))
+    {
+        return;
+    }
+    UErrorCode error = U_ZERO_ERROR;
+    int32_t count = u_strToUpper(mapped, MAX_UNITS, icuOnce, icuCount, "el", &error);
+    int32_t theirLength = 0;
+    if (result.status != muni_success || U_FAILURE(error) ||
+        !IcuToUtf8(mapped, count, theirs, &theirLength) || !Same(ours, needed, theirs, theirLength))
+    {
+        Differ("Greek uppercase of its output");
+    }
+}
+
 static void CompareCase(const char* text, size_t length, const UChar* units, int32_t unitCount)
 {
     bool ambiguousSigma = false;
@@ -284,6 +316,10 @@ static void CompareCase(const char* text, size_t length, const UChar* units, int
             !Same(ours, needed, theirs, theirLength))
         {
             Differ(s_cases[i].name);
+        }
+        if (s_cases[i].language == muni_caseGreek && s_cases[i].operation == muni_caseUpper)
+        {
+            CompareGreekSecondPass(ours, needed, mapped, count);
         }
     }
 }
