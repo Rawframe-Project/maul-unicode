@@ -23,7 +23,7 @@ extern "C"
 #define MUNI_VERSION_MAJOR 0
 // x-release-please-end
 // x-release-please-start-minor
-#define MUNI_VERSION_MINOR 12
+#define MUNI_VERSION_MINOR 13
 // x-release-please-end
 // x-release-please-start-patch
 #define MUNI_VERSION_PATCH 0

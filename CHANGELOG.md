@@ -5,6 +5,55 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.13.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.12.0...v0.13.0) (2026-11-02)
+
+### Added
+
+- `muniMeasureUtf8` finds the longest prefix of UTF-8 text that ends at
+  a boundary of a `muniTextUnit` and holds at most `maxBytes` bytes and
+  at most `maxUnits` units, and gives its length in bytes and in units;
+  either output may be NULL. It turns a byte offset into a count of
+  units, turns a count of units into a byte offset, cuts text to fit a
+  buffer, and counts the grapheme clusters of a whole text or finds
+  where a count of them ends. A limit that falls inside a code point or
+  a cluster ends the prefix at the boundary before it, and a count of
+  UTF-16 units that falls inside a surrogate pair ends it before the
+  pair. A call that fits whole and asks for no count does not walk the
+  text
+  ([#243](https://github.com/Rawframe-Project/maul-unicode/pull/243)).
+- `muni_unitUtf16`, a new `muniTextUnit`, counts UTF-16 units: one for
+  a code point up to U+FFFF, two for one past it, and one for a maximal
+  ill-formed subpart, as its U+FFFD. With `muniMeasureUtf8` it maps
+  UTF-8 byte offsets to the UTF-16 offsets that AppKit, UIKit and
+  Android take, and back
+  ([#243](https://github.com/Rawframe-Project/maul-unicode/pull/243)).
+
+### Changed
+
+- **Breaking:** on `muni_errorCapacity`, `muniConvertUtf8ToUtf16`,
+  `muniConvertUtf16ToUtf8`, `muniConvertUtf8ToUtf32` and
+  `muniConvertUtf32ToUtf8` give the input offset of the first code
+  point not written, instead of the input length. The output holds the
+  conversion of the input before that offset, always whole code points,
+  and `neededOut` still counts the whole conversion. A caller can keep
+  what was written, or convert the rest from the offset, instead of
+  converting again with less input until it fits. A strict-mode error
+  after the output filled up still returns that error and its offset.
+  Code that read the input length from the offset on
+  `muni_errorCapacity` uses its own `length`
+  ([#241](https://github.com/Rawframe-Project/maul-unicode/pull/241)).
+
+### Removed
+
+- **Breaking:** `muniCutUtf8` is removed. `muniMeasureUtf8` with
+  `maxUnits` set to `SIZE_MAX` gives the same cut; the unit now comes
+  before the byte limit. No consumer called it
+  ([#243](https://github.com/Rawframe-Project/maul-unicode/pull/243)).
+
+  | 0.12.0 | 0.13.0 |
+  |---|---|
+  | `muniCutUtf8(text, length, budget, unit, &cut)` | `muniMeasureUtf8(text, length, unit, budget, SIZE_MAX, &cut, NULL)` |
+
 ## [0.12.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.11.0...v0.12.0) (2026-11-02)
 
 ### Added
