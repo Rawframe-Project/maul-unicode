@@ -5,6 +5,35 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [0.11.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.10.0...v0.11.0) (2026-11-02)
+
+### Added
+
+- `muniGetDecomposition` writes the full decomposition of one code
+  point, canonical (`muni_nfd`) or compatibility (`muni_nfkd`), every
+  mapping applied, in canonical order; Hangul syllables give their jamo
+  and a code point that does not decompose gives itself. It reports the
+  count it needs, with `muni_errorCapacity` when the output is too
+  small. `MUNI_MAX_DECOMPOSITION` (18, for U+FDFA in NFKD), now public
+  in `normalize.h`, always suffices for this Unicode version; a release
+  with a new Unicode version may raise it
+  ([#227](https://github.com/Rawframe-Project/maul-unicode/pull/227)).
+- `muniDecodeUtf16`, the counterpart of `muniDecodeUtf8`, decodes the
+  code point at the start of UTF-16 units: a surrogate pair takes two
+  units, anything else one. An unpaired surrogate gives
+  `muni_errorUtf16Surrogate` with U+FFFD and one unit, as
+  `muniConvertUtf16ToUtf8` replaces it, so a decoding loop always makes
+  progress
+  ([#228](https://github.com/Rawframe-Project/maul-unicode/pull/228)).
+- `muniCutUtf8` gives the length of the longest prefix of UTF-8 text
+  within a byte budget that ends at a boundary of a unit:
+  `muni_unitCodePoint`, where each maximal ill-formed subpart counts as
+  one, or `muni_unitGraphemeCluster`, which keeps a letter with its
+  accents, an emoji ZWJ sequence or a flag whole, for text fields and
+  preedit strings. The unit is an enumeration so that a later release
+  can add words
+  ([#230](https://github.com/Rawframe-Project/maul-unicode/pull/230)).
+
 ## [0.10.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.9.1...v0.10.0) (2026-11-02)
 
 ### ⚠ BREAKING CHANGES
