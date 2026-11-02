@@ -182,8 +182,8 @@ static bool Bracket(ScriptState* state, uint32_t codePoint, uint8_t* scriptOut, 
 
 // A determined run's candidates are never empty: they start as the
 // scripts of one code point, of which there is at least one (its Script,
-// or a Script_Extensions set, none of which is empty), and Step replaces
-// them only by a nonempty intersection. Best relies on it.
+// or a Script_Extensions set, which munigen refuses to make empty), and
+// Step replaces them only by a nonempty intersection. Best relies on it.
 static void StartRun(ScriptState* state, uint8_t script, const Scripts* scripts)
 {
     state->candidates = *scripts;

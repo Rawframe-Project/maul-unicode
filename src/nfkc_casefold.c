@@ -23,12 +23,14 @@
 // NFKC_CF value has 18 code points, U+FDFA's, and no step comes near 64.
 // A mapping depends on its code point alone, and test_case checks the
 // NFKC_CF of every code point against the UCD in builds that keep
-// MUNI_ASSERT, so every mapping fits at every step.
+// MUNI_ASSERT, so every mapping fits at every step. A table of a later
+// Unicode version could break that, so a mapping that would not fit
+// traps where MUNI_ASSERT is kept and is refused where it is not.
 #define MAX_MAPPING 64
 
 // One round over a mapping: removes default ignorables, folds and
-// decomposes the rest into to. Returns the new length; *changedOut tells
-// whether anything changed.
+// decomposes the rest into to. Returns the new length, or MAX_MAPPING + 1
+// when it would not fit; *changedOut tells whether anything changed.
 static size_t Round(const uint32_t* from, size_t count, uint32_t* to, bool* changedOut)
 {
     size_t written = 0;
@@ -45,7 +47,11 @@ static size_t Round(const uint32_t* from, size_t count, uint32_t* to, bool* chan
         changed = changed || foldedCount != 1 || folded[0] != from[i];
         for (size_t k = 0; k < foldedCount; k++)
         {
-            MUNI_ASSERT(written + MUNI_MAX_DECOMPOSITION <= MAX_MAPPING);
+            if (written + MUNI_MAX_DECOMPOSITION > MAX_MAPPING)
+            {
+                MUNI_ASSERT(false);
+                return MAX_MAPPING + 1;
+            }
             size_t parts = muniDecomposeFully(folded[k], true, to + written);
             changed = changed || parts != 1 || to[written] != folded[k];
             written += parts;
@@ -56,7 +62,8 @@ static size_t Round(const uint32_t* from, size_t count, uint32_t* to, bool* chan
 }
 
 // Writes the NFKC_CF mapping of codePoint, fully decomposed, into out,
-// which holds MAX_MAPPING code points, and returns its length.
+// which holds MAX_MAPPING code points, and returns its length; returns
+// MAX_MAPPING + 1 when it would not fit.
 static size_t Map(uint32_t codePoint, uint32_t* out)
 {
     uint32_t other[MAX_MAPPING];
@@ -69,6 +76,10 @@ static size_t Map(uint32_t codePoint, uint32_t* out)
     {
         count = Round(buffers[current], count, buffers[current ^ 1], &changed);
         current ^= 1;
+        if (count > MAX_MAPPING)
+        {
+            return count;
+        }
     }
     if (current != 0)
     {
@@ -92,6 +103,10 @@ static bool Feed(muniNormalizer* normalizer, uint32_t codePoint)
     }
     uint32_t mapping[MAX_MAPPING];
     size_t count = Map(codePoint, mapping);
+    if (count > MAX_MAPPING)
+    {
+        return false;
+    }
     for (size_t i = 0; i < count; i++)
     {
         if (!muniNormalizerAdd(normalizer, mapping[i]))

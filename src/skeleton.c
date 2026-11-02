@@ -344,9 +344,11 @@ static bool NeedsBidi(const uint8_t* text, size_t length, muniBidiDirection dire
 // Adds each paragraph in display order. muniGetSkeleton's checks leave
 // muniResolveBidi nothing to refuse: the text is valid UTF-8 and not
 // NULL, the workspace holds 2 * length bytes, the direction is known and
-// each paragraph is at least one byte long.
-static void AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection direction,
-                          uint8_t* workspace)
+// each paragraph is at least one byte long. A refusal would leave the
+// paragraph's length unset, so it traps where MUNI_ASSERT is kept and is
+// passed on where it is not.
+static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection direction,
+                                uint8_t* workspace)
 {
     uint8_t* levels = workspace;
     skeleton->levels = levels;
@@ -358,8 +360,11 @@ static void AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection d
         muniResult status = muniResolveBidi((const char*)skeleton->text + start, length - start,
                                             direction, levels + start, workspace + length + start,
                                             &paragraphLength, &paragraphLevel);
-        MUNI_ASSERT(status == muni_success);
-        (void)status; // read only by the assert, which Release compiles out
+        if (status != muni_success)
+        {
+            MUNI_ASSERT(false);
+            return status;
+        }
         muniBidiResetLineLevels(skeleton->text + start, levels + start, paragraphLength,
                                 paragraphLevel);
         uint8_t lowest = UINT8_MAX;
@@ -371,6 +376,7 @@ static void AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection d
         AddStretch(skeleton, start, start + paragraphLength, lowest, false);
         start += paragraphLength;
     }
+    return muni_success;
 }
 
 muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirection direction,
@@ -401,7 +407,12 @@ muniTextResult muniGetSkeleton(const char* text, size_t length, muniBidiDirectio
         .text = (const uint8_t*)text, .overflow = SIZE_MAX, .writer = {textOut, capacity, 0}};
     if (NeedsBidi(skeleton.text, length, direction))
     {
-        AddParagraphs(&skeleton, length, direction, workspace);
+        muniResult status = AddParagraphs(&skeleton, length, direction, workspace);
+        if (status != muni_success)
+        {
+            *neededOut = 0;
+            return (muniTextResult){status, 0};
+        }
     }
     else
     {
