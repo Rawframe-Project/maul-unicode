@@ -343,6 +343,37 @@ static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const 
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
 }
 
+// muniCutUtf8 at a few budgets gives the last grapheme boundary within
+// each, of those the break finder reported, and the last code point
+// boundary, of those muniDecodeUtf8 steps over.
+static void CheckCut(const char* text, size_t length, const size_t* breaks, size_t count,
+                     uint8_t salt)
+{
+    for (size_t k = 0; k < 4; k++)
+    {
+        size_t budget = (salt * 31u + k * (length / 3 + 1)) % (length + 2);
+        size_t cluster = 0;
+        for (size_t i = 0; i < count && breaks[i] <= budget; i++)
+        {
+            cluster = breaks[i];
+        }
+        size_t codePoint = 0;
+        for (size_t offset = 0; offset < length;)
+        {
+            uint32_t value;
+            size_t size;
+            (void)muniDecodeUtf8(text + offset, length - offset, &value, &size);
+            offset += size;
+            codePoint = offset <= budget ? offset : codePoint;
+        }
+        size_t fit = SIZE_MAX;
+        Require(muniCutUtf8(text, length, budget, muni_unitGraphemeCluster, &fit) == muni_success &&
+                fit == cluster);
+        Require(muniCutUtf8(text, length, budget, muni_unitCodePoint, &fit) == muni_success &&
+                fit == codePoint);
+    }
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -374,6 +405,10 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     Require(Chunked(inits[kind], nullptr, 0, nullptr, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+    if (kind == 0)
+    {
+        CheckCut(text, length, whole, count, data[0]);
+    }
     if (kind == 1 || kind == 3)
     {
         CheckBreaker(inits[kind], text, length);

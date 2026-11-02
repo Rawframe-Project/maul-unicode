@@ -24,6 +24,8 @@ if (muniInitGraphemeIterator(&iterator, text, length, false) == muni_success)
 
 `muniInitWordIterator` and `muniInitSentenceIterator` work the same way. `muniFindGraphemeBreaks`, `muniFindWordBreaks` and `muniFindSentenceBreaks` write every boundary of a whole text into an array instead, which is faster when the text is at hand.
 
+To cut text to fit a buffer, `muniCutUtf8` gives the length of the longest prefix within a byte budget that ends at a code point or, with `muni_unitGraphemeCluster`, a grapheme cluster boundary. Cutting at a code point keeps the text well formed; cutting at a cluster also keeps a letter with its accents, an emoji sequence or a flag whole, which is what a text field or a preedit string should show.
+
 ## Line breaking
 
 A line iterator reports each position where a line may end, and whether it must: after a line feed, a paragraph separator and the like, and at the end of the text.
