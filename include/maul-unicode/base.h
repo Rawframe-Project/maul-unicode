@@ -23,10 +23,10 @@ extern "C"
 #define MUNI_VERSION_MAJOR 0
 // x-release-please-end
 // x-release-please-start-minor
-#define MUNI_VERSION_MINOR 9
+#define MUNI_VERSION_MINOR 10
 // x-release-please-end
 // x-release-please-start-patch
-#define MUNI_VERSION_PATCH 1
+#define MUNI_VERSION_PATCH 0
 // x-release-please-end
 
 // The one Unicode version every table in the library comes from.
