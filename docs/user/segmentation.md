@@ -45,7 +45,7 @@ if (muniInitLineIterator(&lines, text, length, false) == muni_success)
 
 A layout engine measures the text between opportunities and ends each line at the last opportunity that fits, or at the first mandatory one. Spaces before an opportunity belong to the line before it and are not drawn at its end. `muniFindLineBreaks` fills arrays of offsets and mandatory flags.
 
-A line iterator breaks at one of the strictness levels of CSS's `line-break` property, set before its first break. Normal, the default, follows UAX #14. Strict breaks less in Chinese and Japanese, and loose breaks more: before the small kana and the prolonged sound mark (Line_Break=CJ), before iteration marks and between characters such as two ellipses, and in Chinese and Japanese also before centered punctuation and around fullwidth prefixes and postfixes. Anywhere breaks between any two grapheme clusters, for text such as long identifiers or URLs that would otherwise overflow. Some of these rules apply only to Chinese and Japanese, so the iterator needs the text's writing system, which the caller knows from its language:
+A line iterator breaks at one of the strictness levels of CSS's `line-break` property, set before its first break. Normal, the default, follows UAX #14. Strict breaks less in Chinese and Japanese, and loose breaks more: before the small kana and the prolonged sound mark (Line_Break=CJ), before iteration marks, between characters such as two ellipses and before U+2010 and U+2013 after an ideograph, and in Chinese and Japanese also before centered punctuation, before a postfix and after a prefix that is wide, fullwidth or of ambiguous width, such as "％" or "€". Anywhere breaks between any two grapheme clusters, for text such as long identifiers or URLs that would otherwise overflow. Some of these rules apply only to Chinese and Japanese, so the iterator needs the text's writing system, which the caller knows from its language:
 
 ```c
 if (muniSegmentIterator_SetLineBreakStrictness(&lines, muni_lineBreakLoose) != muni_success ||
@@ -56,6 +56,13 @@ if (muniSegmentIterator_SetLineBreakStrictness(&lines, muni_lineBreakLoose) != m
 ```
 
 The added breaks yield to what UAX #14 glues: a word joiner or no-break space, an opening bracket or quotation mark and what follows it, and the hard breaks, which stay mandatory at every level.
+
+The levels follow CSS Text 3 as its Candidate Recommendation Draft of 14 August 2026 words them, so they differ from ICU's line breaking with the same `@lb=` keyword:
+
+- Normal keeps Line_Break=CJ a nonstarter, so no line starts with a small kana or the prolonged sound mark. ICU's normal breaks before them, as earlier CSS drafts did; CSS now allows that break only in loose.
+- In Chinese and Japanese, ICU takes the curly quotation marks U+2018, U+2019, U+201C and U+201D as opening and closing punctuation at every level, so it breaks before "“" after an ideograph and after "”" before one. Here they keep the rules UAX #14 gives quotation marks (LB19 and LB19a).
+- Loose breaks before U+2010 and U+2013 after an ideograph in any language, as CSS allows; ICU does so only in Chinese and Japanese.
+- Loose in Chinese and Japanese breaks before a wide or ambiguous postfix and after such a prefix wherever UAX #14 does not glue them, since CSS lists these breaks without further conditions: also in "a％", and after "￥" before punctuation. ICU breaks after a prefix only before a letter, digit or ideograph, and not before a postfix after a letter; it also breaks before a prefix after a letter ("a￥"), which CSS does not list.
 
 ## Thai, Lao, Khmer and Burmese
 
