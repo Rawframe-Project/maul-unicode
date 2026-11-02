@@ -19,6 +19,7 @@
 #include "bits.h"
 #include "decompose.h"
 #include "encoding.h"
+#include "invariant.h"
 #include "overlap.h"
 #include "tables.h"
 #include "writer.h"
@@ -340,7 +341,12 @@ static bool NeedsBidi(const uint8_t* text, size_t length, muniBidiDirection dire
     return false;
 }
 
-// Adds each paragraph in display order.
+// Adds each paragraph in display order. muniGetSkeleton's checks leave
+// muniResolveBidi nothing to refuse: the text is valid UTF-8 and not
+// NULL, the workspace holds 2 * length bytes, the direction is known and
+// each paragraph is at least one byte long. A refusal would leave the
+// paragraph's length unset, so it traps where MUNI_ASSERT is kept and is
+// passed on where it is not.
 static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirection direction,
                                 uint8_t* workspace)
 {
@@ -356,6 +362,7 @@ static muniResult AddParagraphs(Skeleton* skeleton, size_t length, muniBidiDirec
                                             &paragraphLength, &paragraphLevel);
         if (status != muni_success)
         {
+            MUNI_ASSERT(false);
             return status;
         }
         muniBidiResetLineLevels(skeleton->text + start, levels + start, paragraphLength,

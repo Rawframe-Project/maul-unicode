@@ -7,6 +7,8 @@
 
 #include "encoding.h"
 
+#include "invariant.h"
+
 #include "maul-unicode/encoding.h"
 
 #include <string.h>
@@ -106,7 +108,9 @@ static const uint8_t s_classes[256] = {
 #define CHUNK 32
 
 // The first error at or after start, a code point boundary, by the exact
-// decoder.
+// decoder. muniValidateUtf8 calls it only when its DFA rejected the text
+// from start or stopped inside a sequence, and the decoder refuses the
+// same text, so it always finds an error.
 static muniTextResult FindError(const uint8_t* text, size_t length, size_t start)
 {
     size_t offset = start;
@@ -121,6 +125,7 @@ static muniTextResult FindError(const uint8_t* text, size_t length, size_t start
         }
         offset += size;
     }
+    MUNI_ASSERT(false);
     return (muniTextResult){muni_success, length};
 }
 
