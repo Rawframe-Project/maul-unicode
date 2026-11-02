@@ -7,10 +7,24 @@ may change the API, the ABI and every data format.
 
 ## [0.12.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.11.0...v0.12.0) (2026-11-02)
 
-
 ### Added
 
-* **segment:** tell what kind of word a word segment is ([#231](https://github.com/Rawframe-Project/maul-unicode/issues/231)) ([a383bee](https://github.com/Rawframe-Project/maul-unicode/commit/a383bee9abacf39549552cda97fbe1b2f56d1060)), closes [#216](https://github.com/Rawframe-Project/maul-unicode/issues/216)
+- `muniSegmentIterator_GetWordKind` tells what the segment ending at the
+  boundary a word iterator last reported holds, as a `muniWordKind`: no
+  word (spaces, punctuation, symbols), a number, letters, kana or
+  ideographs, the highest kind among its code points. Word movement and
+  double-click selection skip segments of kind `muni_wordNone`. Letters
+  with digits are letters, and a superscript digit such as "²" makes no
+  number. ICU's word rule statuses agree on segments of letters or
+  digits alone; on a mixed segment ICU reports the last rule it matched,
+  so it calls "ab12" a number
+  ([#231](https://github.com/Rawframe-Project/maul-unicode/pull/231)).
+
+### Changed
+
+- Word breaking executes 4.5% to 6.7% more instructions, to keep the
+  kind of each segment
+  ([#231](https://github.com/Rawframe-Project/maul-unicode/pull/231)).
 
 ## [0.11.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.10.0...v0.11.0) (2026-11-02)
 
