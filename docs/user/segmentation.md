@@ -24,7 +24,12 @@ if (muniInitGraphemeIterator(&iterator, text, length, false) == muni_success)
 
 `muniInitWordIterator` and `muniInitSentenceIterator` work the same way. After each boundary of a word iterator, `muniSegmentIterator_GetWordKind` tells what the segment before it holds: no word (spaces, punctuation, symbols), a number, letters, kana or ideographs, the highest among its code points. ICU's word rule statuses agree on a segment of letters or digits alone; on a mixed segment ICU reports the rule it matched last, so it calls "ab12" a number. Word movement and double-click selection skip the segments of kind `muni_wordNone`; letters with digits count as letters, and a superscript digit such as "²" is no number. `muniFindGraphemeBreaks`, `muniFindWordBreaks` and `muniFindSentenceBreaks` write every boundary of a whole text into an array instead, which is faster when the text is at hand.
 
-To cut text to fit a buffer, `muniCutUtf8` gives the length of the longest prefix within a byte budget that ends at a code point or, with `muni_unitGraphemeCluster`, a grapheme cluster boundary. Cutting at a code point keeps the text well formed; cutting at a cluster also keeps a letter with its accents, an emoji sequence or a flag whole, which is what a text field or a preedit string should show.
+`muniMeasureUtf8` walks UTF-8 text by a unit, `muni_unitCodePoint`, `muni_unitGraphemeCluster` or `muni_unitUtf16`, and stops at the last boundary within both a byte limit and a unit limit, giving the prefix's length in bytes and in units. A limit that falls inside a code point or a cluster ends the prefix at the boundary before it. One call serves four uses:
+
+- To cut text to fit a buffer, give the buffer's size as the byte limit. Cutting at a code point keeps the text well formed; cutting at a cluster also keeps a letter with its accents, an emoji sequence or a flag whole, which is what a text field or a preedit string should show.
+- To turn a byte offset into the UTF-16 index Java, JavaScript, Windows, AppKit and UIKit expect, or into a count of code points, give the offset as the byte limit and read the units.
+- To turn such an index back into a byte offset, give it as the unit limit and read the bytes. An index between the two units of a surrogate pair gives the offset before the pair, one unit fewer than asked.
+- To count the clusters of a text, or find where its first few end, give no byte limit (`SIZE_MAX`).
 
 ## Line breaking
 

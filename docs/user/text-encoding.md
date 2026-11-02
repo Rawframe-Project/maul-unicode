@@ -28,3 +28,4 @@ An output that is too small gets whole code points, never part of one. The conve
 
 - Every other function that reads UTF-8 (segmentation, bidi, script runs) treats each maximal ill-formed subpart as one U+FFFD rather than failing, so offsets stay meaningful over damaged text. Functions that produce text (normalization, case, skeletons) take a mode, or fail with the UTF-8 error and its offset.
 - `muni_errorUtf8Truncated` at the end of a piece is not necessarily an error when text arrives in pieces; the iterators keep the cut sequence and complete it from the next piece.
+- Platform text APIs count UTF-16 units (Java, JavaScript, Windows, AppKit, UIKit) or code points (IBus). `muniMeasureUtf8` ([Segmentation](segmentation.md)) turns a byte offset in UTF-8 into such an index and back, without converting the text.
