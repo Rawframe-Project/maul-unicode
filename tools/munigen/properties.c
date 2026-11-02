@@ -165,6 +165,11 @@ static void LoadScriptExtensions(uint8_t* values, const char* const* scripts, in
             }
             members[size++] = ValueIndex(scripts, scriptCount, name, "ScriptExtensions.txt");
         }
+        if (size == 0)
+        {
+            // Script runs rely on every set holding a script (src/script_runs.c).
+            Fail("ScriptExtensions.txt: an empty set");
+        }
         memset(values + first, SetIndex(sets, members, size) + 1, last - first + 1);
     }
     fclose(file);
