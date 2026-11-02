@@ -358,11 +358,90 @@ static void TestCapacityReportsTheTotal(void)
     size_t needed = 0;
     muniTextResult result =
         muniConvertUtf8ToUtf16(text, sizeof(text) - 1, muni_convertStrict, units, 2, &needed);
-    CHECK(result.status == muni_errorCapacity && needed == 3, "capacity, three needed");
+    CHECK(result.status == muni_errorCapacity && needed == 3 && result.offset == 6,
+          "capacity, three needed, stopped at the third");
     CHECK(units[0] == 0x20AC && units[1] == 0x20AC, "the units that fit are written");
     result =
         muniConvertUtf8ToUtf16(text, sizeof(text) - 1, muni_convertStrict, nullptr, 0, &needed);
     CHECK(result.status == muni_errorCapacity && needed == 3, "measuring with a NULL buffer");
+}
+
+// The four conversions in replace mode, by kind: UTF-8 to UTF-16, UTF-16
+// to UTF-8, UTF-8 to UTF-32, UTF-32 to UTF-8.
+static muniTextResult Convert(int kind, const void* input, size_t length, void* out,
+                              size_t capacity, size_t* neededOut)
+{
+    switch (kind)
+    {
+    case 0:
+        return muniConvertUtf8ToUtf16(input, length, muni_convertReplace, out, capacity, neededOut);
+    case 1:
+        return muniConvertUtf16ToUtf8(input, length, muni_convertReplace, out, capacity, neededOut);
+    case 2:
+        return muniConvertUtf8ToUtf32(input, length, muni_convertReplace, out, capacity, neededOut);
+    default:
+        return muniConvertUtf32ToUtf8(input, length, muni_convertReplace, out, capacity, neededOut);
+    }
+}
+
+// Converts an input into every capacity up to what it needs. bounds are
+// the input's code point boundaries, its start and end included. Each
+// call must write the conversion of the input before the last boundary
+// whose output fits, nothing after it, report that boundary as the
+// offset, and count the whole conversion.
+static void CheckStops(int kind, const void* input, const size_t* bounds, size_t count,
+                       const char* name)
+{
+    static const size_t unitSize[4] = {2, 1, 4, 1};
+    size_t outputs[16];
+    for (size_t k = 0; k < count; k++)
+    {
+        (void)Convert(kind, input, bounds[k], nullptr, 0, &outputs[k]);
+    }
+    size_t length = bounds[count - 1];
+    size_t total = outputs[count - 1];
+    uint32_t full[16];
+    size_t needed = 0;
+    (void)Convert(kind, input, length, full, sizeof full / unitSize[kind], &needed);
+    for (size_t capacity = 0; capacity <= total; capacity++)
+    {
+        uint32_t out[16];
+        memset(out, 0x77, sizeof out);
+        muniTextResult result = Convert(kind, input, length, out, capacity, &needed);
+        size_t k = count - 1;
+        while (outputs[k] > capacity)
+        {
+            k--;
+        }
+        muniResult expected = capacity >= total ? muni_success : muni_errorCapacity;
+        CHECK(result.status == expected && result.offset == bounds[k] && needed == total, name);
+        size_t written = outputs[k] * unitSize[kind];
+        CHECK(memcmp(out, full, written) == 0, name);
+        bool untouched = true;
+        for (size_t i = written; i < sizeof out; i++)
+        {
+            untouched = untouched && ((const unsigned char*)out)[i] == 0x77;
+        }
+        CHECK(untouched, name);
+    }
+}
+
+static void TestCapacityStopsAtACodePoint(void)
+{
+    // a, é, €, U+1F600, an ill-formed byte, b: one to four bytes each.
+    const char utf8[] = "a\xC3\xA9\xE2\x82\xAC\xF0\x9F\x98\x80\xFF"
+                        "b";
+    const size_t utf8Bounds[] = {0, 1, 3, 6, 10, 11, 12};
+    CheckStops(0, utf8, utf8Bounds, 7, "UTF-8 to UTF-16 stops at a code point");
+    CheckStops(2, utf8, utf8Bounds, 7, "UTF-8 to UTF-32 stops at a code point");
+    // The same in UTF-16, the bad byte an unpaired surrogate.
+    const uint16_t utf16[] = {'a', 0xE9, 0x20AC, 0xD83D, 0xDE00, 0xD800, 'b'};
+    const size_t utf16Bounds[] = {0, 1, 2, 3, 5, 6, 7};
+    CheckStops(1, utf16, utf16Bounds, 7, "UTF-16 to UTF-8 stops at a code point");
+    // And in UTF-32, the bad value past U+10FFFF.
+    const uint32_t utf32[] = {'a', 0xE9, 0x20AC, 0x1F600, 0x110000, 'b'};
+    const size_t utf32Bounds[] = {0, 1, 2, 3, 4, 5, 6};
+    CheckStops(3, utf32, utf32Bounds, 7, "UTF-32 to UTF-8 stops at a code point");
 }
 
 static void TestUtf16Surrogates(void)
@@ -784,6 +863,7 @@ int main(void)
     TestConversionsRoundTrip();
     TestUtf32Values();
     TestCapacityReportsTheTotal();
+    TestCapacityStopsAtACodePoint();
     TestUtf16Surrogates();
     TestUtf16Pairs();
     TestDecodeUtf16();
