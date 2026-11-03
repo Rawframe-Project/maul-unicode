@@ -2,15 +2,37 @@
 
 All notable changes to this project are recorded here, grouped as
 Added, Changed, Fixed, Removed and Security. The project uses
-[Semantic Versioning](https://semver.org/). Before 1.0.0, any release
-may change the API, the ABI and every data format.
+[Semantic Versioning](https://semver.org/). From 1.0.0, releases are
+minor and patch only: the API only grows, and a change of results moves
+`MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
+could change the API, the ABI and every data format.
 
 ## [1.0.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.13.0...v1.0.0) (2026-11-03)
 
+The API is settled. 1.0.0 has the API and the results of 0.13.0; what
+changes is what a caller may rely on from here. The promise is in
+[What 1.0.0 promises](https://github.com/Rawframe-Project/maul-unicode/blob/v1.0.0/docs/internals/overview.md#what-100-promises).
 
-### Chores
+### Changed
 
-* move the release rules to 1.x for 1.0.0 ([#257](https://github.com/Rawframe-Project/maul-unicode/issues/257)) ([8c579d3](https://github.com/Rawframe-Project/maul-unicode/commit/8c579d33b75c954745b6f3b698c72f29b663adf9)), closes [#250](https://github.com/Rawframe-Project/maul-unicode/issues/250)
+- Within 1.x no function, type, enum value, field or macro of the
+  eleven public headers, `harfbuzz.h` included, is removed or renamed,
+  and no release is breaking: a change that would break 1.x is made
+  additive or does not ship. There will be no 2.0.0
+  ([#257](https://github.com/Rawframe-Project/maul-unicode/pull/257)).
+- The numbers of the property enumerations in `properties.h` are part
+  of the API, so data may store them; a value a new Unicode version
+  adds goes after the last
+  ([#257](https://github.com/Rawframe-Project/maul-unicode/pull/257)).
+- The CMake packages `maul-unicode` and `maul-unicode-harfbuzz` accept
+  a request for any earlier 1.y, where 0.x accepted only its own
+  version; the shared library's `SOVERSION` is `1.0`, so a program
+  built against 1.0 loads any 1.0.z and is built again for 1.1
+  ([#248](https://github.com/Rawframe-Project/maul-unicode/pull/248)).
+
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 0.13.0 stay valid.
 
 ## [0.13.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.12.0...v0.13.0) (2026-11-02)
 
