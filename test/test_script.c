@@ -204,6 +204,8 @@ static void TestCapacityAndArguments(void)
           "feeding an iterator told no more text follows");
     CHECK(muniScriptIterator_Feed(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "a NULL piece is invalid in any state");
+    CHECK(muniScriptIterator_Feed(nullptr, "c", 1, false) == muni_errorInvalid,
+          "feeding no iterator");
     CHECK(muniInitScriptIterator(nullptr, "a", 1, false) == muni_errorInvalid, "no iterator");
     CHECK(muniInitScriptIterator(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "no text with a length");

@@ -219,6 +219,11 @@ static void TestSkeletons(void)
     // A right-to-left run that opens with a mark, a hiriq before an alef.
     CHECK(Skeleton("\xD6\xB4\xD7\x90", 4, muni_bidiRightToLeft, skeleton),
           "a right-to-left run may open with a mark");
+    // Alef, an enclosing circle (an enclosing mark, General_Category Me),
+    // bet: reversed, the circle stays after the alef (L3).
+    CHECK(Skeleton("\xD7\x90\xE2\x83\x9D\xD7\x91", 7, muni_bidiAuto, skeleton) &&
+              strcmp(skeleton, "\xD7\x91\xD7\x90\xE2\x83\x9D") == 0,
+          "an enclosing mark stays after its base");
 }
 
 static bool Resolves(const char* text, const muniScript* expected, size_t expectedCount)
@@ -446,6 +451,15 @@ static void TestErrors(void)
     CHECK(muniCheckMixedNumbers("1", 1, nullptr).status == muni_errorInvalid &&
               muniCheckMixedNumbers("\xFF", 1, &mixed).status == muni_errorUtf8Lead,
           "mixed number errors");
+    mixed = true;
+    CHECK(muniCheckMixedNumbers(nullptr, 1, &mixed).status == muni_errorInvalid && mixed,
+          "no text with a length has no answer");
+    needed = 7;
+    memcpy(output, "xxxx", 4);
+    CHECK(muniGetSkeleton(nullptr, 1, muni_bidiAuto, workspace, 256, output, 256, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "no text with a length has no skeleton");
 }
 
 // A skeleton takes work in proportion to its text, bidi included: a

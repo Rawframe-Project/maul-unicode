@@ -212,6 +212,20 @@ static void TestLimitsAndErrors(void)
     CHECK(muniNormalize("a", 1, 7, muni_convertStrict, output, 256, &needed).status ==
               muni_errorInvalid,
           "an unknown form");
+    needed = 7;
+    memcpy(output, "xxxx", 4);
+    CHECK(muniNormalize(nullptr, 1, muni_nfc, muni_convertStrict, output, 256, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "no text with a length, and nothing is written");
+    CHECK(muniNormalize("a", 1, muni_nfc, muni_convertStrict, nullptr, 256, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7,
+          "no output with a capacity");
+    CHECK(muniNormalize("a", 1, muni_nfc, muni_convertStrict, output, 256, nullptr).status ==
+                  muni_errorInvalid &&
+              memcmp(output, "xxxx", 4) == 0,
+          "no needed size out");
     uint32_t first = 0;
     uint32_t second = 0;
     size_t count = 9;
@@ -230,6 +244,10 @@ static void TestLimitsAndErrors(void)
     count = 9;
     CHECK(muniDecomposePair(0x00E9, &first, nullptr, &count) == muni_errorInvalid && count == 9,
           "a NULL output");
+    second = 5;
+    CHECK(muniDecomposePair(0x00E9, nullptr, &second, &count) == muni_errorInvalid && second == 5 &&
+              count == 9,
+          "a NULL first output");
     CHECK(muniDecomposePair(0x00E9, &first, &second, nullptr) == muni_errorInvalid, "no count");
     CHECK(muniComposePair('e', 0x0301) == 0x00E9, "e and acute compose");
     CHECK(muniComposePair(0x1100, 0x1161) == 0xAC00, "Hangul L and V compose");
