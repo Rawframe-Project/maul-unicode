@@ -62,6 +62,25 @@ Input is hostile: every function validates its arguments and UTF-8 and refuses w
 
 Internal invariants are asserted with `MUNI_ASSERT` (`src/invariant.h`): on in Debug, sanitizer and fuzz builds, where a broken invariant traps at the fault, and compiled out of Release builds, whose hot loops (a lookup per code point) must not pay for them.
 
+## What 1.0.0 promises
+
+From 1.0.0 the library keeps the family's rules for 1.x ([maul-conventions.md](maul-conventions.md#compatibility)). Here they cover:
+
+- **The API.** The eleven headers in `include/maul-unicode/`, `harfbuzz.h` included, with every function, type, enum value, field and macro they declare. Within 1.x none is removed or renamed, and new ones may be added. Every enum value keeps its number, and a property value that a new Unicode version adds goes after the last one.
+- **What the headers say.** What each call gives on success and leaves on each refusal. The limits refused with `muni_errorLimit`: `MUNI_MAX_NORMALIZATION_SEGMENT` and UAX #9's 125 levels and 63 brackets. The library profile above: no allocation, no global state, no threads, a cost proportional to the length of any input, and the same bits everywhere.
+- **The binary interface, within a minor version.** The shared library's `SOVERSION` is major.minor, so a program built against 1.y loads only a 1.y library and is built again for a later minor release, which may grow the iterator structs. The CMake packages accept any later 1.y.
+- **Stored results, by their version.** `MUNI_RESULTS_VERSION` moves up with every change to what the calls `base.h` lists give, a new Unicode version included. A caller that stores normalized keys, skeletons or verdicts stores it beside them, and recomputes them when `muniGetResultsVersion` differs.
+
+Outside the promise:
+
+- Exact results across Unicode versions and rule fixes. The results version announces each change, and a new Unicode version is a minor release.
+- `MUNI_MAX_SCRIPT_EXTENSIONS`, `MUNI_MAX_RESOLVED_SCRIPTS` and `MUNI_MAX_DECOMPOSITION` hold for one Unicode version and may rise in a minor release; the calls always report the count they need.
+- The size of the iterator structs across minor releases.
+- Everything outside `include/`: `src/`, the generated tables and their sizes, speed, the tools, tests, samples and benchmarks, and the HarfBuzz versions the adapter builds with.
+- What a call does when its caller breaks a header's contract, such as a workspace that overlaps its text or an iterator that was never initialized.
+
+The library reads and writes no asset or state format, so it promises none, and its headers name no other Maul library that would have to reach 1.0.0 first.
+
 ## Testing
 
 The conformance files of every algorithm that has one (grapheme, word, sentence and line break tests, both bidi tests, the normalization test) pass completely, and the segmentation files run three ways: whole, as an array, and fed one byte at a time. What the public API gives for every code point is compared with the UCD files, which the tests read themselves (`test/ucd.h`): the properties, the simple and full case mappings, the identifier properties and Identifier_Status, the decomposition and composition pairs, the quick checks, NFKC_Casefold and the skeleton of each code point alone. The tables are also compared with the generator's hash, and every confusables mapping with its skeleton. Fuzz targets check that the parts agree with each other and, where the Unicode versions agree, with ICU. See [checks.md](../operations/checks.md).
