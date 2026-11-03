@@ -389,6 +389,17 @@ static void TestParagraphsAndLines(void)
                   muni_success &&
               paragraph == 0 && level == 1,
           "an empty paragraph");
+    bool empty = true;
+    for (muniBidiDirection direction = muni_bidiAuto; direction < muni_bidiRightToLeft; direction++)
+    {
+        level = 7;
+        empty = empty &&
+                muniResolveBidi(nullptr, 0, direction, nullptr, nullptr, &paragraph, &level) ==
+                    muni_success &&
+                level == 0;
+    }
+    CHECK(empty, "an empty paragraph, automatic or left to right, is at level 0");
+    level = 1;
     // Each refusal leaves the empty paragraph's outputs as they were.
     CHECK(muniResolveBidi("a", 1, 3, levels, workspace, &paragraph, &level) == muni_errorInvalid &&
               paragraph == 0 && level == 1,
@@ -397,6 +408,11 @@ static void TestParagraphsAndLines(void)
                   muni_errorInvalid &&
               paragraph == 0 && level == 1,
           "no levels");
+    levels[0] = 7;
+    CHECK(muniResolveBidi("a", 1, muni_bidiAuto, levels, nullptr, &paragraph, &level) ==
+                  muni_errorInvalid &&
+              paragraph == 0 && level == 1 && levels[0] == 7,
+          "no workspace, and no level written");
     CHECK(muniResolveBidi(nullptr, 0, muni_bidiAuto, nullptr, nullptr, nullptr, &level) ==
                   muni_errorInvalid &&
               level == 1 &&
@@ -416,6 +432,13 @@ static void TestParagraphsAndLines(void)
     CHECK(muniReorderBidiLine(nullptr, levels, 1, 0, &run, 1, &runCount) == muni_errorInvalid &&
               runCount == 7 && run.start == 7,
           "no line with a length");
+    CHECK(muniReorderBidiLine("a", nullptr, 1, 0, &run, 1, &runCount) == muni_errorInvalid &&
+              runCount == 7 && run.start == 7,
+          "no levels with a length");
+    levels[0] = 0;
+    CHECK(muniReorderBidiLine("a", levels, 1, 0, nullptr, 1, &runCount) == muni_errorInvalid &&
+              runCount == 7,
+          "no runs with a capacity");
 }
 
 // The level of the byte probe bytes into the content of an FSI that
@@ -482,6 +505,34 @@ static void TestIsolateDepth(void)
                      "a",
                      3) == 126,
           "a PDF inside an overflowed FSI");
+    // An LRI inside the overflowed FSI overflows too and stays in the same
+    // isolating run sequence, so rule W1 makes the combining mark after it
+    // a neutral, which takes the direction of the letters around it (N1).
+    // ICU 74.2 gives the same levels.
+    CHECK(LevelInFsi(62, rle,
+                     "\xD7\x90\xE2\x81\xA6\xCC\x80"
+                     "\xD7\x90",
+                     5) == 125,
+          "a mark after an overflowed LRI, between Hebrew letters");
+    CHECK(LevelInFsi(62, rle,
+                     "a\xE2\x81\xA6\xCC\x80"
+                     "a",
+                     4) == 126,
+          "a mark after an overflowed LRI, between Latin letters");
+    // A Hebrew letter, RLE, a Latin letter, PDF, a PDI that matches no
+    // initiator, and a combining mark: the PDI starts a level run of its
+    // own at the paragraph level, and the mark after it is a neutral.
+    uint8_t levels[16];
+    uint8_t workspace[16];
+    size_t paragraph = 0;
+    uint8_t level = 0;
+    const char unmatched[] = "\xD7\x90\xE2\x80\xAB"
+                             "a\xE2\x80\xAC\xE2\x81\xA9\xCC\x80";
+    CHECK(muniResolveBidi(unmatched, sizeof(unmatched) - 1, muni_bidiLeftToRight, levels, workspace,
+                          &paragraph, &level) == muni_success &&
+              paragraph == sizeof(unmatched) - 1 && levels[0] == 1 && levels[5] == 2 &&
+              levels[9] == 0 && levels[12] == 0,
+          "a PDI that matches nothing, after a closed embedding");
 }
 
 // Bidi takes work in proportion to its text. A long run of FSIs with no
@@ -540,6 +591,9 @@ static void TestMaps(void)
     memset(visual, 0xA5, sizeof(visual));
     CHECK(muniReorderBidiLevels(deep, 3, visual) == muni_errorInvalid && visual[0] != 0,
           "a level above 126, and no map written");
+    CHECK(muniReorderBidiLevels(nullptr, 1, visual) == muni_errorInvalid && visual[0] != 0,
+          "no levels for a unit, and no map written");
+    CHECK(muniReorderBidiLevels(deep, 1, nullptr) == muni_errorInvalid, "no map for a unit");
     muniBidiRun runs[3];
     memset(runs, 0xA5, sizeof(runs));
     muniBidiRun untouched;

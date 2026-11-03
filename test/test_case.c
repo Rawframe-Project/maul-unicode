@@ -156,7 +156,7 @@ static void TestFinalSigma(void)
 
 // NFKC_Casefold of more combining marks than a normalizer segment holds
 // is refused, as normalization refuses it.
-static void TestNfkcCasefoldLimit(void)
+static void TestNfkcCasefoldErrors(void)
 {
     char marks[1 + 40 * 2];
     marks[0] = 'a';
@@ -170,6 +170,20 @@ static void TestNfkcCasefoldLimit(void)
     muniTextResult result =
         muniGetNfkcCasefold(marks, sizeof(marks), muni_convertStrict, output, 256, &needed);
     CHECK(result.status == muni_errorLimit && result.offset > 0, "too many marks is refused");
+    needed = 7;
+    memcpy(output, "xxxx", 4);
+    CHECK(muniGetNfkcCasefold(nullptr, 1, muni_convertStrict, output, 256, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7 && memcmp(output, "xxxx", 4) == 0,
+          "no text with a length, and nothing is written");
+    CHECK(muniGetNfkcCasefold("A", 1, muni_convertStrict, nullptr, 256, &needed).status ==
+                  muni_errorInvalid &&
+              needed == 7,
+          "no output with a capacity");
+    CHECK(muniGetNfkcCasefold("A", 1, muni_convertStrict, output, 256, nullptr).status ==
+                  muni_errorInvalid &&
+              memcmp(output, "xxxx", 4) == 0,
+          "no needed size out");
 }
 
 // Each Lithuanian rule of SpecialCasing.txt, with the context each
@@ -257,6 +271,23 @@ static void TestGreek(void)
     CHECK(Converts("\xCE\xB1\xCC\x93\xCC\x81\xCD\x85\xCD\x85", muni_caseUpper, muni_caseGreek,
                    "\xCE\x91\xCE\x99\xCE\x99"),
           "combining marks go with the letter, each subscript an iota");
+    // α with a circumflex, tilde, inverted breve, macron and vrachy.
+    CHECK(Converts("\xCE\xB1\xCC\x82 \xCE\xB1\xCC\x83 \xCE\xB1\xCC\x91 \xCE\xB1\xCC\x84 "
+                   "\xCE\xB1\xCC\x86",
+                   muni_caseUpper, muni_caseGreek, "\xCE\x91 \xCE\x91 \xCE\x91 \xCE\x91 \xCE\x91"),
+          "the other combining marks go too");
+    // ICU 74.2 gives the same: a circumflex or tilde is an accent, a macron
+    // or vrachy is not.
+    CHECK(Converts("\xCE\xB1\xCC\x82\xCE\xB9", muni_caseUpper, muni_caseGreek,
+                   "\xCE\x91\xCE\x99\xCC\x88") &&
+              Converts("\xCE\xB1\xCC\x83\xCE\xB9", muni_caseUpper, muni_caseGreek,
+                       "\xCE\x91\xCE\x99\xCC\x88"),
+          "an iota after a circumflex or tilde that went gains a dialytika");
+    CHECK(
+        Converts("\xCE\xB1\xCC\x84\xCE\xB9", muni_caseUpper, muni_caseGreek, "\xCE\x91\xCE\x99") &&
+            Converts("\xCE\xB1\xCC\x86\xCE\xB9", muni_caseUpper, muni_caseGreek,
+                     "\xCE\x91\xCE\x99"),
+        "after a macron or vrachy it does not");
     CHECK(Converts("\xCE\xAC\xCE\xB9", muni_caseLower, muni_caseGreek, "\xCE\xAC\xCE\xB9") &&
               Converts("\xCE\xAC\xCE\xB9", muni_caseTitle, muni_caseGreek, "\xCE\x86\xCE\xB9") &&
               Converts("\xCE\x86\xCE\x99", muni_caseFold, muni_caseGreek, "\xCE\xAC\xCE\xB9"),
@@ -1065,7 +1096,7 @@ int main(void)
     TestFull();
     TestTurkic();
     TestFinalSigma();
-    TestNfkcCasefoldLimit();
+    TestNfkcCasefoldErrors();
     TestLithuanian();
     TestGreek();
     TestArmenian();

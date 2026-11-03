@@ -472,6 +472,11 @@ static void TestComplexBreaker(void)
               muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
                   muni_errorState,
           "no breaker after the first break");
+    CHECK(muniInitLineIterator(&iterator, nullptr, 0, true) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
+                  muni_errorState,
+          "no breaker once asked for a break");
     CHECK(muniInitGraphemeIterator(&iterator, s_thai, 30, false) == muni_success &&
               muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success &&
               muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, nullptr) ==
@@ -859,6 +864,15 @@ static void TestLineSettings(void)
               muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakLoose &&
               muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther,
           "no setting after the first break, and the settings stay");
+    CHECK(muniInitLineIterator(&iterator, nullptr, 0, true) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakLoose) ==
+                  muni_errorState &&
+              muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                  muni_errorState &&
+              muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakNormal &&
+              muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther,
+          "no setting once asked for a break, before any was reported");
 }
 
 // The line breaks of a text at a strictness and writing system, whole and
