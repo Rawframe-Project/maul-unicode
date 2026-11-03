@@ -5,6 +5,13 @@ Added, Changed, Fixed, Removed and Security. The project uses
 [Semantic Versioning](https://semver.org/). Before 1.0.0, any release
 may change the API, the ABI and every data format.
 
+## [1.0.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.13.0...v1.0.0) (2026-11-03)
+
+
+### Chores
+
+* move the release rules to 1.x for 1.0.0 ([#257](https://github.com/Rawframe-Project/maul-unicode/issues/257)) ([8c579d3](https://github.com/Rawframe-Project/maul-unicode/commit/8c579d33b75c954745b6f3b698c72f29b663adf9)), closes [#250](https://github.com/Rawframe-Project/maul-unicode/issues/250)
+
 ## [0.13.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.12.0...v0.13.0) (2026-11-02)
 
 ### Added
