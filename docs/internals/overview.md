@@ -54,7 +54,7 @@ Nothing allocates, which is why every algorithm is an iterator or a call over ca
 - Segmentation, line breaking and script runs are iterators: structs declared in the public headers as opaque `uint64_t` arrays, which the caller keeps on its stack. Initializing one allocates nothing and there is nothing to close. A `static_assert` beside each internal state struct keeps it within the public size.
 - Bidi cannot stream (it resolves a whole paragraph), so it takes one level byte and one workspace byte per byte of text.
 - Output that may not fit is written through `src/writer.h`, which writes what fits and counts everything, so the caller learns the size the whole result needs from one pass.
-- Where an algorithm could need unbounded memory, a named limit stops it with an error: a normalization segment of 32 code points (`MUNI_MAX_NORMALIZATION_SEGMENT`, a starter and its marks), the 125 levels and 63 brackets UAX #9 itself defines.
+- Where an algorithm could need unbounded memory, a fixed bound holds it. A normalization segment longer than 32 code points (`MUNI_MAX_NORMALIZATION_SEGMENT`, a starter and its marks) is refused with `muni_errorLimit`. Bidi keeps the 125 levels and 63 open brackets UAX #9 itself defines, and resolves text past them as the algorithm says instead of refusing it.
 
 ## Hostile input and invariants
 
@@ -67,7 +67,7 @@ Internal invariants are asserted with `MUNI_ASSERT` (`src/invariant.h`): on in D
 From 1.0.0 the library keeps the family's rules for 1.x ([maul-conventions.md](maul-conventions.md#compatibility)). Here they cover:
 
 - **The API.** The eleven headers in `include/maul-unicode/`, `harfbuzz.h` included, with every function, type, enum value, field and macro they declare. Within 1.x none is removed or renamed, and new ones may be added. Every enum value keeps its number, and a property value that a new Unicode version adds goes after the last one.
-- **What the headers say.** What each call gives on success and leaves on each refusal. The limits refused with `muni_errorLimit`: `MUNI_MAX_NORMALIZATION_SEGMENT` and UAX #9's 125 levels and 63 brackets. The library profile above: no allocation, no global state, no threads, a cost proportional to the length of any input, and the same bits everywhere.
+- **What the headers say.** What each call gives on success and leaves on each refusal. The one limit refused with `muni_errorLimit`, `MUNI_MAX_NORMALIZATION_SEGMENT`. UAX #9's 125 levels and 63 open brackets are no refusal: text past them resolves with `muni_success` through the algorithm's own overflow rules (X5a to X5c for levels, BD16 for brackets), and what the bidi calls give there is part of their results like any other. The library profile above: no allocation, no global state, no threads, a cost proportional to the length of any input, and the same bits everywhere.
 - **The binary interface, within a minor version.** The shared library's `SOVERSION` is major.minor, so a program built against 1.y loads only a 1.y library and is built again for a later minor release, which may grow the iterator structs. The CMake packages accept any later 1.y.
 - **Stored results, by their version.** `MUNI_RESULTS_VERSION` moves up with every change to what the calls `base.h` lists give, a new Unicode version included. A caller that stores normalized keys, skeletons or verdicts stores it beside them, and recomputes them when `muniGetResultsVersion` differs.
 
