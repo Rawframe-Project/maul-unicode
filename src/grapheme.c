@@ -24,6 +24,8 @@ enum
     EmojiPictographic = 1, // Extended_Pictographic Extend*
     EmojiJoined = 2,       // Extended_Pictographic Extend* ZWJ
 };
+static_assert((int)EmojiJoined == (int)muni_graphemeEmojiLast,
+              "segment.c checks the emoji state up to it");
 
 static bool IsControl(uint8_t value)
 {
@@ -120,13 +122,6 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
     }
     state->oddRegional = value == muni_gcbRegionalIndicator && !state->oddRegional;
     state->previous = value;
-}
-
-bool muniGraphemeRulesValid(const muniGraphemeRules* state, const void* raw, size_t at)
-{
-    return state->previous <= muni_gcbLvt && state->emoji <= EmojiJoined &&
-           muniIsFlagByte(raw, at + offsetof(muniGraphemeRules, linker)) &&
-           muniIsFlagByte(raw, at + offsetof(muniGraphemeRules, oddRegional));
 }
 
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)

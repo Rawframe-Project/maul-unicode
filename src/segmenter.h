@@ -110,6 +110,17 @@ typedef struct muniLineRules
     bool oddRegional;      // an odd number of regional indicators precedes
 } muniLineRules;
 
+// The last value each rule set writes in its states, for the check of an
+// iterator the caller holds; each rule set ties its own enumeration to
+// these with a static_assert.
+enum
+{
+    muni_graphemeEmojiLast = 2,  // grapheme.c's EmojiJoined
+    muni_sentenceEndingLast = 2, // sentence.c's EndingSpace
+    muni_lineNumberLast = 2,     // line_rules.h's NumberClosed
+    muni_lineHoldLast = 4,       // line_rules.h's HoldAksara
+};
+
 // A run of Thai, Lao, Khmer or Burmese (Line_Break=SA) that a caller's
 // breaker segments. The run lies in the current piece.
 typedef struct muniComplexRun
@@ -316,13 +327,5 @@ muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut);
-
-// Whether the rules of a segmenter copied out of raw, state the caller
-// holds, are ones the rule set writes: each class and state in range,
-// each flag a 0 or 1 and the hold kind one it gives. Defined beside each
-// rule set; the grapheme rules' is in grapheme.h.
-bool muniWordRulesValid(const muniSegmenter* segmenter, const void* raw);
-bool muniSentenceRulesValid(const muniSegmenter* segmenter, const void* raw);
-bool muniLineRulesValid(const muniSegmenter* segmenter, const void* raw);
 
 #endif // MAUL_UNICODE_SRC_SEGMENTER_H

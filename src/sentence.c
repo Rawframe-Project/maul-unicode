@@ -22,6 +22,8 @@ enum
     EndingTerm = 1,  // SATerm Close*
     EndingSpace = 2, // SATerm Close* Sp+
 };
+static_assert((int)EndingSpace == (int)muni_sentenceEndingLast,
+              "segment.c checks the ending up to it");
 
 enum
 {
@@ -159,13 +161,4 @@ static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
 muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, nullptr);
-}
-
-bool muniSentenceRulesValid(const muniSegmenter* segmenter, const void* raw)
-{
-    const muniSentenceRules* state = &segmenter->rules.sentence;
-    return state->actual <= muni_sbClose && state->previous <= muni_sbClose &&
-           state->before <= muni_sbClose && state->ending <= EndingSpace &&
-           segmenter->holdKind == 0 &&
-           muniIsFlagByte(raw, offsetof(muniSegmenter, rules.sentence.aterm));
 }

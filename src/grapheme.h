@@ -16,8 +16,4 @@ bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t after, uint3
 // Moves the state past a code point whose Grapheme_Cluster_Break is value.
 void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codePoint);
 
-// Whether a state copied out of raw, from offset at, holds what Advance
-// writes: a Grapheme_Cluster_Break value, an emoji state, flags of 0 or 1.
-bool muniGraphemeRulesValid(const muniGraphemeRules* state, const void* raw, size_t at);
-
 #endif // MAUL_UNICODE_SRC_GRAPHEME_H
