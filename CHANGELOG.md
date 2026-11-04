@@ -9,15 +9,34 @@ could change the API, the ABI and every data format.
 
 ## [1.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.0.0...v1.1.0) (2026-11-04)
 
-
 ### Added
 
-* refuse an iterator that no init call set up ([#264](https://github.com/Rawframe-Project/maul-unicode/issues/264)) ([5a2e40a](https://github.com/Rawframe-Project/maul-unicode/commit/5a2e40a4bb144b4aed6732d1863ef8997f057ad8)), closes [#263](https://github.com/Rawframe-Project/maul-unicode/issues/263)
+- Every call that takes a `muniSegmentIterator` or a
+  `muniScriptIterator` back now checks it first, and refuses one no
+  init call set up with `muni_errorInvalid`, leaving it as it was: a
+  zeroed iterator, one of stray bytes, or one whose counts, flags or
+  states are out of range. Such an iterator was undefined behavior
+  before, and a forged script iterator could overflow a buffer on the
+  stack. `muniSegmentIterator_GetLineBreakStrictness` and
+  `muniSegmentIterator_GetWritingSystem` give their defaults for it, as
+  for NULL. A copy of an initialized iterator is accepted. The
+  pointers an iterator keeps (the text, the overrides, the breaker)
+  cannot be checked, so an iterator changed there by hand stays outside
+  the contract
+  ([#264](https://github.com/Rawframe-Project/maul-unicode/pull/264),
+  [#267](https://github.com/Rawframe-Project/maul-unicode/pull/267)).
 
+### Changed
 
-### Fixed
+- The check costs each iterator call a few nanoseconds: line breaking
+  over English prose takes 1 to 2% longer, and up to 20% where every
+  call reports a boundary two code points after the last. Neither
+  iterator changes size
+  ([#264](https://github.com/Rawframe-Project/maul-unicode/pull/264)).
 
-* **segment:** refuse an iterator whose SA run starts past the cursor ([#267](https://github.com/Rawframe-Project/maul-unicode/issues/267)) ([c6c66ec](https://github.com/Rawframe-Project/maul-unicode/commit/c6c66eca6e3806641af273a7e4f2bd1e9b760276)), closes [#266](https://github.com/Rawframe-Project/maul-unicode/issues/266)
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 1.0.0 stay valid.
 
 ## [1.0.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.13.0...v1.0.0) (2026-11-03)
 
