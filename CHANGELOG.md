@@ -7,6 +7,18 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.0.0...v1.1.0) (2026-11-04)
+
+
+### Added
+
+* refuse an iterator that no init call set up ([#264](https://github.com/Rawframe-Project/maul-unicode/issues/264)) ([5a2e40a](https://github.com/Rawframe-Project/maul-unicode/commit/5a2e40a4bb144b4aed6732d1863ef8997f057ad8)), closes [#263](https://github.com/Rawframe-Project/maul-unicode/issues/263)
+
+
+### Fixed
+
+* **segment:** refuse an iterator whose SA run starts past the cursor ([#267](https://github.com/Rawframe-Project/maul-unicode/issues/267)) ([c6c66ec](https://github.com/Rawframe-Project/maul-unicode/commit/c6c66eca6e3806641af273a7e4f2bd1e9b760276)), closes [#266](https://github.com/Rawframe-Project/maul-unicode/issues/266)
+
 ## [1.0.0](https://github.com/Rawframe-Project/maul-unicode/compare/v0.13.0...v1.0.0) (2026-11-03)
 
 The API is settled. 1.0.0 has the API and the results of 0.13.0; what
