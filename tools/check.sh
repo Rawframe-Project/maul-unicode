@@ -119,27 +119,21 @@ all_c_files() { git ls-files 'include/*.h' 'src/*.[ch]' 'test/*.[ch]' 'tools/*.[
 
 # clang-tidy on the files given, as CI's checks job runs it: on the
 # Release preset, where the assertions compile out, and with them live.
-# Each hides findings the other shows. The header filter is given on the
-# command line: clang-tidy-20 takes it from the configuration of the
-# directory above the one it runs in, which has none, and would drop every
-# finding in our headers as non-user code. It is anchored at the source
-# directory the build tree records, the path its compile commands name, so
-# it also leaves out the headers of dependencies fetched under out/.
-header_filter() { # build directory
-    local root
-    root=$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=//p' "$1/CMakeCache.txt")
-    printf '^%s/(src|include)/' "$(printf '%s' "$root" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
-}
-
+# Each hides findings the other shows. The header filter comes from
+# tools/tidy_filter.sh: clang-tidy-20 run from the checkout reports no
+# header finding without one, and the filter is anchored at the source
+# directory the build tree records, so the headers of dependencies under
+# out/ stay out.
 tidy() { # files
-    local build
+    local build filter
     for build in Release Debug; do
         step "clang-tidy, $build, on $# files"
         cmake --preset linux-clang-20 -B "$out/check-tidy-$build" -DCMAKE_BUILD_TYPE=$build \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMAUL_UNICODE_BUILD_TESTS=OFF -DMAUL_UNICODE_HARFBUZZ=ON \
             >"$out/check-tidy-$build.log"
+        filter=$(tools/tidy_filter.sh "$out/check-tidy-$build")
         printf '%s\n' "$@" | xargs -P "$jobs" -n 1 clang-tidy-20 -p "$out/check-tidy-$build" --quiet \
-            --header-filter="$(header_filter "$out/check-tidy-$build")" --warnings-as-errors='*' 2>/dev/null
+            --header-filter="$filter" --warnings-as-errors='*' 2>/dev/null
     done
 }
 
