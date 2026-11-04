@@ -133,15 +133,24 @@ jobs:
       - name: Tables within their ceilings
         run: python3 tools/table_budget.py out/table-sizes.txt
       # On the Release preset, where the assertions compile out, and with
-      # them live: each build hides findings the other shows.
+      # them live: each build hides findings the other shows. The header
+      # filter is given on the command line: clang-tidy-20 takes it from the
+      # configuration of the directory above the one it runs in, which has
+      # none, and would drop every finding in our headers as non-user code.
+      # It is anchored at the source directory the build tree records,
+      # regex-escaped, so it also leaves out the headers of dependencies
+      # fetched under out/.
       - name: clang-tidy
         run: |
           for build in Release Debug; do
             echo "clang-tidy, $build"
             cmake --preset linux-clang-20 -B "out/tidy-$build" -DCMAKE_BUILD_TYPE=$build \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D${PREFIX}_BUILD_TESTS=OFF -D${PREFIX}_HARFBUZZ=ON
+            root=$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=//p' "out/tidy-$build/CMakeCache.txt")
+            filter="^$(printf '%s' "$root" | sed 's/[][\.*^$+?(){}|]/\\&/g')/(src|include)/"
             for f in src/*.c; do
-              clang-tidy-20 -p "out/tidy-$build" --quiet --warnings-as-errors='*' "$f"
+              clang-tidy-20 -p "out/tidy-$build" --quiet --header-filter="$filter" \
+                --warnings-as-errors='*' "$f"
             done
           done
 

@@ -119,7 +119,18 @@ all_c_files() { git ls-files 'include/*.h' 'src/*.[ch]' 'test/*.[ch]' 'tools/*.[
 
 # clang-tidy on the files given, as CI's checks job runs it: on the
 # Release preset, where the assertions compile out, and with them live.
-# Each hides findings the other shows.
+# Each hides findings the other shows. The header filter is given on the
+# command line: clang-tidy-20 takes it from the configuration of the
+# directory above the one it runs in, which has none, and would drop every
+# finding in our headers as non-user code. It is anchored at the source
+# directory the build tree records, the path its compile commands name, so
+# it also leaves out the headers of dependencies fetched under out/.
+header_filter() { # build directory
+    local root
+    root=$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=//p' "$1/CMakeCache.txt")
+    printf '^%s/(src|include)/' "$(printf '%s' "$root" | sed 's/[][\.*^$+?(){}|]/\\&/g')"
+}
+
 tidy() { # files
     local build
     for build in Release Debug; do
@@ -128,7 +139,7 @@ tidy() { # files
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DMAUL_UNICODE_BUILD_TESTS=OFF -DMAUL_UNICODE_HARFBUZZ=ON \
             >"$out/check-tidy-$build.log"
         printf '%s\n' "$@" | xargs -P "$jobs" -n 1 clang-tidy-20 -p "$out/check-tidy-$build" --quiet \
-            --warnings-as-errors='*' 2>/dev/null
+            --header-filter="$(header_filter "$out/check-tidy-$build")" --warnings-as-errors='*' 2>/dev/null
     done
 }
 
@@ -153,10 +164,16 @@ if [ "$tier" = changed ]; then
         clang-format --dry-run -Werror "${present[@]}"
     fi
     # The sources pr checks: src/*.c, not the files below src/ (src/generated).
+    # A changed header is checked through every source, as pr checks it.
     sources=()
+    headers=0
     for f in "${present[@]+"${present[@]}"}"; do
         [[ $f == src/*.c && $f != src/*/* ]] && sources+=("$f")
+        [[ ($f == src/*.h && $f != src/*/*) || $f == include/*.h ]] && headers=1
     done
+    if [ $headers -eq 1 ]; then
+        sources=(src/*.c)
+    fi
     if [ ${#sources[@]} -gt 0 ]; then
         tidy "${sources[@]}"
     fi
