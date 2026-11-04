@@ -5,11 +5,12 @@
 // first input byte picks an iterator and its settings, the second how
 // many calls it answers first, and each pair of bytes after them sets one
 // byte of its state to a value. The pointers, and the lengths and counts
-// that go with them (the text, the class overrides, the caller's
-// breaker), are left alone: an iterator forged there is outside the
-// contract. Every call on what is left must succeed or refuse, without
-// reading or writing outside the state, the text or the overrides, and
-// without tripping an assertion.
+// that go with them (the text, the class overrides, the caller's breaker
+// and the SA run it is given), are left alone: an iterator forged there
+// is outside the contract. Every call on what is left must succeed or
+// refuse, without reading or writing outside the state, the text or the
+// overrides, without asking the breaker about an offset outside its run,
+// and without tripping an assertion.
 
 #include "script_state.h"
 #include "segmenter.h"
@@ -37,10 +38,16 @@ typedef struct Range
     size_t size;
 } Range;
 
+// Breaks every three bytes, and traps when asked about an offset outside
+// the run, which segment.h promises never happens.
 static size_t Breaker(void* context, const char* run, size_t length, size_t from)
 {
     (void)context;
     (void)run;
+    if (from >= length)
+    {
+        __builtin_trap();
+    }
     return from + 3 < length ? from + 3 : length;
 }
 
@@ -149,18 +156,21 @@ static void Segment(uint8_t choice, uint8_t steps, const uint8_t* data, size_t l
     Range kept[] = {
         {offsetof(muniSegmenter, cursor) + offsetof(muniCursor, text), sizeof(const uint8_t*)},
         {offsetof(muniSegmenter, cursor) + offsetof(muniCursor, length), sizeof(size_t)},
-        {offsetof(muniSegmenter, complex), sizeof(muniComplexRun)},
+        {offsetof(muniSegmenter, complex.breaker), sizeof(muniComplexBreakFunction)},
+        {offsetof(muniSegmenter, complex.context), sizeof(void*)},
+        {offsetof(muniSegmenter, complex.text), sizeof(const uint8_t*)},
+        {offsetof(muniSegmenter, complex.length), sizeof(size_t)},
         {offsetof(muniSegmenter, kind), 1},
         {offsetof(muniSegmenter, overrides), sizeof(const muniBreakClassOverride*)},
         {0, 0},
     };
     if (choice % 4 == 1)
     {
-        kept[5] = (Range){offsetof(muniSegmenter, rules.word.overrideCount), sizeof(uint32_t)};
+        kept[8] = (Range){offsetof(muniSegmenter, rules.word.overrideCount), sizeof(uint32_t)};
     }
     else if (choice % 4 == 2)
     {
-        kept[5] = (Range){offsetof(muniSegmenter, rules.sentence.overrideCount), sizeof(uint32_t)};
+        kept[8] = (Range){offsetof(muniSegmenter, rules.sentence.overrideCount), sizeof(uint32_t)};
     }
     Overwrite((unsigned char*)&iterator, sizeof(muniSegmenter), kept,
               sizeof(kept) / sizeof(kept[0]), data, length);

@@ -124,14 +124,16 @@ static MUNI_ALWAYS_INLINE bool Load(const muniSegmentIterator* iterator,
     }
     // A waiting cursor holds less than a code point, as muniCursorFeed
     // relies on; a boundary lies after a code point and a hold before the
-    // cursor, as the engine's assertions do.
+    // cursor, as the engine's assertions do; an SA run starts at or before
+    // the cursor, so the offset its breaker is asked about lies in the run.
     size_t offset = cursor->offset;
+    const muniComplexRun* run = &segmenter->complex;
     if ((segmenter->phase == muni_phaseWaiting &&
          (more == 0 ||
           cursor->pendingCount + (cursor->length - cursor->position) >= sizeof(cursor->pending))) ||
         (started != 0 && offset == 0) ||
         (holding != 0 && (segmenter->heldOffset == 0 || segmenter->heldOffset >= offset)) ||
-        (segmenter->complex.text != nullptr && segmenter->complex.next > segmenter->complex.length))
+        (run->text != nullptr && (run->next > run->length || run->start > offset)))
     {
         return false;
     }
