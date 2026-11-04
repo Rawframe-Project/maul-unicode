@@ -6,8 +6,9 @@
 // many calls it answers first, and each pair of bytes after them sets one
 // byte of its state to a value. The pointers, and the lengths and counts
 // that go with them (the text, the class overrides, the caller's breaker
-// and the SA run it is given), are left alone: an iterator forged there
-// is outside the contract. Every call on what is left must succeed or
+// and the SA run it is given), are left alone, and so is the kind of an
+// iterator with class overrides, since it says where their count is: an
+// iterator forged there is outside the contract. Every call on what is left must succeed or
 // refuse, without reading or writing outside the state, the text or the
 // overrides, without asking the breaker about an offset outside its run,
 // and without tripping an assertion.
@@ -151,8 +152,10 @@ static void Segment(uint8_t choice, uint8_t steps, const uint8_t* data, size_t l
     {
         (void)muniSegmentIterator_NextBreak(&iterator, &offset);
     }
-    // The override count shares the rules' storage, so it is kept only
-    // where the rules are a word or sentence iterator's.
+    // The override count shares the rules' storage, and the kind says
+    // which bytes of it hold the count, so both are kept where the
+    // iterator has overrides. Without them the pointer is null, and any
+    // kind and count are input every call must refuse or handle.
     Range kept[] = {
         {offsetof(muniSegmenter, cursor) + offsetof(muniCursor, text), sizeof(const uint8_t*)},
         {offsetof(muniSegmenter, cursor) + offsetof(muniCursor, length), sizeof(size_t)},
@@ -160,17 +163,14 @@ static void Segment(uint8_t choice, uint8_t steps, const uint8_t* data, size_t l
         {offsetof(muniSegmenter, complex.context), sizeof(void*)},
         {offsetof(muniSegmenter, complex.text), sizeof(const uint8_t*)},
         {offsetof(muniSegmenter, complex.length), sizeof(size_t)},
-        {offsetof(muniSegmenter, kind), 1},
         {offsetof(muniSegmenter, overrides), sizeof(const muniBreakClassOverride*)},
         {0, 0},
+        {0, 0},
     };
-    if (choice % 4 == 1)
+    if (choice % 4 == 1 && (choice & 16) != 0)
     {
+        kept[7] = (Range){offsetof(muniSegmenter, kind), 1};
         kept[8] = (Range){offsetof(muniSegmenter, rules.word.overrideCount), sizeof(uint32_t)};
-    }
-    else if (choice % 4 == 2)
-    {
-        kept[8] = (Range){offsetof(muniSegmenter, rules.sentence.overrideCount), sizeof(uint32_t)};
     }
     Overwrite((unsigned char*)&iterator, sizeof(muniSegmenter), kept,
               sizeof(kept) / sizeof(kept[0]), data, length);
