@@ -1,6 +1,6 @@
 # Characters, words, sentences and lines
 
-`segment.h` finds the boundaries of grapheme clusters, words and sentences (UAX #29) and the line break opportunities (UAX #14). All four use one iterator type, `muniSegmentIterator`, a plain struct the caller keeps on the stack that needs no cleanup.
+`segment.h` finds the boundaries of grapheme clusters, words and sentences (UAX #29) and the line break opportunities (UAX #14). All four use one iterator type, `muniSegmentIterator`, a plain struct the caller keeps on the stack that needs no cleanup. A copy of an initialized iterator is one too, and every call refuses an iterator no init call set up, such as a zeroed one, with `muni_errorInvalid`.
 
 ## Grapheme clusters, words and sentences
 

@@ -1170,6 +1170,53 @@ static void TestFeedingRules(void)
           "never initialized");
 }
 
+// An iterator no init call set up, of one byte repeated: zeroed as a
+// static one is, or of bytes that would make a count run past the state
+// (0x41) or a flag no bool (0x02, 0x04). Every call that takes it back
+// refuses it as a bad argument and changes nothing in it, and the getters
+// give their defaults.
+static void TestUninitializedIterators(void)
+{
+    static const unsigned char fills[] = {0x00, 0x41, 0x02, 0x04};
+    static const muniBreakClassOverride posix[] = {{'_', muni_wbExtendNumLet}};
+    static const size_t stops[] = {0};
+    for (size_t i = 0; i < sizeof(fills); i++)
+    {
+        muniSegmentIterator iterator;
+        memset(&iterator, fills[i], sizeof(iterator));
+        muniSegmentIterator before = iterator;
+        size_t offset = 7;
+        bool mandatory = true;
+        muniWordKind kind = muni_wordLetter;
+        bool refused =
+            muniSegmentIterator_NextBreak(&iterator, &offset) == muni_errorInvalid &&
+            muniSegmentIterator_NextLineBreak(&iterator, &offset, &mandatory) ==
+                muni_errorInvalid &&
+            muniSegmentIterator_Feed(&iterator, "a", 1, false) == muni_errorInvalid &&
+            muniSegmentIterator_SetComplexBreaker(&iterator, ToyBreaker, (void*)stops) ==
+                muni_errorInvalid &&
+            muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid &&
+            muniSegmentIterator_SetLineBreakStrictness(&iterator, muni_lineBreakLoose) ==
+                muni_errorInvalid &&
+            muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
+                muni_errorInvalid &&
+            muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_errorInvalid;
+        bool defaults =
+            muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakNormal &&
+            muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther;
+        CHECK(refused && defaults && offset == 7 && mandatory && kind == muni_wordLetter &&
+                  memcmp(&iterator, &before, sizeof(iterator)) == 0,
+              "an iterator no init call set up is refused and left as it was");
+    }
+    // A copy of an iterator an init call set up is one too.
+    muniSegmentIterator iterator;
+    size_t offset = 0;
+    CHECK(muniInitWordIterator(&iterator, "a b", 3, false) == muni_success, "init");
+    muniSegmentIterator copy = iterator;
+    CHECK(muniSegmentIterator_NextBreak(&copy, &offset) == muni_success && offset == 1,
+          "a copy of an iterator steps on");
+}
+
 // A kind is an int32_t, so a caller can pass a negative one; every call
 // that takes a kind refuses -1 and INT32_MIN as it refuses a kind past the
 // last, and leaves its outputs as they were.
@@ -1525,6 +1572,7 @@ int main(void)
     TestAnywhere();
     TestInvalidArguments();
     TestFeedingRules();
+    TestUninitializedIterators();
     TestWordKinds();
     TestMeasureLimits();
     TestMeasureUses();
