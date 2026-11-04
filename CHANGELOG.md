@@ -7,6 +7,13 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.0...v1.1.1) (2026-11-04)
+
+
+### Fixed
+
+* make MUNI_NODISCARD the attribute under GCC 14's C23 too ([#271](https://github.com/Rawframe-Project/maul-unicode/issues/271)) ([e206d49](https://github.com/Rawframe-Project/maul-unicode/commit/e206d493833a4b4f9e596487af359c78f8def191)), closes [#270](https://github.com/Rawframe-Project/maul-unicode/issues/270)
+
 ## [1.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.0.0...v1.1.0) (2026-11-04)
 
 ### Added
