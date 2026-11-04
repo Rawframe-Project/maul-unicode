@@ -18,7 +18,7 @@ grapheme: segmenter tables
 harfbuzz:
 identifier: encoding tables
 invariant:
-line: line_rules segmenter
+line: grapheme line_rules segmenter
 line_anywhere: grapheme segmenter tables
 line_rules: complex segmenter tables
 line_tailored: line_rules segmenter
@@ -27,8 +27,9 @@ normalizer: decompose tables writer
 overlap:
 nfkc_casefold: case_map decompose encoding invariant normalizer overlap tables
 properties: tables
-script_runs: cursor invariant tables
-segment: encoding segmenter
+script_runs: invariant script_state tables
+script_state: cursor
+segment: encoding grapheme segmenter
 segmenter: cursor invariant
 security: bits encoding tables
 sentence: segmenter tables

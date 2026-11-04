@@ -229,6 +229,35 @@ static void TestCapacityAndArguments(void)
           "no count, and no run written");
 }
 
+// An iterator no init call set up, of one byte repeated: zeroed as a
+// static one is, or of bytes that would make the pending count copy past
+// its four bytes (0x41) or a flag no bool (0x02, 0x04). Both calls that
+// take it back refuse it as a bad argument and change nothing in it.
+static void TestUninitializedIterators(void)
+{
+    static const unsigned char fills[] = {0x00, 0x41, 0x02, 0x04};
+    for (size_t i = 0; i < sizeof(fills); i++)
+    {
+        muniScriptIterator iterator;
+        memset(&iterator, fills[i], sizeof(iterator));
+        muniScriptIterator before = iterator;
+        muniScriptRun run = {7, LATN};
+        CHECK(muniScriptIterator_NextRun(&iterator, &run) == muni_errorInvalid &&
+                  muniScriptIterator_Feed(&iterator, "a", 1, false) == muni_errorInvalid &&
+                  run.end == 7 && run.script == LATN &&
+                  memcmp(&iterator, &before, sizeof(iterator)) == 0,
+              "an iterator no init call set up is refused and left as it was");
+    }
+    // A copy of an iterator an init call set up is one too.
+    muniScriptIterator iterator;
+    muniScriptRun run;
+    CHECK(muniInitScriptIterator(&iterator, "ab", 2, false) == muni_success, "init");
+    muniScriptIterator copy = iterator;
+    CHECK(muniScriptIterator_NextRun(&copy, &run) == muni_success && run.end == 2 &&
+              run.script == LATN,
+          "a copy of an iterator steps on");
+}
+
 int main(void)
 {
     TestRuns();
@@ -237,5 +266,6 @@ int main(void)
     TestBracketDepth();
     TestScriptExtensionsList();
     TestCapacityAndArguments();
+    TestUninitializedIterators();
     return s_failures == 0 ? 0 : 1;
 }

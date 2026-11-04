@@ -245,3 +245,12 @@ muniResult muniNextWordSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, Boundary);
 }
+
+bool muniWordRulesValid(const muniSegmenter* segmenter, const void* raw)
+{
+    const muniWordRules* state = &segmenter->rules.word;
+    return state->actual <= muni_wbWSegSpace && state->previous <= muni_wbWSegSpace &&
+           state->before <= muni_wbWSegSpace && state->kind <= muni_wordIdeograph &&
+           state->reportedKind <= muni_wordIdeograph && segmenter->holdKind == 0 &&
+           muniIsFlagByte(raw, offsetof(muniSegmenter, rules.word.oddRegional));
+}

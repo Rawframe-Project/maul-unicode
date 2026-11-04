@@ -77,7 +77,7 @@ Outside the promise:
 - `MUNI_MAX_SCRIPT_EXTENSIONS`, `MUNI_MAX_RESOLVED_SCRIPTS` and `MUNI_MAX_DECOMPOSITION` hold for one Unicode version and may rise in a minor release; the calls always report the count they need.
 - The size of the iterator structs across minor releases.
 - Everything outside `include/`: `src/`, the generated tables and their sizes, speed, the tools, tests, samples and benchmarks, and the HarfBuzz versions the adapter builds with.
-- What a call does when its caller breaks a header's contract, such as a workspace that overlaps its text or an iterator that was never initialized.
+- What a call does when its caller breaks a header's contract, such as a workspace that overlaps its text, or an iterator whose bytes were changed by hand while keeping the cookie its init call wrote. An iterator no init call set up is refused with `muni_errorInvalid`, which is promised.
 
 The library reads and writes no asset or state format, so it promises none, and its headers name no other Maul library that would have to reach 1.0.0 first.
 

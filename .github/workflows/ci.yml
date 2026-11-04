@@ -248,7 +248,7 @@ jobs:
         #
         # A dispatch's fuzz-seconds must leave time for the minimize and
         # save, or the timeout kills the job and the corpus is lost: the
-        # ten targets run in three waves of four, and the night's 50
+        # eleven targets run in three waves of four, and the night's 50
         # minutes less about 10 for the build, the merge and the save leave
         # 40, so at most 800 seconds a wave. libFuzzer reads a negative
         # time as no limit.

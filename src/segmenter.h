@@ -149,8 +149,15 @@ typedef struct muniSegmenter
     const muniBreakClassOverride* overrides;
 } muniSegmenter;
 
+// The public iterator's size follows the segmenter: it holds it on every
+// target, and on 64-bit targets, where the segmenter is largest, it has
+// no whole uint64_t to spare. A change that breaks either resizes the
+// public iterator, which a minor release may do.
 static_assert(sizeof(muniSegmenter) <= sizeof(muniSegmentIterator),
               "the public iterator must hold the segmenter");
+static_assert(sizeof(void*) < 8 ||
+                  sizeof(muniSegmentIterator) - sizeof(muniSegmenter) < sizeof(uint64_t),
+              "the public iterator must be no larger than the segmenter needs");
 
 // The parts of lineSettings: a muni_lineBreak value in the low two bits,
 // a muni_writing value in the third.
@@ -309,5 +316,13 @@ muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut);
+
+// Whether the rules of a segmenter copied out of raw, state the caller
+// holds, are ones the rule set writes: each class and state in range,
+// each flag a 0 or 1 and the hold kind one it gives. Defined beside each
+// rule set; the grapheme rules' is in grapheme.h.
+bool muniWordRulesValid(const muniSegmenter* segmenter, const void* raw);
+bool muniSentenceRulesValid(const muniSegmenter* segmenter, const void* raw);
+bool muniLineRulesValid(const muniSegmenter* segmenter, const void* raw);
 
 #endif // MAUL_UNICODE_SRC_SEGMENTER_H

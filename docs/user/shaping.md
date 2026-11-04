@@ -18,7 +18,7 @@ if (muniInitScriptIterator(&scripts, text, length, false) == muni_success)
 }
 ```
 
-Like the segment iterators, it takes text in pieces through `muniScriptIterator_Feed` after `muni_needMoreText`. `muniFindScriptRuns` writes the runs of a whole text into an array.
+Like the segment iterators, it takes text in pieces through `muniScriptIterator_Feed` after `muni_needMoreText`, and its calls refuse an iterator no init call set up with `muni_errorInvalid`. `muniFindScriptRuns` writes the runs of a whole text into an array.
 
 A text layout pipeline itemizes by paragraph ([bidi](bidi.md)), then by script and bidi run, then by font, and shapes each item.
 

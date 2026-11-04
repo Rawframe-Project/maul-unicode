@@ -122,6 +122,13 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
     state->previous = value;
 }
 
+bool muniGraphemeRulesValid(const muniGraphemeRules* state, const void* raw, size_t at)
+{
+    return state->previous <= muni_gcbLvt && state->emoji <= EmojiJoined &&
+           muniIsFlagByte(raw, at + offsetof(muniGraphemeRules, linker)) &&
+           muniIsFlagByte(raw, at + offsetof(muniGraphemeRules, oddRegional));
+}
+
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     muniGraphemeAdvance(&segmenter->rules.grapheme, value, codePoint);
