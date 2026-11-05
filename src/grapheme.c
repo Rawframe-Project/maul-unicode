@@ -125,17 +125,17 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
 }
 
 // muniGraphemeAdvance sets every field from the code point alone, except
-// that Extend and ZWJ carry an emoji sequence on, InCB=Extend carries a
-// linker on, and a regional indicator flips the count.
-bool muniGraphemeResets(uint32_t codePoint)
+// that InCB=Extend carries a linker on, Extend and ZWJ carry an emoji
+// sequence on, and a regional indicator flips the count. An open linker
+// would join a consonant (GB9c) that a segmenter started at the code
+// point breaks before, so InCB=Extend, ZWJ among it, ends no window. An
+// open emoji sequence decides only after a ZWJ (GB11), and an open count
+// only between two regional indicators, where that segmenter, counting
+// one, joins; either way it never breaks where the whole text joins, and
+// the boundary check refuses a position it does not break at.
+bool muniGraphemeRestarts(uint32_t codePoint)
 {
-    if (codePoint < 0x80)
-    {
-        return true;
-    }
-    uint8_t value = muniLookupGraphemeClusterBreak(codePoint);
-    return value != muni_gcbExtend && value != muni_gcbZwj && value != muni_gcbRegionalIndicator &&
-           muniLookupIndicConjunctBreak(codePoint) != muni_incbExtend;
+    return codePoint < 0x80 || muniLookupIndicConjunctBreak(codePoint) != muni_incbExtend;
 }
 
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
@@ -168,5 +168,5 @@ size_t muniGraphemeWindow(const muniSegmenter* segmenter, uint32_t before, uint3
     (void)segmenter;
     (void)before;
     (void)next;
-    return muniGraphemeResets(last) ? 1 : 0;
+    return muniGraphemeRestarts(last) ? 1 : 0;
 }

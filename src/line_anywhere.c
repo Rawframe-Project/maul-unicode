@@ -79,5 +79,5 @@ size_t muniLineAnywhereWindow(const muniSegmenter* segmenter, uint32_t before, u
     (void)segmenter;
     (void)before;
     (void)next;
-    return muniGraphemeResets(last) ? 1 : 0;
+    return muniGraphemeRestarts(last) ? 1 : 0;
 }

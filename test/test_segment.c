@@ -9,6 +9,7 @@
 #include "test_harness.h"
 
 #include "maul-unicode/encoding.h"
+#include "maul-unicode/properties.h"
 #include "maul-unicode/segment.h"
 
 #include <stdlib.h>
@@ -1912,6 +1913,12 @@ static const char* const s_aroundEdges[] = {
 
 static void TestBreaksAround(void)
 {
+    // The grapheme window ends at no InCB=Extend code point. It may leave
+    // an emoji sequence open after an Extend, but never after a ZWJ, where
+    // GB11 would join a pictograph its segmenter breaks before, only
+    // because U+200D is InCB=Extend (since Unicode 15.1).
+    CHECK(muniGetIndicConjunctBreak(0x200D) == muni_incbExtend,
+          "U+200D is InCB=Extend, as the grapheme window needs");
     for (size_t i = 0; i < sizeof(s_aroundEdges) / sizeof(s_aroundEdges[0]); i++)
     {
         const char* text = s_aroundEdges[i];

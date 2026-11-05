@@ -17,8 +17,8 @@ MUNI_NODISCARD bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8
 // Moves the state past a code point whose Grapheme_Cluster_Break is value.
 void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codePoint);
 
-// Whether muniGraphemeAdvance past codePoint gives the same state from
-// every state.
-MUNI_NODISCARD bool muniGraphemeResets(uint32_t codePoint);
+// Whether a segmenter started at codePoint reads on as the whole text's
+// does from the position after it, wherever it breaks there.
+MUNI_NODISCARD bool muniGraphemeRestarts(uint32_t codePoint);
 
 #endif // MAUL_UNICODE_SRC_GRAPHEME_H

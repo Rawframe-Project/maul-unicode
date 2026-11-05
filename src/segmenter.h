@@ -331,8 +331,11 @@ muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetO
 // How many of the code points just before a position fix every part of
 // the rule set's state that a later decision reads, whatever text came
 // before them: 1 when last alone does, 2 when before and last do, 0 when
-// they leave it open. A segmenter started at the first of them then reads
-// on from the position as one started at the start of the text does.
+// they leave it open. A part may stay open when it can only make a
+// segmenter started at the first of them join at the position where the
+// whole text breaks, never the reverse, and the code point at the
+// position sets it again. Where that segmenter breaks at the position, it
+// then reads on as one started at the start of the text does.
 // next is the code point at the position. Each is defined beside its
 // rule set, as the entries above are.
 size_t muniGraphemeWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
