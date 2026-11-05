@@ -7,6 +7,13 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.1.2](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.1...v1.1.2) (2026-11-05)
+
+
+### Fixed
+
+* mark every internal bool function nodiscard and check it ([#276](https://github.com/Rawframe-Project/maul-unicode/issues/276)) ([695134c](https://github.com/Rawframe-Project/maul-unicode/commit/695134c65503f4172365a667b29d03816073020d)), closes [#275](https://github.com/Rawframe-Project/maul-unicode/issues/275) [#273](https://github.com/Rawframe-Project/maul-unicode/issues/273)
+
 ## [1.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.0...v1.1.1) (2026-11-04)
 
 ### Fixed
