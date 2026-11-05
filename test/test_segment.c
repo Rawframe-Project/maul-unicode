@@ -743,6 +743,9 @@ static void TestClassOverrideArguments(void)
                                                       {0x003B, muni_sbSTerm}};
     static const muniBreakClassOverride pastMax[] = {{0x110000, muni_sbSTerm}};
     static const muniBreakClassOverride surrogate[] = {{0xD800, muni_sbSTerm}};
+    static const muniBreakClassOverride lastSurrogate[] = {{0xDFFF, muni_sbSTerm}};
+    static const muniBreakClassOverride pastSurrogates[] = {{0xE000, muni_sbSTerm},
+                                                            {0x10FFFF, muni_sbSTerm}};
     static const muniBreakClassOverride wordClass[] = {{0x003B, muni_wbWSegSpace + 1}};
     static const muniBreakClassOverride sentenceClass[] = {{0x003B, muni_sbClose + 1}};
     muniSegmentIterator iterator;
@@ -781,6 +784,14 @@ static void TestClassOverrideArguments(void)
               muniSegmentIterator_SetBreakClassOverrides(&iterator, surrogate, 1) ==
                   muni_errorInvalid,
           "a surrogate");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, lastSurrogate, 1) ==
+                  muni_errorInvalid,
+          "the last surrogate");
+    CHECK(muniInitSentenceIterator(&iterator, "a", 1, false) == muni_success &&
+              muniSegmentIterator_SetBreakClassOverrides(&iterator, pastSurrogates, 2) ==
+                  muni_success,
+          "the first scalar value after the surrogates, and the last of all");
     CHECK(muniInitGraphemeIterator(&iterator, "a", 1, false) == muni_success &&
               muniSegmentIterator_SetBreakClassOverrides(&iterator, posix, 1) == muni_errorInvalid,
           "grapheme iterators take no overrides");
@@ -1164,6 +1175,7 @@ static void TestFeedingRules(void)
           "a piece before the iterator asked");
     CHECK(muniSegmentIterator_Feed(&iterator, nullptr, 1, false) == muni_errorInvalid,
           "a NULL piece is invalid in any state");
+    CHECK(muniSegmentIterator_Feed(nullptr, "c", 1, false) == muni_errorInvalid, "no iterator");
     CHECK(muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText,
           "the word may go on");
     CHECK(muniSegmentIterator_Feed(&iterator, " d", 2, false) == muni_success, "feed");
@@ -1172,6 +1184,11 @@ static void TestFeedingRules(void)
     muniSegmentIterator zeroed = {{0}};
     CHECK(muniSegmentIterator_NextBreak(&zeroed, &offset) == muni_errorInvalid,
           "never initialized");
+    CHECK(muniInitWordIterator(&iterator, "ab", 2, true) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_Feed(&iterator, nullptr, 0, false) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_success && offset == 2,
+          "an empty last piece ends the text");
 }
 
 // An iterator no init call set up, of one byte repeated: zeroed as a
@@ -1980,6 +1997,15 @@ static void TestBreaksAroundRefusals(void)
                   muni_errorState &&
               before == 7 && after == 7,
           "a last piece that is not the whole text is a state error");
+    // The lead byte waits for the rest of its sequence, so the last piece
+    // starts at offset 0 but does not hold the whole text.
+    CHECK(muniInitWordIterator(&iterator, "\xE0", 1, true) == muni_success &&
+              muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_Feed(&iterator, "\xA0\x80", 2, false) == muni_success &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 0, &before, &after) ==
+                  muni_errorState &&
+              before == 7 && after == 7,
+          "a byte waiting from an earlier piece is a state error");
 }
 
 int main(void)
