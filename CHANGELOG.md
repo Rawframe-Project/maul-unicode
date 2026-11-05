@@ -7,6 +7,22 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.1.2](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.1...v1.1.2) (2026-11-05)
+
+### Fixed
+
+- Every internal function that returns `bool` now carries
+  `MUNI_NODISCARD`, so a compiler warns where the library would drop
+  one of their answers, and `tools/check_nodiscard.py` keeps new ones
+  marked. No call dropped one, so nothing a caller sees changes: same
+  API, same behavior. The header tests now also check that
+  `MUNI_NODISCARD` is not empty in C23
+  ([#276](https://github.com/Rawframe-Project/maul-unicode/pull/276)).
+
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 1.1.1 stay valid.
+
 ## [1.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.0...v1.1.1) (2026-11-04)
 
 ### Fixed
