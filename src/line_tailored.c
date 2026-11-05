@@ -22,3 +22,9 @@ muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetO
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, nullptr);
 }
+
+size_t muniLineTailoredWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                              uint32_t next)
+{
+    return muniLineWindowOf(segmenter, before, last, next, true);
+}

@@ -124,6 +124,20 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
     state->previous = value;
 }
 
+// muniGraphemeAdvance sets every field from the code point alone, except
+// that Extend and ZWJ carry an emoji sequence on, InCB=Extend carries a
+// linker on, and a regional indicator flips the count.
+bool muniGraphemeResets(uint32_t codePoint)
+{
+    if (codePoint < 0x80)
+    {
+        return true;
+    }
+    uint8_t value = muniLookupGraphemeClusterBreak(codePoint);
+    return value != muni_gcbExtend && value != muni_gcbZwj && value != muni_gcbRegionalIndicator &&
+           muniLookupIndicConjunctBreak(codePoint) != muni_incbExtend;
+}
+
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     muniGraphemeAdvance(&segmenter->rules.grapheme, value, codePoint);
@@ -145,4 +159,14 @@ muniResult muniNextGraphemeSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     // Decide never holds, so Decide stands in for the resolve rule too.
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb, nullptr);
+}
+
+// The rules read only the state muniGraphemeAdvance keeps.
+size_t muniGraphemeWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                          uint32_t next)
+{
+    (void)segmenter;
+    (void)before;
+    (void)next;
+    return muniGraphemeResets(last) ? 1 : 0;
 }

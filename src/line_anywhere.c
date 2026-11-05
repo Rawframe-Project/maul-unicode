@@ -70,3 +70,14 @@ muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetO
     // Decide never holds, so Decide stands in for the resolve rule too.
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Decide, Absorb, nullptr);
 }
+
+// The grapheme rules' state, and the class of the last code point, which
+// the hard breaks read.
+size_t muniLineAnywhereWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                              uint32_t next)
+{
+    (void)segmenter;
+    (void)before;
+    (void)next;
+    return muniGraphemeResets(last) ? 1 : 0;
+}

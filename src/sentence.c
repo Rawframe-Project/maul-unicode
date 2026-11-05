@@ -162,3 +162,16 @@ muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, nullptr);
 }
+
+// After a paragraph separator, which SB4 breaks after and which ends any
+// SB8 hold and every sentence ending, the state is that of the start of
+// the text: the class before the separator is read only after an ATerm
+// (SB7), and whether the last terminator was an ATerm only within an
+// ending, which a later terminator starts.
+size_t muniSentenceWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                          uint32_t next)
+{
+    (void)before;
+    (void)next;
+    return In(Lookup(segmenter, last), ParaSep) ? 1 : 0;
+}

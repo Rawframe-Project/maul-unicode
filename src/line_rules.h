@@ -86,6 +86,9 @@ enum : uint64_t
     QuoteClosers = Hard | BIT(muni_lbSp) | BIT(muni_lbGl) | BIT(muni_lbWj) | BIT(muni_lbCl) |
                    BIT(muni_lbQu) | BIT(muni_lbCp) | BIT(muni_lbEx) | BIT(muni_lbIs) |
                    BIT(muni_lbSy) | BIT(muni_lbZw),
+    // Classes no rule holds at, folds or counts across: after two of
+    // them, or one and a space, the state is theirs (muniLineWindowOf).
+    Plain = Letters | Ideographs | BIT(muni_lbNu),
     // What may precede an LB20a word-initial hyphen.
     WordStarts =
         BIT(Sot) | Hard | BIT(muni_lbSp) | BIT(muni_lbZw) | BIT(muni_lbCb) | BIT(muni_lbGl),
@@ -577,6 +580,36 @@ static inline void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t code
     state->beforeCodePoint = state->previousCodePoint;
     state->previous = value;
     state->previousCodePoint = codePoint;
+}
+
+// The window of muniLineWindow. After a hard break the state is that of
+// the start of the text, but for the class before the break, which a
+// rule reads only after a quotation mark, hyphen or virama (LB19a, LB20a,
+// LB21a, LB28a). Two classes of Plain, or one and a space, are previous
+// and before, the last class other than SP, a number started or not,
+// an even count of regional indicators and no hold: none of them holds
+// (U+25CC, an AL, is an aksara of LB28a and may), and a hold open before
+// them ends at them. Inside an SA run the breaker answers about the whole
+// run, so a position between two SA code points fixes nothing.
+static inline size_t muniLineWindowOf(const muniSegmenter* segmenter, uint32_t before,
+                                      uint32_t last, uint32_t next, bool tailored)
+{
+    if (muniComplexInside(segmenter, last, next))
+    {
+        return 0;
+    }
+    uint8_t second = muniLineLookup(segmenter, last, tailored);
+    if (In(second, Hard))
+    {
+        return 1;
+    }
+    uint8_t first = muniLineLookup(segmenter, before, tailored);
+    if (In(first, Plain) && In(second, Plain | BIT(muni_lbSp)) && before != DOTTED_CIRCLE &&
+        last != DOTTED_CIRCLE)
+    {
+        return 2;
+    }
+    return 0;
 }
 
 #endif // MAUL_UNICODE_SRC_LINE_RULES_H

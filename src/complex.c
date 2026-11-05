@@ -69,3 +69,9 @@ void muniComplexTrackRun(muniSegmenter* segmenter, uint32_t codePoint)
     run->length = length;
     run->next = Ask(run, 0);
 }
+
+bool muniComplexInside(const muniSegmenter* segmenter, uint32_t last, uint32_t next)
+{
+    return segmenter->complex.breaker != nullptr && muniLookupLineBreak(last) == muni_lbSa &&
+           muniLookupLineBreak(next) == muni_lbSa;
+}

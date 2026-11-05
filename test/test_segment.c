@@ -515,6 +515,9 @@ static size_t ReentrantBreaker(void* context, const char* run, size_t length, si
     ExpectBusy(reentry, muniSegmentIterator_Feed(iterator, "a", 1, false));
     ExpectBusy(reentry, muniSegmentIterator_NextBreak(iterator, &offset));
     reentry->written += offset != 77;
+    size_t after = 77;
+    ExpectBusy(reentry, muniSegmentIterator_FindBreaksAround(iterator, 0, &offset, &after));
+    reentry->written += offset != 77 || after != 77;
     if (muniSegmentIterator_SetLineBreakStrictness(iterator, muni_lineBreakLoose) !=
         muni_errorInvalid)
     {
@@ -558,7 +561,7 @@ static void TestReentrantBreaker(void)
     CHECK(CollectBreaks(&iterator, offsets) == count &&
               memcmp(offsets, expected, count * sizeof(size_t)) == 0,
           "a line iterator finds the same breaks");
-    CHECK(reentry.calls >= 5 && reentry.notBusy == 0, "every line call back is busy");
+    CHECK(reentry.calls >= 6 && reentry.notBusy == 0, "every line call back is busy");
     CHECK(reentry.written == 0, "a busy line call leaves its outputs as they were");
     CHECK(muniSegmentIterator_Feed(&iterator, "", 0, false) == muni_success,
           "no longer busy once the outer call returned");
@@ -576,7 +579,7 @@ static void TestReentrantBreaker(void)
     CHECK(CollectBreaks(&iterator, offsets) == count &&
               memcmp(offsets, expected, count * sizeof(size_t)) == 0,
           "a word iterator finds the same breaks");
-    CHECK(reentry.calls >= 4 && reentry.notBusy == 0, "every word call back is busy");
+    CHECK(reentry.calls >= 5 && reentry.notBusy == 0, "every word call back is busy");
     CHECK(reentry.written == 0, "a busy word call leaves its output as it was");
 }
 
@@ -1200,7 +1203,9 @@ static void TestUninitializedIterators(void)
                 muni_errorInvalid &&
             muniSegmentIterator_SetWritingSystem(&iterator, muni_writingChineseJapanese) ==
                 muni_errorInvalid &&
-            muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_errorInvalid;
+            muniSegmentIterator_GetWordKind(&iterator, &kind) == muni_errorInvalid &&
+            muniSegmentIterator_FindBreaksAround(&iterator, 0, &offset, &offset) ==
+                muni_errorInvalid;
         bool defaults =
             muniSegmentIterator_GetLineBreakStrictness(&iterator) == muni_lineBreakNormal &&
             muniSegmentIterator_GetWritingSystem(&iterator) == muni_writingOther;
@@ -1554,6 +1559,391 @@ static void TestWordKinds(void)
           "a grapheme iterator has no word kinds");
 }
 
+// A segmenter for runs of random text: a break every six bytes, two SA
+// code points.
+static size_t StepBreaker(void* context, const char* run, size_t length, size_t from)
+{
+    (void)context;
+    (void)run;
+    return from + 6 < length ? from + 6 : length;
+}
+
+static muniResult SetupWordOverrides(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    // Spaces skipped as Format, hyphens inside words, full stops in numbers.
+    static const muniBreakClassOverride table[] = {
+        {' ', muni_wbFormat}, {'-', muni_wbMidLetter}, {'.', muni_wbMidNum}};
+    muniResult status = muniInitWordIterator(iterator, text, length, false);
+    return status == muni_success ? muniSegmentIterator_SetBreakClassOverrides(iterator, table, 3)
+                                  : status;
+}
+
+static muniResult SetupWordBreaker(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    muniResult status = muniInitWordIterator(iterator, text, length, false);
+    return status == muni_success
+               ? muniSegmentIterator_SetComplexBreaker(iterator, StepBreaker, nullptr)
+               : status;
+}
+
+static muniResult SetupSentenceOverrides(muniSegmentIterator* iterator, const char* text,
+                                         size_t length)
+{
+    // Commas separate paragraphs, Greek ends a sentence at U+003B.
+    static const muniBreakClassOverride table[] = {{',', muni_sbSep}, {';', muni_sbSTerm}};
+    muniResult status = muniInitSentenceIterator(iterator, text, length, false);
+    return status == muni_success ? muniSegmentIterator_SetBreakClassOverrides(iterator, table, 2)
+                                  : status;
+}
+
+static muniResult SetupLineBreaker(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    muniResult status = muniInitLineIterator(iterator, text, length, false);
+    return status == muni_success
+               ? muniSegmentIterator_SetComplexBreaker(iterator, StepBreaker, nullptr)
+               : status;
+}
+
+static muniResult SetupStrictLines(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return InitStrictLines(iterator, text, length, false);
+}
+
+static muniResult SetupLooseLines(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return InitLines(iterator, text, length, false, muni_lineBreakLoose, muni_writingOther);
+}
+
+static muniResult SetupNormalCjkLines(muniSegmentIterator* iterator, const char* text,
+                                      size_t length)
+{
+    return InitLines(iterator, text, length, false, muni_lineBreakNormal,
+                     muni_writingChineseJapanese);
+}
+
+static muniResult SetupLooseCjkLines(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return InitLines(iterator, text, length, false, muni_lineBreakLoose,
+                     muni_writingChineseJapanese);
+}
+
+static muniResult SetupAnywhereLines(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return InitAnywhereLines(iterator, text, length, false);
+}
+
+typedef muniResult (*SetupFn)(muniSegmentIterator* iterator, const char* text, size_t length);
+
+static muniResult SetupGraphemes(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return muniInitGraphemeIterator(iterator, text, length, false);
+}
+
+static muniResult SetupWords(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return muniInitWordIterator(iterator, text, length, false);
+}
+
+static muniResult SetupSentences(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return muniInitSentenceIterator(iterator, text, length, false);
+}
+
+static muniResult SetupLines(muniSegmentIterator* iterator, const char* text, size_t length)
+{
+    return muniInitLineIterator(iterator, text, length, false);
+}
+
+// Every kind and setting muniSegmentIterator_FindBreaksAround serves.
+static const SetupFn s_graphemeSetups[] = {SetupGraphemes, SetupAnywhereLines};
+static const SetupFn s_wordSetups[] = {SetupWords, SetupWordOverrides, SetupWordBreaker};
+static const SetupFn s_sentenceSetups[] = {SetupSentences, SetupSentenceOverrides};
+static const SetupFn s_lineSetups[] = {SetupLines,        SetupLineBreaker,    SetupStrictLines,
+                                       SetupLooseLines,   SetupNormalCjkLines, SetupLooseCjkLines,
+                                       SetupAnywhereLines};
+
+// Whether muniSegmentIterator_FindBreaksAround gives, at every offset of
+// text, the boundaries stepping from the start finds: on the iterator as
+// set up for the odd offsets, and on one stepped to the end for the even
+// ones. The text sits alone in its allocation, so AddressSanitizer sees a
+// read past its end.
+static bool AroundMatches(SetupFn setup, const char* source, size_t length)
+{
+    char* text = malloc(length > 0 ? length : 1);
+    size_t* breaks = malloc((length + 1) * sizeof(size_t));
+    bool same = text != nullptr && breaks != nullptr;
+    muniSegmentIterator iterator;
+    memset(&iterator, 0, sizeof(iterator));
+    if (same)
+    {
+        memcpy(text, source, length);
+        same = setup(&iterator, text, length) == muni_success;
+    }
+    size_t count = 0;
+    muniSegmentIterator stepped = iterator;
+    size_t offset;
+    while (same && muniSegmentIterator_NextBreak(&stepped, &offset) == muni_success)
+    {
+        same = count < length;
+        breaks[count++] = offset;
+    }
+    size_t next = 0;
+    for (size_t at = 0; same && at <= length; at++)
+    {
+        while (next < count && breaks[next] <= at)
+        {
+            next++;
+        }
+        size_t before = next > 0 ? breaks[next - 1] : 0;
+        size_t after = next < count ? breaks[next] : length;
+        muniSegmentIterator kept = at % 2 == 0 ? stepped : iterator;
+        size_t foundBefore = 0;
+        size_t foundAfter = 0;
+        same = muniSegmentIterator_FindBreaksAround(&kept, at, &foundBefore, &foundAfter) ==
+                   muni_success &&
+               foundBefore == before && foundAfter == after &&
+               memcmp(&kept, at % 2 == 0 ? &stepped : &iterator, sizeof(kept)) == 0;
+        if (!same)
+        {
+            printf("offset %zu: %zu and %zu, expected %zu and %zu\n", at, foundBefore, foundAfter,
+                   before, after);
+        }
+    }
+    free(text);
+    free(breaks);
+    return same;
+}
+
+static bool AroundMatchesAll(const SetupFn* setups, size_t setupCount, const char* text,
+                             size_t length)
+{
+    for (size_t i = 0; i < setupCount; i++)
+    {
+        if (!AroundMatches(setups[i], text, length))
+        {
+            printf("setup %zu, %zu bytes\n", i, length);
+            return false;
+        }
+    }
+    return true;
+}
+
+#define AROUND_JOINED 8192
+
+// Every case of a conformance file, and its cases joined into one text of
+// up to AROUND_JOINED bytes, where the call backs up across cases.
+static void RunAround(const char* name, const SetupFn* setups, size_t setupCount)
+{
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s", MUNI_UCD_DATA, name);
+    FILE* file = fopen(path, "r");
+    CHECK(file != nullptr, "the conformance file opens");
+    char* joined = malloc(AROUND_JOINED);
+    if (file == nullptr || joined == nullptr)
+    {
+        if (file != nullptr)
+        {
+            fclose(file);
+        }
+        free(joined);
+        return;
+    }
+    size_t joinedLength = 0;
+    char line[4096];
+    int cases = 0;
+    int failures = 0;
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        Case c;
+        if (!ParseCase(line, &c))
+        {
+            continue;
+        }
+        cases += 1;
+        if (!AroundMatchesAll(setups, setupCount, c.text, c.length) && failures++ < 10)
+        {
+            printf("%s: %s", name, line);
+        }
+        if (joinedLength + c.length <= AROUND_JOINED)
+        {
+            memcpy(joined + joinedLength, c.text, c.length);
+            joinedLength += c.length;
+        }
+    }
+    fclose(file);
+    printf("%s around every offset: %d cases, %d failures\n", name, cases, failures);
+    CHECK(cases >= 500 && failures == 0, "the boundaries around every offset of every case");
+    CHECK(joinedLength >= AROUND_JOINED / 4 &&
+              AroundMatchesAll(setups, setupCount, joined, joinedLength),
+          "the boundaries around every offset of the cases joined");
+    free(joined);
+}
+
+// Adds the code points of a conformance file to a bit set.
+static void CollectCodePoints(const char* name, uint8_t* seen)
+{
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s", MUNI_UCD_DATA, name);
+    FILE* file = fopen(path, "r");
+    if (file == nullptr)
+    {
+        return;
+    }
+    char line[4096];
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        for (char* cursor = line; *cursor != '\0' && *cursor != '#';)
+        {
+            char* end = nullptr;
+            unsigned long codePoint = strtoul(cursor, &end, 16);
+            if (end != cursor && codePoint <= 0x10FFFF)
+            {
+                seen[codePoint >> 3] |= (uint8_t)(1u << (codePoint & 7u));
+                cursor = end;
+            }
+            else
+            {
+                cursor++;
+            }
+        }
+    }
+    fclose(file);
+}
+
+#define AROUND_TEXTS 600
+#define AROUND_LONG  16
+
+// Random texts of the code points the conformance files use, SA letters
+// and marks, and ill-formed UTF-8, under every kind and setting: short
+// ones, and AROUND_LONG of about a kilobyte, where the call backs up far
+// from the start.
+static void RunAroundRandom(void)
+{
+    static const char* const files[] = {"GraphemeBreakTest.txt", "WordBreakTest.txt",
+                                        "SentenceBreakTest.txt", "LineBreakTest.txt"};
+    static const uint32_t extra[] = {0x0E01, 0x0E2A, 0x0E31, 0x0E48, 0x0EAA, 0x1000,
+                                     0x102D, 0x1780, 0x17B6, 0x0020, 0x000A, 0x2029};
+    static const char* const broken[] = {"\x80",         "\xBF\xBF", "\xE0\xB8",
+                                         "\xF0\x9F\x91", "\xC0",     "\xFF"};
+    uint8_t* seen = calloc(0x110000 / 8, 1);
+    uint32_t* pool = malloc(0x110000 * sizeof(uint32_t));
+    CHECK(seen != nullptr && pool != nullptr, "the pool");
+    if (seen == nullptr || pool == nullptr)
+    {
+        free(seen);
+        free(pool);
+        return;
+    }
+    for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); i++)
+    {
+        CollectCodePoints(files[i], seen);
+    }
+    size_t poolSize = 0;
+    for (uint32_t codePoint = 0; codePoint <= 0x10FFFF; codePoint++)
+    {
+        if ((seen[codePoint >> 3] >> (codePoint & 7u) & 1u) != 0)
+        {
+            pool[poolSize++] = codePoint;
+        }
+    }
+    for (size_t i = 0; i < sizeof(extra) / sizeof(extra[0]); i++)
+    {
+        pool[poolSize++] = extra[i];
+    }
+    uint32_t state = 0x2400u;
+    int failures = 0;
+    for (int n = 0; n < AROUND_TEXTS + AROUND_LONG; n++)
+    {
+        char text[2048];
+        size_t length = 0;
+        state = state * 1103515245u + 12345u;
+        size_t units = n < AROUND_TEXTS ? 1 + (state >> 16) % 48 : 400;
+        for (size_t u = 0; u < units; u++)
+        {
+            state = state * 1103515245u + 12345u;
+            uint32_t pick = state >> 8;
+            size_t size = 0;
+            if (pick % 16 == 0)
+            {
+                const char* piece = broken[(pick >> 4) % (sizeof(broken) / sizeof(broken[0]))];
+                size = strlen(piece);
+                memcpy(text + length, piece, size);
+            }
+            else if (muniEncodeUtf8(pool[(pick >> 4) % poolSize], text + length,
+                                    sizeof(text) - length, &size) != muni_success)
+            {
+                size = 0;
+            }
+            length += size;
+        }
+        bool same = AroundMatchesAll(s_graphemeSetups, 2, text, length) &&
+                    AroundMatchesAll(s_wordSetups, 3, text, length) &&
+                    AroundMatchesAll(s_sentenceSetups, 2, text, length) &&
+                    AroundMatchesAll(s_lineSetups, 7, text, length);
+        failures += same ? 0 : 1;
+    }
+    printf("around every offset of %d random texts: %d failures\n", AROUND_TEXTS + AROUND_LONG,
+           failures);
+    CHECK(failures == 0, "the boundaries around every offset of random texts");
+    free(seen);
+    free(pool);
+}
+
+static void TestBreaksAround(void)
+{
+    RunAround("GraphemeBreakTest.txt", s_graphemeSetups, 2);
+    RunAround("WordBreakTest.txt", s_wordSetups, 3);
+    RunAround("SentenceBreakTest.txt", s_sentenceSetups, 2);
+    RunAround("LineBreakTest.txt", s_lineSetups, 7);
+    RunAroundRandom();
+}
+
+// An iterator that does not hold its whole text, a NULL argument and an
+// offset past the end are refused, and the outputs left as they were.
+static void TestBreaksAroundRefusals(void)
+{
+    muniSegmentIterator iterator;
+    size_t before = 7;
+    size_t after = 7;
+    CHECK(muniInitWordIterator(&iterator, "ab cd", 5, false) == muni_success &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 4, &before, &after) == muni_success &&
+              before == 3 && after == 5,
+          "the word around offset 4");
+    CHECK(muniSegmentIterator_FindBreaksAround(&iterator, 5, &before, &after) == muni_success &&
+              before == 5 && after == 5,
+          "the end of the text");
+    before = 7;
+    after = 7;
+    CHECK(muniSegmentIterator_FindBreaksAround(nullptr, 0, &before, &after) == muni_errorInvalid &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 0, nullptr, &after) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 0, &before, nullptr) ==
+                  muni_errorInvalid &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 6, &before, &after) ==
+                  muni_errorInvalid &&
+              before == 7 && after == 7,
+          "a NULL argument or an offset past the end is invalid");
+    CHECK(muniInitWordIterator(&iterator, "", 0, false) == muni_success &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 0, &before, &after) == muni_success &&
+              before == 0 && after == 0,
+          "an empty text");
+    before = 7;
+    after = 7;
+    CHECK(muniInitWordIterator(&iterator, "ab", 2, true) == muni_success &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 1, &before, &after) ==
+                  muni_errorState &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 3, &before, &after) ==
+                  muni_errorInvalid,
+          "more text to follow is a state error, after an offset past the end");
+    size_t offset;
+    CHECK(muniSegmentIterator_NextBreak(&iterator, &offset) == muni_needMoreText &&
+              muniSegmentIterator_Feed(&iterator, " cd", 3, false) == muni_success &&
+              muniSegmentIterator_FindBreaksAround(&iterator, 1, &before, &after) ==
+                  muni_errorState &&
+              before == 7 && after == 7,
+          "a last piece that is not the whole text is a state error");
+}
+
 int main(void)
 {
     TestConformance();
@@ -1577,5 +1967,7 @@ int main(void)
     TestMeasureLimits();
     TestMeasureUses();
     TestMeasureRefusals();
+    TestBreaksAround();
+    TestBreaksAroundRefusals();
     return s_failures == 0 ? 0 : 1;
 }

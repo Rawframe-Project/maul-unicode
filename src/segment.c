@@ -468,6 +468,207 @@ muniResult muniSegmentIterator_NextLineBreak(muniSegmentIterator* iterator, size
     return status;
 }
 
+// The window of the iterator's rule set: see muniGraphemeWindow.
+static size_t Window(const muniSegmenter* segmenter, uint32_t before, uint32_t last, uint32_t next)
+{
+    switch (segmenter->kind)
+    {
+    case muni_segmentGrapheme:
+        return muniGraphemeWindow(segmenter, before, last, next);
+    case muni_segmentWord:
+        return muniWordWindow(segmenter, before, last, next);
+    case muni_segmentSentence:
+        return muniSentenceWindow(segmenter, before, last, next);
+    case muni_segmentLine:
+        if (segmenter->lineSettings == 0)
+        {
+            return muniLineWindow(segmenter, before, last, next);
+        }
+        return muniLineStrictness(segmenter) == muni_lineBreakAnywhere
+                   ? muniLineAnywhereWindow(segmenter, before, last, next)
+                   : muniLineTailoredWindow(segmenter, before, last, next);
+    default:
+        return 0;
+    }
+}
+
+// The start of the code point that holds the byte at offset, as reading
+// from the start of the text finds it. Any byte other than a continuation
+// byte starts a code point there, so the code point starts at the last
+// such byte among the four up to offset, read on from there; with none,
+// the byte is a continuation byte no lead byte reaches, which reads as a
+// code point of its own.
+static size_t Align(const uint8_t* text, size_t length, size_t offset)
+{
+    size_t lowest = offset > 3 ? offset - 3 : 0;
+    size_t start = offset;
+    while ((text[start] & 0xC0u) == 0x80u && start > lowest)
+    {
+        start--;
+    }
+    if ((text[start] & 0xC0u) == 0x80u)
+    {
+        return offset;
+    }
+    for (;;)
+    {
+        uint32_t codePoint;
+        size_t size;
+        (void)muniStepUtf8(text + start, length - start, &codePoint, &size);
+        if (start + size > offset)
+        {
+            return start;
+        }
+        start += size;
+    }
+}
+
+// The code point at start, and its size; an ill-formed sequence reads as
+// the cursor reads it.
+static uint32_t CodePointAt(const uint8_t* text, size_t length, size_t start, size_t* sizeOut)
+{
+    uint32_t codePoint;
+    (void)muniStepUtf8(text + start, length - start, &codePoint, sizeOut);
+    return codePoint;
+}
+
+// A segmenter with the iterator's settings, at the start of text.
+static void InitLocal(muniSegmenter* local, const muniSegmenter* segmenter, const uint8_t* text,
+                      size_t length, bool moreFollows)
+{
+    memset(local, 0, sizeof(*local));
+    local->kind = segmenter->kind;
+    local->lineSettings = segmenter->lineSettings;
+    local->overrides = segmenter->overrides;
+    if (segmenter->kind == muni_segmentWord)
+    {
+        local->rules.word.overrideCount = segmenter->rules.word.overrideCount;
+    }
+    else if (segmenter->kind == muni_segmentSentence)
+    {
+        local->rules.sentence.overrideCount = segmenter->rules.sentence.overrideCount;
+    }
+    local->complex.breaker = segmenter->complex.breaker;
+    local->complex.context = segmenter->complex.context;
+    muniCursorInit(&local->cursor, (const char*)text, length, moreFollows);
+}
+
+// Whether there is a boundary at position, which a window from start
+// leads up to: a segmenter started there and given the text up to the end
+// of the code point at position decides it, since the window fixes its
+// state at position.
+static bool BreaksAt(const muniSegmenter* segmenter, const uint8_t* text, size_t start,
+                     size_t position, size_t end)
+{
+    muniSegmenter local;
+    InitLocal(&local, segmenter, text + start, end - start, true);
+    size_t offset;
+    while (Next(&local, &offset) == muni_success)
+    {
+        if (offset >= position - start)
+        {
+            return offset == position - start;
+        }
+    }
+    return false;
+}
+
+// Backs up from offset to a boundary at a window's end, where the rules
+// break whatever came before the window, or to the start of the text.
+// Returns the window's start, where a segmenter can start, and writes the
+// boundary to restartOut.
+static size_t Restart(const muniSegmenter* segmenter, const uint8_t* text, size_t length,
+                      size_t offset, size_t* restartOut)
+{
+    size_t position = Align(text, length, offset);
+    size_t nextSize = 0;
+    uint32_t next = position < length ? CodePointAt(text, length, position, &nextSize) : 0;
+    while (position > 0)
+    {
+        size_t last = Align(text, length, position - 1);
+        if (last == 0)
+        {
+            break;
+        }
+        size_t before = Align(text, length, last - 1);
+        size_t size;
+        uint32_t lastCodePoint = CodePointAt(text, length, last, &size);
+        uint32_t beforeCodePoint = CodePointAt(text, length, before, &size);
+        size_t window = Window(segmenter, beforeCodePoint, lastCodePoint, next);
+        size_t start = window == 1 ? last : before;
+        if (window != 0 && BreaksAt(segmenter, text, start, position, position + nextSize))
+        {
+            *restartOut = position;
+            return start;
+        }
+        nextSize = position - last;
+        next = lastCodePoint;
+        position = last;
+    }
+    *restartOut = 0;
+    return 0;
+}
+
+muniResult muniSegmentIterator_FindBreaksAround(const muniSegmentIterator* iterator, size_t offset,
+                                                size_t* beforeOut, size_t* afterOut)
+{
+    if (iterator == nullptr || beforeOut == nullptr || afterOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    muniSegmenter segmenter;
+    if (!Load(iterator, &segmenter))
+    {
+        return muni_errorInvalid;
+    }
+    const muniCursor* cursor = &segmenter.cursor;
+    if (offset > cursor->length)
+    {
+        return muni_errorInvalid;
+    }
+    if (segmenter.phase == muni_phaseBusy)
+    {
+        return muni_errorBusy;
+    }
+    // The piece is the whole text when it starts at offset 0 and nothing
+    // follows it.
+    if (cursor->moreFollows || cursor->pendingCount != 0 || cursor->offset != cursor->position)
+    {
+        return muni_errorState;
+    }
+    size_t length = cursor->length;
+    if (offset == length)
+    {
+        *beforeOut = length;
+        *afterOut = length;
+        return muni_success;
+    }
+    const uint8_t* text = cursor->text;
+    size_t restart;
+    size_t start = Restart(&segmenter, text, length, offset, &restart);
+    muniSegmenter local;
+    InitLocal(&local, &segmenter, text + start, length - start, false);
+    size_t before = restart;
+    size_t after = length;
+    size_t found;
+    while (Next(&local, &found) == muni_success)
+    {
+        found += start;
+        if (found > offset)
+        {
+            after = found;
+            break;
+        }
+        if (found >= restart)
+        {
+            before = found;
+        }
+    }
+    *beforeOut = before;
+    *afterOut = after;
+    return muni_success;
+}
+
 static muniResult Find(uint8_t kind, const char* text, size_t length, size_t* offsets,
                        bool* mandatory, size_t capacity, size_t* countOut)
 {

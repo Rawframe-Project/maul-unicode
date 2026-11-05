@@ -328,4 +328,24 @@ muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineTailoredSegment(muniSegmenter* segmenter, size_t* offsetOut);
 muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut);
 
+// How many of the code points just before a position fix every part of
+// the rule set's state that a later decision reads, whatever text came
+// before them: 1 when last alone does, 2 when before and last do, 0 when
+// they leave it open. A segmenter started at the first of them then reads
+// on from the position as one started at the start of the text does.
+// next is the code point at the position. Each is defined beside its
+// rule set, as the entries above are.
+size_t muniGraphemeWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                          uint32_t next);
+size_t muniWordWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                      uint32_t next);
+size_t muniSentenceWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                          uint32_t next);
+size_t muniLineWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                      uint32_t next);
+size_t muniLineTailoredWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                              uint32_t next);
+size_t muniLineAnywhereWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
+                              uint32_t next);
+
 #endif // MAUL_UNICODE_SRC_SEGMENTER_H

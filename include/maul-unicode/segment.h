@@ -366,6 +366,49 @@ extern "C"
     MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_NextLineBreak(
         muniSegmentIterator* iterator, size_t* offsetOut, bool* mandatoryOut);
 
+    /// Finds the boundaries around a byte offset: the last at or before
+    /// it and the first after it, as the iterator would report them, but
+    /// without reading the text from its start. The call backs up from the
+    /// offset to a boundary every rule of the iterator's kind and settings
+    /// makes whatever text came before, and reads forward from there to
+    /// the boundary after the offset, so its cost grows with that stretch
+    /// of text alone: in ordinary text a few code points for grapheme
+    /// clusters, words and lines, and back to the last paragraph separator
+    /// for sentences. Text with no such boundary (one base and many marks,
+    /// a long run of regional indicators, or of SA text with a word
+    /// segmenter set) is read back to its start, at most twice over.
+    ///
+    /// The iterator must hold its whole text: one given to its init call
+    /// with no more to follow. The call reads the text and settings it
+    /// holds and leaves it as it was, wherever its own iteration stands.
+    /// With a word segmenter set, the segmenter may be asked about part of
+    /// a run, as when a piece boundary falls inside one, and the
+    /// boundaries found are those of the whole text.
+    ///
+    /// @param iterator   The iterator.
+    /// @param offset     A byte offset into the text, at most its length.
+    ///                   Inside a code point, it stands for that code
+    ///                   point's start.
+    /// @param beforeOut  Receives the last boundary at or before offset, or
+    ///                   0, the start of the text, when there is none.
+    ///                   Left as it was unless the call returns
+    ///                   `muni_success`.
+    /// @param afterOut   Receives the first boundary after offset, or the
+    ///                   text's length when offset is its length. Left as
+    ///                   it was unless the call returns `muni_success`.
+    /// @return `muni_success`; `muni_errorState` for an iterator that does
+    ///         not hold its whole text; `muni_errorBusy` when called from
+    ///         inside the iterator's word segmenter; `muni_errorInvalid`
+    ///         for a NULL argument, an iterator no init call set up or an
+    ///         offset past the end of the text. `muni_errorInvalid` is
+    ///         reported before `muni_errorBusy`, and that before
+    ///         `muni_errorState`.
+    /// @par Thread safety
+    /// Safe from any thread; an iterator is used by one thread at a time,
+    /// and calls the segmenter on that thread.
+    MUNI_NODISCARD MUNI_API muniResult muniSegmentIterator_FindBreaksAround(
+        const muniSegmentIterator* iterator, size_t offset, size_t* beforeOut, size_t* afterOut);
+
     // What a word segment holds: the highest kind among its code points.
     // ICU's word rule statuses give a segment of letters or digits alone
     // the same kind; on a mixed one ICU reports the rule it matched last,
