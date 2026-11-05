@@ -7,6 +7,13 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.2...v1.2.0) (2026-11-05)
+
+
+### Added
+
+* **segment:** find the boundaries around an offset ([#278](https://github.com/Rawframe-Project/maul-unicode/issues/278)) ([e484d3d](https://github.com/Rawframe-Project/maul-unicode/commit/e484d3d460ea6afd4656d7db7e5d4b8144eafe7f)), closes [#240](https://github.com/Rawframe-Project/maul-unicode/issues/240)
+
 ## [1.1.2](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.1...v1.1.2) (2026-11-05)
 
 ### Fixed
