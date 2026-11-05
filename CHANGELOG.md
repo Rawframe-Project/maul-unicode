@@ -7,6 +7,27 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.2...v1.2.0) (2026-11-05)
+
+### Added
+
+- `muniSegmentIterator_FindBreaksAround` gives the boundaries around a
+  byte offset, the last at or before it and the first after it, without
+  reading the text from its start: what Backspace, the arrow keys and a
+  click on a word need. It answers as the iterator would, for grapheme
+  clusters, words, sentences and lines at every setting, class
+  overrides and a word segmenter included, and leaves the iterator as
+  it was. In ordinary text it reads a few code points, so on a long
+  paragraph of English prose it takes under half a microsecond for
+  clusters, words and lines, where stepping a fresh iterator from the
+  start takes milliseconds; sentences back up to the last terminator.
+  It needs an iterator given its whole text at init
+  ([#278](https://github.com/Rawframe-Project/maul-unicode/pull/278)).
+
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 1.1.2 stay valid.
+
 ## [1.1.2](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.1...v1.1.2) (2026-11-05)
 
 ### Fixed
