@@ -69,6 +69,31 @@ The levels follow CSS Text 3 as its Candidate Recommendation Draft of 14 August 
 - Loose breaks before U+2010 and U+2013 after an ideograph in any language, as CSS allows; ICU does so only in Chinese, Japanese and Korean.
 - Loose in Chinese and Japanese breaks before a wide or ambiguous postfix and after such a prefix, since CSS lists these breaks without further conditions: also in "a％", and in "￥…" before the ellipsis. Besides the glue above, a prefix keeps what rule LB13 keeps before it: closing punctuation, slashes, and exclamation and question marks but the fullwidth ones, which are centered punctuation, so "￥）" and "￥、" stay together. ICU, in Chinese, Japanese and Korean, makes no break after a prefix before an ellipsis, hyphen or comma, nor before a postfix after a letter; it also breaks before a prefix after a letter ("a￥"), which CSS does not list.
 
+## Around the caret
+
+An editor asks about one position at a time: Backspace removes the cluster that ends at the caret, the arrow keys move to the cluster or word boundary before or after it, and a click selects the word under the pointer. `muniSegmentIterator_FindBreaksAround` answers that from an iterator that holds the whole text, without stepping from its start: it gives the last boundary at or before an offset and the first after it, the start of the text and its end standing in where there is none. Here Backspace removes the cluster before the caret, and the arrow keys move by cluster:
+
+```c
+size_t before = 0;
+size_t after = 0;
+if (caret > 0 &&
+    muniSegmentIterator_FindBreaksAround(&clusters, caret - 1, &before, &after) == muni_success)
+{
+    RemoveText(before, caret - before);
+}
+if (muniSegmentIterator_FindBreaksAround(&clusters, caret, &before, &after) == muni_success)
+{
+    right = after;
+}
+if (caret > 0 &&
+    muniSegmentIterator_FindBreaksAround(&clusters, caret - 1, &before, &after) == muni_success)
+{
+    left = before;
+}
+```
+
+The call backs up from the offset to a boundary the rules make whatever came before, and reads on from there, so in ordinary text it reads a few code points: for grapheme clusters, words and lines, the space or letter before the offset almost always is one. Sentences restart after a terminator, a terminator and a space, or a paragraph separator, and text with no such boundary at all, such as a run of SA text with a word segmenter set or one base with many marks, is read back to its start. The answers are those the iterator reports stepping from the start, with the same kind and settings, class overrides and word segmenter included. The call leaves the iterator as it was, wherever its own iteration stands; it refuses one given its text in pieces with `muni_errorState`.
+
 ## Thai, Lao, Khmer and Burmese
 
 These scripts write words without spaces (Line_Break class SA), so breaking inside them needs a dictionary, which the library does not carry. By default, as rule LB1 of UAX #14 allows, a run of SA text has no line break inside it, and word segmentation gives one word per cluster.

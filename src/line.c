@@ -23,3 +23,8 @@ muniResult muniNextLineSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, nullptr);
 }
+
+size_t muniLineWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last, uint32_t next)
+{
+    return muniLineWindowOf(segmenter, before, last, next, false);
+}

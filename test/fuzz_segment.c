@@ -13,6 +13,10 @@
 // break that does not follow one. Line breaks must be mandatory
 // exactly at the end and after BK, CR, LF and NL, and muniSegmentIterator_NextLineBreak fed
 // in pieces must give the breaks and flags muniFindLineBreaks gives.
+// muniSegmentIterator_FindBreaksAround, at every offset of a short text
+// and about 16 of a long one, must give the boundaries around
+// each offset that the iterator with the same kind and settings reports,
+// with class overrides, line settings and a breaker too.
 // Word and sentence boundaries need not be grapheme boundaries: the
 // UAX #29 rules put a word boundary after U+0600 (Numeric, but Prepend
 // to grapheme clusters) when punctuation follows, for example.
@@ -109,6 +113,31 @@ static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size
     }
 }
 
+// muniSegmentIterator_FindBreaksAround on an iterator that holds the whole
+// text gives, at every offset of a short text and about 16 of a long one,
+// the last of breaks at or before the offset and the first after it, and
+// leaves the iterator as it was.
+static void CheckAround(const muniSegmentIterator* iterator, size_t length, const size_t* breaks,
+                        size_t count, uint8_t salt)
+{
+    size_t step = length <= 32 ? 1 : length / 16 + salt % 7;
+    size_t next = 0;
+    for (size_t at = length <= 32 ? 0 : salt % step; at <= length; at += step)
+    {
+        while (next < count && breaks[next] <= at)
+        {
+            next++;
+        }
+        size_t before = SIZE_MAX;
+        size_t after = SIZE_MAX;
+        muniSegmentIterator kept = *iterator;
+        Require(muniSegmentIterator_FindBreaksAround(&kept, at, &before, &after) == muni_success);
+        Require(before == (next > 0 ? breaks[next - 1] : 0));
+        Require(after == (next < count ? breaks[next] : length));
+        Require(memcmp(&kept, iterator, sizeof(kept)) == 0);
+    }
+}
+
 // A breaker that answers anything, in or out of range, the same way for
 // the same run and offset.
 static size_t WildBreaker(void* context, const char* run, size_t length, size_t from)
@@ -120,20 +149,26 @@ static size_t WildBreaker(void* context, const char* run, size_t length, size_t 
 
 // With a breaker, over the whole text: boundaries still rise, fall on
 // code point starts and end at the length.
-static void CheckBreaker(InitFn init, const char* text, size_t length)
+static void CheckBreaker(InitFn init, const char* text, size_t length, uint8_t salt)
 {
+    static size_t breaks[MAX_BREAKS];
     muniSegmentIterator iterator;
     Require(init(&iterator, text, length, false) == muni_success);
     Require(muniSegmentIterator_SetComplexBreaker(&iterator, WildBreaker, nullptr) == muni_success);
+    muniSegmentIterator start = iterator;
+    size_t count = 0;
     size_t previous = 0;
     size_t offset = 0;
     muniResult status;
     while ((status = muniSegmentIterator_NextBreak(&iterator, &offset)) == muni_success)
     {
         Require(offset > previous && StartsCodePoint(text, length, offset));
+        Require(count < MAX_BREAKS);
+        breaks[count++] = offset;
         previous = offset;
     }
     Require(status == muni_done && previous == length);
+    CheckAround(&start, length, breaks, count, salt);
 }
 
 #define MAX_OVERRIDES 8
@@ -207,6 +242,12 @@ static void CheckLineSettings(const char* text, size_t length, size_t piece, uin
     }
     Require(Chunked(muniInitLineIterator, nullptr, 0, &line, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+    muniSegmentIterator iterator;
+    Require(muniInitLineIterator(&iterator, text, length, false) == muni_success &&
+            muniSegmentIterator_SetLineBreakStrictness(&iterator, line.strictness) ==
+                muni_success &&
+            muniSegmentIterator_SetWritingSystem(&iterator, line.writingSystem) == muni_success);
+    CheckAround(&iterator, length, whole, count, pick);
 
     LineSettings strict = {muni_lineBreakStrict, line.writingSystem};
     LineSettings normal = {muni_lineBreakNormal, line.writingSystem};
@@ -341,6 +382,11 @@ static void CheckOverrides(InitFn init, uint8_t classCount, uint8_t salt, const 
     }
     Require(Chunked(init, overrides, overrideCount, nullptr, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+    muniSegmentIterator iterator;
+    Require(init(&iterator, text, length, false) == muni_success &&
+            muniSegmentIterator_SetBreakClassOverrides(&iterator, overrides, overrideCount) ==
+                muni_success);
+    CheckAround(&iterator, length, whole, count, salt);
 }
 
 // A count of UTF-16 units or code points ends where a conversion to
@@ -534,6 +580,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     Require(Chunked(inits[kind], nullptr, 0, nullptr, text, length, piece, pieces) == count);
     Require(memcmp(whole, pieces, count * sizeof(size_t)) == 0);
+    muniSegmentIterator iterator;
+    Require(inits[kind](&iterator, text, length, false) == muni_success);
+    CheckAround(&iterator, length, whole, count, data[0]);
     if (kind == 0)
     {
         CheckMeasure(text, length, whole, count, data[0]);
@@ -544,7 +593,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     }
     if (kind == 1 || kind == 3)
     {
-        CheckBreaker(inits[kind], text, length);
+        CheckBreaker(inits[kind], text, length, data[0]);
     }
     if (kind == 3)
     {

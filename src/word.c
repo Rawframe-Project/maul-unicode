@@ -245,3 +245,22 @@ muniResult muniNextWordSegment(muniSegmenter* segmenter, size_t* offsetOut)
 {
     return muniSegmenterNext(segmenter, offsetOut, Lookup, Decide, Resolve, Absorb, Boundary);
 }
+
+// When neither code point is skipped by WB4, they are the actual,
+// previous and before code points, and the count of regional indicators
+// is even unless last is one. A hold can be open only at last (WB6, WB7b,
+// WB12), and whether it is depends on before and last alone: the rules
+// that read what precedes before (WB7, WB7c, WB11) never hold, and decide
+// about a class no holding rule takes. The kind of the segment so far
+// stays open, but no decision reads it.
+size_t muniWordWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last, uint32_t next)
+{
+    uint8_t first = Lookup(segmenter, before);
+    uint8_t second = Lookup(segmenter, last);
+    if (In(first, Ignored) || In(second, Ignored) || second == muni_wbRegionalIndicator ||
+        muniComplexInside(segmenter, last, next))
+    {
+        return 0;
+    }
+    return 2;
+}

@@ -74,6 +74,46 @@ static void GuideGraphemes(void)
     CHECK(s_clusters == 1, "one cluster: e and its accent");
 }
 
+static size_t s_removedStart;
+static size_t s_removedLength;
+
+static void RemoveText(size_t start, size_t length)
+{
+    s_removedStart = start;
+    s_removedLength = length;
+}
+
+static void GuideAroundCaret(void)
+{
+    // "a", e with a combining acute and "b", the caret after the accent.
+    static const char text[] = "ae\xCC\x81"
+                               "b";
+    size_t caret = 4;
+    size_t right = 0;
+    size_t left = 0;
+    muniSegmentIterator clusters;
+    CHECK(muniInitGraphemeIterator(&clusters, text, sizeof(text) - 1, false) == muni_success,
+          "a grapheme iterator");
+    size_t before = 0;
+    size_t after = 0;
+    if (caret > 0 &&
+        muniSegmentIterator_FindBreaksAround(&clusters, caret - 1, &before, &after) == muni_success)
+    {
+        RemoveText(before, caret - before);
+    }
+    if (muniSegmentIterator_FindBreaksAround(&clusters, caret, &before, &after) == muni_success)
+    {
+        right = after;
+    }
+    if (caret > 0 &&
+        muniSegmentIterator_FindBreaksAround(&clusters, caret - 1, &before, &after) == muni_success)
+    {
+        left = before;
+    }
+    CHECK(s_removedStart == 1 && s_removedLength == 3 && right == 5 && left == 1,
+          "Backspace removes e and its accent; the arrows move past b and before e");
+}
+
 static void GuideLines(void)
 {
     const char* text = "one two\nthree";
@@ -227,6 +267,7 @@ int main(void)
     GuideMeasure();
     GuideValidate();
     GuideGraphemes();
+    GuideAroundCaret();
     GuideLines();
     GuideLineBreakStrictness();
     GuideComplexBreaker();
