@@ -167,11 +167,24 @@ muniResult muniNextSentenceSegment(muniSegmenter* segmenter, size_t* offsetOut)
 // SB8 hold and every sentence ending, the state is that of the start of
 // the text: the class before the separator is read only after an ATerm
 // (SB7), and whether the last terminator was an ATerm only within an
-// ending, which a later terminator starts.
+// ending, which a later terminator starts. A terminator ends any SB8 hold
+// too and starts an ending whatever came before, so after one, or after
+// one and a space, the ending and its kind are known; with no Extend or
+// Format before the terminator, which SB5 would skip, the class before is
+// the code point before.
 size_t muniSentenceWindow(const muniSegmenter* segmenter, uint32_t before, uint32_t last,
                           uint32_t next)
 {
-    (void)before;
     (void)next;
-    return In(Lookup(segmenter, last), ParaSep) ? 1 : 0;
+    uint8_t second = Lookup(segmenter, last);
+    if (In(second, ParaSep))
+    {
+        return 1;
+    }
+    uint8_t first = Lookup(segmenter, before);
+    if (!In(first, Ignored) && (In(second, SATerm) || (In(first, SATerm) && second == muni_sbSp)))
+    {
+        return 2;
+    }
+    return 0;
 }

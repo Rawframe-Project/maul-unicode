@@ -19,6 +19,6 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
 
 // Whether muniGraphemeAdvance past codePoint gives the same state from
 // every state.
-bool muniGraphemeResets(uint32_t codePoint);
+MUNI_NODISCARD bool muniGraphemeResets(uint32_t codePoint);
 
 #endif // MAUL_UNICODE_SRC_GRAPHEME_H

@@ -20,7 +20,7 @@ typedef enum muniComplexAnswer
 
 // Whether the position between last and next lies inside an SA run the
 // breaker segments: a breaker is set and both are SA.
-bool muniComplexInside(const muniSegmenter* segmenter, uint32_t last, uint32_t next);
+MUNI_NODISCARD bool muniComplexInside(const muniSegmenter* segmenter, uint32_t last, uint32_t next);
 
 // The work of muniComplexTrack when a breaker is set.
 void muniComplexTrackRun(muniSegmenter* segmenter, uint32_t codePoint);

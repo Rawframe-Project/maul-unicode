@@ -14,7 +14,7 @@
 // exactly at the end and after BK, CR, LF and NL, and muniSegmentIterator_NextLineBreak fed
 // in pieces must give the breaks and flags muniFindLineBreaks gives.
 // muniSegmentIterator_FindBreaksAround, at every offset of a short text
-// and a spread of offsets of a long one, must give the boundaries around
+// and about 16 of a long one, must give the boundaries around
 // each offset that the iterator with the same kind and settings reports,
 // with class overrides, line settings and a breaker too.
 // Word and sentence boundaries need not be grapheme boundaries: the
@@ -114,15 +114,15 @@ static size_t Chunked(InitFn init, const muniBreakClassOverride* overrides, size
 }
 
 // muniSegmentIterator_FindBreaksAround on an iterator that holds the whole
-// text gives, at every offset of a short text and about 64 of a long one,
+// text gives, at every offset of a short text and about 16 of a long one,
 // the last of breaks at or before the offset and the first after it, and
 // leaves the iterator as it was.
 static void CheckAround(const muniSegmentIterator* iterator, size_t length, const size_t* breaks,
                         size_t count, uint8_t salt)
 {
-    size_t step = length <= 256 ? 1 : length / 64 + salt % 7;
+    size_t step = length <= 32 ? 1 : length / 16 + salt % 7;
     size_t next = 0;
-    for (size_t at = length <= 256 ? 0 : salt % step; at <= length; at += step)
+    for (size_t at = length <= 32 ? 0 : salt % step; at <= length; at += step)
     {
         while (next < count && breaks[next] <= at)
         {

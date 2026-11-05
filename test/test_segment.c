@@ -1889,8 +1889,39 @@ static void RunAroundRandom(void)
     free(pool);
 }
 
+// Texts where a window that left part of the state open would give a
+// wrong answer: a GB9c conjunct whose linker an InCB=Extend mark carries
+// on, in both orders; Thai runs a breaker segments, with and without
+// spaces; a run of five regional indicators; the abbreviations of SB7
+// and SB8, also with a mark before the full stop; an aksara sequence around U+25CC; a prefix before
+// an opening bracket (LB25).
+static const char* const s_aroundEdges[] = {
+    "ab \xE0\xA4\x95\xE0\xA5\x8D\xE0\xA4\xBC\xE0\xA4\xA4 cd",
+    "ab \xE0\xA4\x95\xE0\xA4\xBC\xE0\xA5\x8D\xE0\xA4\xA4 cd",
+    "ab \xE0\xB8\xAA\xE0\xB8\xA7\xE0\xB8\xB1\xE0\xB8\xAA\xE0\xB8\x94\xE0\xB8\xB5"
+    "\xE0\xB8\x84\xE0\xB8\xA3\xE0\xB8\xB1\xE0\xB8\x9A \xE0\xB8\x84\xE0\xB8\xA3"
+    "\xE0\xB8\xB1\xE0\xB8\x9A\xE0\xB8\xAA\xE0\xB8\xA7\xE0\xB8\xB1\xE0\xB8\xAA cd",
+    "x\xF0\x9F\x87\xA6\xF0\x9F\x87\xA7\xF0\x9F\x87\xA8\xF0\x9F\x87\xA9\xF0\x9F\x87"
+    "\xAA y \xF0\x9F\x87\xA6\xF0\x9F\x87\xA7\xF0\x9F\x87\xA8 z",
+    "The U.S. Army came. etc. and so on. Mr. Smith left. Is it? Yes! (He said.) Then",
+    "U\xCC\x81.S. ab\xCC\x81. Cd e. f. G",
+    "\xE1\xAC\x93\xE1\xAD\x84\xE2\x97\x8C\xE1\xAC\x93 \xE2\x97\x8C\xE1\xAC\x93"
+    "\xE1\xAD\x84 ab",
+    "Price $(12.50) and $(x) and 3 (4) cd",
+};
+
 static void TestBreaksAround(void)
 {
+    for (size_t i = 0; i < sizeof(s_aroundEdges) / sizeof(s_aroundEdges[0]); i++)
+    {
+        const char* text = s_aroundEdges[i];
+        size_t length = strlen(text);
+        CHECK(AroundMatchesAll(s_graphemeSetups, 2, text, length) &&
+                  AroundMatchesAll(s_wordSetups, 3, text, length) &&
+                  AroundMatchesAll(s_sentenceSetups, 2, text, length) &&
+                  AroundMatchesAll(s_lineSetups, 7, text, length),
+              "the boundaries around every offset of an edge text");
+    }
     RunAround("GraphemeBreakTest.txt", s_graphemeSetups, 2);
     RunAround("WordBreakTest.txt", s_wordSetups, 3);
     RunAround("SentenceBreakTest.txt", s_sentenceSetups, 2);

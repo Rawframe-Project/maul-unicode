@@ -373,8 +373,8 @@ extern "C"
     /// makes whatever text came before, and reads forward from there to
     /// the boundary after the offset, so its cost grows with that stretch
     /// of text alone: in ordinary text a few code points for grapheme
-    /// clusters, words and lines, and back to the last paragraph separator
-    /// for sentences. Text with no such boundary (one base and many marks,
+    /// clusters, words and lines, and back to the last sentence ending or
+    /// paragraph separator for sentences. Text with no such boundary (one base and many marks,
     /// a long run of regional indicators, or of SA text with a word
     /// segmenter set) is read back to its start, at most twice over.
     ///
