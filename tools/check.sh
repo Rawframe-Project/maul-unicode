@@ -108,6 +108,8 @@ source_checks() {
     python3 tools/check_test_hygiene.py --self-test
     python3 tools/check_test_hygiene.py
     python3 tools/check_results_history.py --self-test
+    python3 tools/check_nodiscard.py --self-test
+    python3 tools/check_nodiscard.py
     if [ -f "$org/scripts/docs_check.py" ]; then
         python3 "$org/scripts/docs_check.py" --exclude tools/ucd
     else
