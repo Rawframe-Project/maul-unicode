@@ -557,8 +557,8 @@ static void InitLocal(muniSegmenter* local, const muniSegmenter* segmenter, cons
 // leads up to: a segmenter started there and given the text up to the end
 // of the code point at position decides it, since the window fixes its
 // state at position.
-static bool BreaksAt(const muniSegmenter* segmenter, const uint8_t* text, size_t start,
-                     size_t position, size_t end)
+MUNI_NODISCARD static bool BreaksAt(const muniSegmenter* segmenter, const uint8_t* text,
+                                    size_t start, size_t position, size_t end)
 {
     muniSegmenter local;
     InitLocal(&local, segmenter, text + start, end - start, true);
