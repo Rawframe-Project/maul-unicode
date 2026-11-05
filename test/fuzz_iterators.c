@@ -178,6 +178,12 @@ static void Segment(uint8_t choice, uint8_t steps, const uint8_t* data, size_t l
     (void)muniSegmentIterator_GetWordKind(&iterator, &kind);
     (void)muniSegmentIterator_GetLineBreakStrictness(&iterator);
     (void)muniSegmentIterator_GetWritingSystem(&iterator);
+    // The boundaries around an offset the input picks, and at the end.
+    size_t before;
+    size_t after;
+    (void)muniSegmentIterator_FindBreaksAround(&iterator, (size_t)steps * 7 % sizeof(s_text),
+                                               &before, &after);
+    (void)muniSegmentIterator_FindBreaksAround(&iterator, sizeof(s_text) - 1, &before, &after);
     for (int i = 0; i < 64; i++)
     {
         status = (choice & 64) != 0
