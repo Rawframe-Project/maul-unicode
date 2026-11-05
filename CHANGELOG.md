@@ -9,10 +9,20 @@ could change the API, the ABI and every data format.
 
 ## [1.1.1](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.0...v1.1.1) (2026-11-04)
 
-
 ### Fixed
 
-* make MUNI_NODISCARD the attribute under GCC 14's C23 too ([#271](https://github.com/Rawframe-Project/maul-unicode/issues/271)) ([e206d49](https://github.com/Rawframe-Project/maul-unicode/commit/e206d493833a4b4f9e596487af359c78f8def191)), closes [#270](https://github.com/Rawframe-Project/maul-unicode/issues/270)
+- `MUNI_NODISCARD` was empty under GCC 14 in C23, since GCC 14 reports
+  its C23 as `__STDC_VERSION__` 202000L and the macro waited for
+  202311L, so a program built with GCC 14 could drop any status the
+  library returns without a warning. In C the macro now takes
+  `[[nodiscard]]` in any dialect after C17 whose compiler has the
+  attribute. A program that drops a status now gets
+  `-Wunused-result` from GCC 14 too, which `-Werror` makes an error
+  ([#271](https://github.com/Rawframe-Project/maul-unicode/pull/271)).
+
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 1.1.0 stay valid.
 
 ## [1.1.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.0.0...v1.1.0) (2026-11-04)
 
