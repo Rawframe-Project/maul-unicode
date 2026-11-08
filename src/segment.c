@@ -576,13 +576,15 @@ MUNI_NODISCARD static bool BreaksAt(const muniSegmenter* segmenter, const uint8_
 // Backs up from offset to a boundary at a window's end, where the rules
 // break whatever came before the window, or to the start of the text.
 // Returns the window's start, where a segmenter can start, and writes the
-// boundary to restartOut.
+// boundary to restartOut. The caller handles an offset at the end of the
+// text, so offset is below length, and so is the start of the code point
+// that holds it: there is always a code point at position to read.
 static size_t Restart(const muniSegmenter* segmenter, const uint8_t* text, size_t length,
                       size_t offset, size_t* restartOut)
 {
     size_t position = Align(text, length, offset);
-    size_t nextSize = 0;
-    uint32_t next = position < length ? CodePointAt(text, length, position, &nextSize) : 0;
+    size_t nextSize;
+    uint32_t next = CodePointAt(text, length, position, &nextSize);
     while (position > 0)
     {
         size_t last = Align(text, length, position - 1);
