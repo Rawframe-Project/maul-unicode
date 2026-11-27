@@ -12,7 +12,7 @@ What verifies a change, locally and in CI, and the time each may take.
 | `pr` | Every rule on every file, the generated tables against the generator and their ceilings, clang-tidy on a Release build (assertions compiled out) and a Debug build, the `linux-harfbuzz` and `linux-clang-20-asan` presets, and 10 seconds of fuzzing per target. | under 10 minutes |
 | `full` | Also every other Linux preset (ThreadSanitizer, the shared library with the HarfBuzz functions, the package test and the exports test, every optional component left out, 32-bit x86, Clang and GCC Release) and 60 seconds per fuzz target with the ICU comparison. | under 20 minutes |
 
-Run `changed` before every push. On the shared development machine, run `pr` and `full` through the workspace's heavy-job wrapper. Builds go to `out/<preset>` and the other trees to `out/check-*`, each with its log beside it.
+Run `changed` before every push; `tools/hooks/pre-push` runs it for you once a checkout sets `git config core.hooksPath tools/hooks`, through the heavy-job wrapper and on Windows in the workspace's WSL distribution. On the shared development machine, run `pr` and `full` through the workspace's heavy-job wrapper. Builds go to `out/<preset>` and the other trees to `out/check-*`, each with its log beside it.
 
 ## In CI
 
