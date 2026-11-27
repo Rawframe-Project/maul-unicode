@@ -414,6 +414,9 @@ static muniResult Next(muniSegmenter* segmenter, size_t* offsetOut)
                    ? muniNextLineAnywhereSegment(segmenter, offsetOut)
                    : muniNextLineTailoredSegment(segmenter, offsetOut);
     default:
+        // Load refuses any other kind, and Find and InitLocal set one of
+        // these.
+        MUNI_ASSERT(false);
         return muni_errorInvalid;
     }
 }
@@ -488,6 +491,9 @@ static size_t Window(const muniSegmenter* segmenter, uint32_t before, uint32_t l
                    ? muniLineAnywhereWindow(segmenter, before, last, next)
                    : muniLineTailoredWindow(segmenter, before, last, next);
     default:
+        // Its only caller, Restart, gets the segmenter FindBreaksAround
+        // loaded, so Load has checked the kind.
+        MUNI_ASSERT(false);
         return 0;
     }
 }
