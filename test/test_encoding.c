@@ -849,6 +849,169 @@ static void TestNegativeModes(void)
     CHECK(refused, "every conversion refuses a negative mode");
 }
 
+// The repair of text by the replacing conversions: to UTF-32 and back.
+static size_t ReferenceRepair(const char* text, size_t length, char* output, size_t capacity)
+{
+    uint32_t* codePoints = malloc((length + 1) * sizeof(uint32_t));
+    size_t count = 0;
+    size_t needed = 0;
+    bool converted =
+        codePoints != nullptr &&
+        muniConvertUtf8ToUtf32(text, length, muni_convertReplace, codePoints, length, &count)
+                .status == muni_success &&
+        muniConvertUtf32ToUtf8(codePoints, count, muni_convertReplace, output, capacity, &needed)
+                .status == muni_success;
+    free(codePoints);
+    return converted ? needed : SIZE_MAX;
+}
+
+// Repairs text in a heap buffer of exactly capacity bytes, so that
+// AddressSanitizer sees a write past it, and checks the result against
+// the reference: the repaired text when it fits, and otherwise the
+// length it needs with the text left as it was. Returns the number of
+// mismatches.
+static int CheckRepair(const char* text, size_t length, size_t capacity)
+{
+    char expected[64];
+    size_t expectedLength = ReferenceRepair(text, length, expected, sizeof(expected));
+    char* buffer = malloc(capacity + 1);
+    if (buffer == nullptr || expectedLength == SIZE_MAX)
+    {
+        free(buffer);
+        return 1;
+    }
+    memset(buffer, 'x', capacity + 1);
+    memcpy(buffer, text, length);
+    size_t repaired = 99;
+    muniResult status = muniRepairUtf8(buffer, length, capacity, &repaired);
+    int mismatches = repaired == expectedLength ? 0 : 1;
+    if (expectedLength <= capacity)
+    {
+        mismatches += status == muni_success ? 0 : 1;
+        mismatches += memcmp(buffer, expected, expectedLength) == 0 ? 0 : 1;
+    }
+    else
+    {
+        mismatches += status == muni_errorCapacity ? 0 : 1;
+        mismatches += memcmp(buffer, text, length) == 0 ? 0 : 1;
+    }
+    size_t untouched = status == muni_success ? expectedLength : length;
+    for (size_t i = untouched; i < capacity; i++)
+    {
+        mismatches += buffer[i] == 'x' ? 0 : 1;
+    }
+    free(buffer);
+    return mismatches;
+}
+
+static void TestRepairFollowsTheStandard(void)
+{
+    // Chapter 3's example: ten code points, six of them U+FFFD.
+    const char text[] = "\x61\xF1\x80\x80\xE1\x80\xC2\x62\x80\x63\x80\xBF\x64";
+    const char expected[] = "a\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD"
+                            "b\xEF\xBF\xBD"
+                            "c\xEF\xBF\xBD\xEF\xBF\xBD"
+                            "d";
+    char buffer[64];
+    memcpy(buffer, text, sizeof(text) - 1);
+    size_t repaired = 0;
+    muniResult status = muniRepairUtf8(buffer, sizeof(text) - 1, sizeof(buffer), &repaired);
+    CHECK(status == muni_success && repaired == sizeof(expected) - 1 &&
+              memcmp(buffer, expected, repaired) == 0,
+          "repair: the standard's substitution");
+}
+
+// Every string of up to two bytes between two ASCII letters, and after a
+// three-byte sequence, in a buffer of exactly the length it needs, of one
+// byte less, and of three times its length.
+static void TestRepairAgreesWithConversion(void)
+{
+    int mismatches = 0;
+    char text[8];
+    // Values below 0x100 are the one-byte strings, the rest the two-byte
+    // strings, first byte high.
+    for (uint32_t value = 0; value < 0x10100; value++)
+    {
+        size_t size = value < 0x100 ? 1 : 2;
+        uint32_t string = size == 1 ? value : value - 0x100;
+        uint8_t bytes[2] = {(uint8_t)(size == 1 ? string : string >> 8), (uint8_t)(string & 0xFF)};
+        for (int prefix = 0; prefix < 2; prefix++)
+        {
+            size_t length = 0;
+            if (prefix == 0)
+            {
+                text[length++] = 'a';
+            }
+            else
+            {
+                memcpy(text, "\xE2\x82\xAC", 3);
+                length = 3;
+            }
+            memcpy(text + length, bytes, size);
+            length += size;
+            text[length++] = 'b';
+            char expected[64];
+            size_t needed = ReferenceRepair(text, length, expected, sizeof(expected));
+            mismatches += CheckRepair(text, length, needed);
+            mismatches += needed > length ? CheckRepair(text, length, needed - 1) : 0;
+            mismatches += CheckRepair(text, length, 3 * length);
+        }
+    }
+    CHECK(mismatches == 0, "repair agrees with the replacing conversions");
+}
+
+static void TestRepairGrowth(void)
+{
+    // A subpart of one byte grows by two, of two bytes by one, of three by
+    // none; a cut sequence at the end is a subpart too.
+    const struct
+    {
+        const char* text;
+        size_t length;
+        size_t repaired;
+    } cases[] = {
+        {"\x80", 1, 3},           {"\xFF\xFF", 2, 6},
+        {"\xE2\x82", 2, 3},       {"\xF1\x80\x80", 3, 3},
+        {"ab\xF0\x9F\x98", 5, 5}, {"\xC0\xAF", 2, 6},
+        {"\xED\xA0\x80", 3, 9},   {"", 0, 0},
+        {"plain", 5, 5},
+    };
+    int mismatches = 0;
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        mismatches += CheckRepair(cases[i].text, cases[i].length, cases[i].repaired);
+        mismatches += CheckRepair(cases[i].text, cases[i].length, 3 * cases[i].length + 2);
+        char buffer[16];
+        memcpy(buffer, cases[i].text, cases[i].length);
+        size_t repaired = 0;
+        mismatches +=
+            muniRepairUtf8(buffer, cases[i].length, sizeof(buffer), &repaired) == muni_success &&
+                    repaired == cases[i].repaired
+                ? 0
+                : 1;
+    }
+    CHECK(mismatches == 0, "repair grows each subpart to three bytes");
+}
+
+static void TestRepairArguments(void)
+{
+    char buffer[8] = "a\x80";
+    size_t repaired = 99;
+    CHECK(muniRepairUtf8(buffer, 2, 8, nullptr) == muni_errorInvalid &&
+              memcmp(buffer, "a\x80", 2) == 0,
+          "repair: NULL lengthOut");
+    CHECK(muniRepairUtf8(nullptr, 0, 1, &repaired) == muni_errorInvalid && repaired == 99,
+          "repair: NULL bytes with a capacity");
+    CHECK(muniRepairUtf8(buffer, 2, 1, &repaired) == muni_errorInvalid && repaired == 99 &&
+              memcmp(buffer, "a\x80", 2) == 0,
+          "repair: a capacity below the length");
+    CHECK(muniRepairUtf8(nullptr, 0, 0, &repaired) == muni_success && repaired == 0,
+          "repair: no text");
+    CHECK(muniRepairUtf8(buffer, 2, 3, &repaired) == muni_errorCapacity && repaired == 4 &&
+              memcmp(buffer, "a\x80", 2) == 0,
+          "repair: capacity reports the length needed and leaves the text");
+}
+
 int main(void)
 {
     TestValidationAgreesOnEveryShortString();
@@ -873,5 +1036,9 @@ int main(void)
     TestExactFit();
     TestConversionRefusals();
     TestNegativeModes();
+    TestRepairFollowsTheStandard();
+    TestRepairAgreesWithConversion();
+    TestRepairGrowth();
+    TestRepairArguments();
     return s_failures == 0 ? 0 : 1;
 }

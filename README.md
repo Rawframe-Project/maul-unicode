@@ -11,7 +11,7 @@ Every program that handles text has to answer the same questions. Is this valid 
 
 Maul Unicode answers them for games, engines and applications:
 
-- **Validation and conversion** of UTF-8, UTF-16 and UTF-32, treating input as hostile.
+- **Validation, conversion and repair** of UTF-8, UTF-16 and UTF-32, treating input as hostile.
 - **Character properties**: categories, segmentation and line break classes, bidi classes, scripts, emoji, digits.
 - **Grapheme, word and sentence boundaries** (UAX #29) and **line breaking** (UAX #14), with a hook for Thai, Lao, Khmer and Burmese dictionaries.
 - **Bidirectional text** (UAX #9) and **script runs** for shaping, with Unicode functions for HarfBuzz.

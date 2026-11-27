@@ -12,6 +12,8 @@ SIMD validators are faster on non-ASCII text, but portable C cannot express them
 
 Conversions write through the caller's buffer and count every unit, so a too-small buffer still learns the size needed. The replacement mode substitutes per maximal subpart, exactly as validation and decoding delimit errors.
 
+`muniRepairUtf8` does the same substitution in place. It validates first, so valid text is only read. Otherwise one pass from the first error counts the repaired length, and a refusal for capacity writes nothing. The text from the first error then moves to the end of that length and is rewritten forward from there: the bytes written up to any point are the bytes read so far plus their growth, which is at most the distance moved, so the writer never passes the reader and no second buffer is needed.
+
 Text in pieces is read through a cursor ([`src/cursor.h`](../../src/cursor.h)) that decodes one code point at a time, keeps the bytes of a sequence a piece cuts off (at most three) until the next piece completes it, and counts offsets from the start of the whole text. The fast path decodes straight from the piece when no bytes are pending and four or more remain.
 
 ## Traps

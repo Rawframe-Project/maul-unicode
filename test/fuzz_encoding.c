@@ -6,7 +6,8 @@
 // report the same error at the same offset; valid text survives round
 // trips through UTF-16 and UTF-32 byte for byte; replacement never
 // fails; decoding step by step reaches the offset validation reports;
-// into an output too small, each conversion stops at a code point.
+// into an output too small, each conversion stops at a code point;
+// repairing in place gives the bytes of the replacing conversions.
 // The same bytes are also read as UTF-16 units and as UTF-32 values,
 // which may hold any surrogate or value past U+10FFFF.
 
@@ -351,6 +352,37 @@ static void CheckUtf32(const uint8_t* data, size_t size)
     free(values);
 }
 
+// Repairing the text in place gives the replacing conversion's bytes,
+// expected, in a buffer of exactly the length needed and of up to three
+// bytes more; one byte short, it reports that length and leaves the text
+// and the rest of the buffer as they were.
+static void CheckRepair(const char* text, size_t size, const char* expected, size_t length,
+                        uint8_t salt)
+{
+    size_t capacities[3] = {length, length + salt % 4, length - 1};
+    for (size_t k = 0; k < (length > size ? 3u : 2u); k++)
+    {
+        size_t capacity = capacities[k];
+        char* buffer = malloc(capacity + 1);
+        memset(buffer, 0x5A, capacity + 1);
+        if (size != 0)
+        {
+            memcpy(buffer, text, size);
+        }
+        size_t repaired = 0;
+        muniResult status = muniRepairUtf8(buffer, size, capacity, &repaired);
+        Require(repaired == length);
+        size_t kept = capacity >= length ? length : size;
+        Require(status == (capacity >= length ? muni_success : muni_errorCapacity));
+        Require(kept == 0 || memcmp(buffer, capacity >= length ? expected : text, kept) == 0);
+        for (size_t i = kept; i < capacity; i++)
+        {
+            Require(buffer[i] == 0x5A);
+        }
+        free(buffer);
+    }
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -398,6 +430,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     Require(back.status == muni_success && againCount <= 3 * size);
     Require(validation.status != muni_success ||
             (againCount == size && (size == 0 || memcmp(again, text, size) == 0)));
+    CheckRepair(text, size, again, againCount, salt);
     free(again);
     free(codePoints);
     free(units);

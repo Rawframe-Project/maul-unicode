@@ -47,6 +47,24 @@ static void GuideValidate(void)
     CHECK(valid.status == muni_errorUtf8Overlong && valid.offset == 1, "what and where");
 }
 
+static void GuideRepair(void)
+{
+    char buffer[8] = "a\xC0\xAF";
+    size_t length = 3;
+    size_t capacity = 6;
+    size_t repaired = 0;
+    muniResult status = muniRepairUtf8(buffer, length, capacity, &repaired);
+    if (status == muni_errorCapacity)
+    {
+        // Grow the buffer to at least repaired bytes, then repair again.
+    }
+    CHECK(status == muni_errorCapacity && repaired == 7, "the length the repair needs");
+    capacity = sizeof(buffer);
+    CHECK(muniRepairUtf8(buffer, length, capacity, &repaired) == muni_success && repaired == 7 &&
+              memcmp(buffer, "a\xEF\xBF\xBD\xEF\xBF\xBD", 7) == 0,
+          "repaired in the grown buffer");
+}
+
 // What the program does with each cluster: here, counts them.
 static int s_clusters;
 
@@ -266,6 +284,7 @@ int main(void)
 {
     GuideMeasure();
     GuideValidate();
+    GuideRepair();
     GuideGraphemes();
     GuideAroundCaret();
     GuideLines();
