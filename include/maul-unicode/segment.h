@@ -465,6 +465,19 @@ extern "C"
         // ill-formed UTF-8 subpart, two past U+FFFF. In UTF-8 text its
         // boundaries are the code point boundaries.
         muni_unitUtf16 = 2,
+        // A column of a fixed-cell font, as a console or terminal sets
+        // text: a grapheme cluster takes 0, 1 or 2. Two for a wide or
+        // fullwidth character (East_Asian_Width W or F), an emoji in
+        // emoji presentation (Emoji_Presentation, or U+FE0F after an
+        // emoji) and a flag; none for a control, a line or paragraph
+        // separator, a default ignorable or a mark with no base; one for
+        // the rest, East Asian Ambiguous characters included. Its
+        // boundaries are the grapheme cluster boundaries.
+        muni_unitColumn = 3,
+        // A column as muni_unitColumn counts it, but with East Asian
+        // Ambiguous characters two columns wide, as in legacy East Asian
+        // text and in terminals set to treat them as wide.
+        muni_unitColumnWide = 4,
     };
 
     /// Finds the longest prefix of UTF-8 text that ends at a boundary of
@@ -474,14 +487,17 @@ extern "C"
     /// SIZE_MAX), a count of units as a byte offset (maxBytes SIZE_MAX,
     /// maxUnits the count), text cut to fit a buffer without splitting a
     /// character (maxBytes the buffer's size, maxUnits SIZE_MAX), and the
-    /// units of a whole text. With muni_unitGraphemeCluster it reads at
-    /// most one cluster past the prefix.
+    /// units of a whole text. With the column units it also gives the
+    /// columns a text takes and cuts it to a number of columns. With the
+    /// units of clusters and columns it reads at most one cluster past the
+    /// prefix.
     ///
     /// @param text       The text. May be NULL when length is 0. Each
     ///                   maximal ill-formed subpart counts as one U+FFFD.
     /// @param length     The text's length in bytes.
-    /// @param unit       muni_unitCodePoint, muni_unitGraphemeCluster or
-    ///                   muni_unitUtf16.
+    /// @param unit       muni_unitCodePoint, muni_unitGraphemeCluster,
+    ///                   muni_unitUtf16, muni_unitColumn or
+    ///                   muni_unitColumnWide.
     /// @param maxBytes   The most bytes the prefix may have; the whole text
     ///                   when it is length or more. When it falls inside a
     ///                   code point or a cluster, the prefix ends at the
@@ -489,7 +505,9 @@ extern "C"
     /// @param maxUnits   The most units the prefix may have. When it falls
     ///                   inside a code point, between the two UTF-16 units of
     ///                   one past U+FFFF, the prefix ends before that code
-    ///                   point, so it has one unit fewer.
+    ///                   point, so it has one unit fewer; the same for a
+    ///                   cluster of two columns. Clusters of no column right
+    ///                   after a prefix that has all maxUnits belong to it.
     /// @param bytesOut   Receives the prefix's length in bytes, 0 when the
     ///                   first unit does not fit. May be NULL.
     /// @param unitsOut   Receives the prefix's length in units. May be

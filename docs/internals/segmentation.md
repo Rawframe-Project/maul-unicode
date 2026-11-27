@@ -71,6 +71,10 @@ Elsewhere root takes every class from the Unicode properties, so a difference ca
 
 [`src/script_runs.c`](../../src/script_runs.c) keeps, for the current run, the set of scripts every code point in it can belong to, as a 256-bit mask over Script indexes. A code point with a real Script narrows the set to its Script or its Script_Extensions, and the run ends where that would leave no script; Common and Inherited code points leave it alone. Opening brackets remember the run's script on a stack of 32, whose oldest entry drops when it is full; a closing bracket that matches one counts as a code point of that script, so brackets around foreign text land in the script outside. The iterator shares the cursor and the piece protocol with the segmenters.
 
+## Columns
+
+[`src/width.c`](../../src/width.c) gives the columns of one grapheme cluster for `muniMeasureUtf8`'s column units, from its first code point and the one after it: no column for a control, a line or paragraph separator, a nonspacing or enclosing mark (a cluster can start with one only where nothing precedes it) and a default ignorable; for an emoji, one when U+FE0E follows, one for a lone regional indicator and two for a pair, two when U+FE0F follows or the emoji has Emoji_Presentation; then two for East_Asian_Width W and F, two for A in the wide unit, and one for the rest. A one-byte cluster takes the ASCII path. The rules use only tables the library already has, so the column units cost no table space. The measure walks clusters as for `muni_unitGraphemeCluster` and weighs each by its columns; a two-column cluster has at least two bytes, so a text never has more columns than bytes and the measure's shortcut for a limit at or past the length still holds.
+
 ## Traps
 
 - Word and sentence boundaries are the standard's and do not always fall on grapheme boundaries (U+0600, Prepend and numeric, takes a word boundary after it before punctuation). Do not snap them inside the library; callers that need both snap one to the other.
