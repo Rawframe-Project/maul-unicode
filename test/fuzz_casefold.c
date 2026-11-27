@@ -12,7 +12,8 @@
 // different keys (ICU agrees), so text whose NFKD has U+0345 is left out
 // of that check. A short output buffer gets the same bytes, as many as fit, and
 // the same needed size. Text with more combining marks in a row than a
-// segment holds is refused the same way in every form.
+// segment holds is refused the same way in every form. Caseless
+// comparison of two texts agrees with comparing their folded forms.
 
 #include "maul-unicode/case.h"
 #include "maul-unicode/normalize.h"
@@ -80,6 +81,78 @@ static bool HasYpogegrammeni(const char* text, size_t length)
     return false;
 }
 
+// The folded form of text for a caseless match, through the calls that
+// produce it into buffers: 1 when it is made, 0 when a segment is too
+// long.
+static int FoldedForm(const char* text, size_t length, muniCaselessMatch match, char* out,
+                      size_t* lengthOut)
+{
+    static char decomposed[MAX_OUTPUT];
+    static char folded[MAX_OUTPUT];
+    size_t size = 0;
+    if (match == muni_caselessDefault)
+    {
+        Require(muniConvertCase(text, length, muni_caseFold, muni_caseDefault, muni_convertReplace,
+                                out, MAX_OUTPUT, lengthOut)
+                    .status == muni_success);
+        return 1;
+    }
+    if (match == muni_caselessIdentifier)
+    {
+        return Casefold(text, length, out, lengthOut) ? 1 : 0;
+    }
+    muniTextResult result =
+        muniNormalize(text, length, muni_nfd, muni_convertReplace, decomposed, MAX_OUTPUT, &size);
+    if (result.status == muni_errorLimit)
+    {
+        return 0;
+    }
+    Require(result.status == muni_success);
+    Require(muniConvertCase(decomposed, size, muni_caseFold, muni_caseDefault, muni_convertStrict,
+                            folded, MAX_OUTPUT, &size)
+                .status == muni_success);
+    result = muniNormalize(folded, size, muni_nfd, muni_convertStrict, out, MAX_OUTPUT, lengthOut);
+    Require(result.status == muni_success || result.status == muni_errorLimit);
+    return result.status == muni_success ? 1 : 0;
+}
+
+// muniCompareCaseless of the two halves of the input, split where its
+// first byte says, and of each half with itself, in every match: the
+// order of their folded forms in code point order. When a folded form
+// cannot be made, the comparison may stop before reaching the segment
+// that is too long, or refuse it.
+static void CheckCaseless(const char* text, size_t length)
+{
+    static char firstForm[MAX_OUTPUT];
+    static char secondForm[MAX_OUTPUT];
+    size_t split = length == 0 ? 0 : (uint8_t)text[0] % (length + 1);
+    const char* second = text + split;
+    size_t secondLength = length - split;
+    for (muniCaselessMatch match = 0; match <= muni_caselessIdentifier; match++)
+    {
+        size_t firstSize = 0;
+        size_t secondSize = 0;
+        bool made = FoldedForm(text, split, match, firstForm, &firstSize) == 1;
+        made = FoldedForm(second, secondLength, match, secondForm, &secondSize) == 1 && made;
+        int32_t order = 9;
+        muniResult status = muniCompareCaseless(text, split, second, secondLength, match, &order);
+        Require(status == muni_success || (status == muni_errorLimit && !made && order == 9));
+        if (made)
+        {
+            size_t common = firstSize < secondSize ? firstSize : secondSize;
+            int compared = memcmp(firstForm, secondForm, common);
+            int32_t expected = compared != 0             ? (compared < 0 ? -1 : 1)
+                               : firstSize == secondSize ? 0
+                               : firstSize < secondSize  ? -1
+                                                         : 1;
+            Require(order == expected);
+        }
+        order = 9;
+        status = muniCompareCaseless(second, secondLength, second, secondLength, match, &order);
+        Require((status == muni_success && order == 0) || status == muni_errorLimit);
+    }
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
@@ -91,6 +164,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     static char once[MAX_OUTPUT];
     static char twice[MAX_OUTPUT];
     const char* text = (const char*)data;
+    CheckCaseless(text, size);
     size_t first = 0;
     if (!Casefold(text, size, once, &first))
     {

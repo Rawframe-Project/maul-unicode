@@ -262,6 +262,20 @@ static void GuideIdentifierKey(void)
           "the key");
 }
 
+static void GuideCaseless(void)
+{
+    const char* typed = "/GIVE";
+    size_t typedLength = 5;
+    int32_t order = 1;
+    muniResult status =
+        muniCompareCaseless(typed, typedLength, "/give", 5, muni_caselessIdentifier, &order);
+    if (status == muni_success && order == 0)
+    {
+        // The player typed the command, in any case.
+    }
+    CHECK(status == muni_success && order == 0, "a typed command");
+}
+
 int main(void)
 {
     GuideMeasure();
@@ -275,5 +289,6 @@ int main(void)
     GuideBidi();
     GuideScripts();
     GuideIdentifierKey();
+    GuideCaseless();
     return s_failures == 0 ? 0 : 1;
 }

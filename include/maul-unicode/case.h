@@ -174,6 +174,61 @@ extern "C"
                                                                muniConvertMode mode, char* textOut,
                                                                size_t capacity, size_t* neededOut);
 
+    // What two texts must share to match when case is ignored: the
+    // caseless matches of the Unicode Standard (section 3.13).
+    typedef int32_t muniCaselessMatch;
+
+    enum
+    {
+        // Default caseless matching, full case folding alone: "Straße"
+        // matches "STRASSE", but a composed "é" does not match "e" and a
+        // combining acute accent.
+        muni_caselessDefault = 0,
+        // Canonical caseless matching: the NFD of the folded NFD, so
+        // canonically equivalent texts match too.
+        muni_caselessCanonical = 1,
+        // Identifier caseless matching: NFKC_Casefold, which also ignores
+        // compatibility differences (a fullwidth "Ａ" and "a", "①" and
+        // "1") and default ignorables, as keys from muniGetNfkcCasefold
+        // compare.
+        muni_caselessIdentifier = 2,
+    };
+
+    /// Compares two UTF-8 texts ignoring case, without folding them into
+    /// buffers: the call folds both a segment at a time and stops at the
+    /// first difference. To look a text up among many, store keys from
+    /// muniGetNfkcCasefold or muniConvertCase instead. Needs the case and
+    /// the normalization components.
+    ///
+    /// @param first         The first text. May be NULL when firstLength is
+    ///                      0. Each maximal ill-formed subpart reads as
+    ///                      U+FFFD.
+    /// @param firstLength   Its length in bytes.
+    /// @param second        The second text, read the same way. May be NULL
+    ///                      when secondLength is 0.
+    /// @param secondLength  Its length in bytes.
+    /// @param match         The caseless match, a muni_caseless value.
+    /// @param orderOut      Receives 0 when the texts match, and otherwise
+    ///                      -1 or 1 as the folded form of the first comes
+    ///                      before or after that of the second in code point
+    ///                      order, a form that is a prefix of the other
+    ///                      first. Left as it was unless the call returns
+    ///                      `muni_success`.
+    /// @return `muni_success`; `muni_errorLimit` when, in a normalizing
+    ///         match, a segment of either text grows past
+    ///         MUNI_MAX_NORMALIZATION_SEGMENT code points, as in
+    ///         muniNormalize, among the segments read up to the first
+    ///         difference, the one that holds it included;
+    ///         `muni_errorInvalid` for a NULL
+    ///         text with a nonzero length, a NULL orderOut or an unknown
+    ///         match.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniCompareCaseless(const char* first, size_t firstLength,
+                                                           const char* second, size_t secondLength,
+                                                           muniCaselessMatch match,
+                                                           int32_t* orderOut);
+
 #ifdef __cplusplus
 }
 #endif
