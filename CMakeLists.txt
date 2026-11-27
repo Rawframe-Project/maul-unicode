@@ -58,6 +58,7 @@ set(MUNI_SOURCES
     src/bidi_line.c
     src/complex.c
     src/cursor.c
+    src/emoji_sequence.c
     src/encoding.c
     src/generated/bidi_bracket.c
     src/generated/bidi_class.c
@@ -67,6 +68,7 @@ set(MUNI_SOURCES
     src/generated/decimal_zeros.c
     src/generated/east_asian_width.c
     src/generated/emoji.c
+    src/generated/emoji_sequences.c
     src/generated/general_category.c
     src/generated/grapheme_cluster_break.c
     src/generated/identifier.c
@@ -264,7 +266,8 @@ endif()
 # The generator writes src/generated/ from tools/ucd/:
 #   munigen tools/ucd src/generated
 if(MAUL_UNICODE_BUILD_TOOLS)
-    add_executable(munigen tools/munigen/case.c tools/munigen/main.c tools/munigen/normalization.c
+    add_executable(munigen tools/munigen/case.c tools/munigen/emoji.c tools/munigen/main.c
+                           tools/munigen/normalization.c
                            tools/munigen/properties.c tools/munigen/security.c
                            tools/munigen/table.c tools/munigen/ucd.c)
     maul_apply_flags(munigen)

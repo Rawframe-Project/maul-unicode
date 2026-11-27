@@ -115,4 +115,7 @@ void WriteCase(void);
 // security.c: the data of UTS #39.
 void WriteSecurity(void);
 
+// emoji.c: the RGI emoji sequences of UTS #51.
+void WriteEmojiSequences(void);
+
 #endif // MUNIGEN_H

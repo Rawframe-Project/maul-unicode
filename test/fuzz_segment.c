@@ -485,6 +485,24 @@ static void CheckColumns(const char* text, size_t length, const size_t* breaks, 
     }
 }
 
+// An RGI emoji is one grapheme cluster: each cluster gets a kind, and a
+// text of more than one cluster, or with an ill-formed byte, is none.
+static void CheckEmojiKinds(const char* text, size_t length, const size_t* breaks, size_t count)
+{
+    size_t start = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        muniEmojiKind kind = 99;
+        Require(muniGetEmojiKind(text + start, breaks[i] - start, &kind) == muni_success &&
+                kind >= muni_emojiKindNone && kind <= muni_emojiKindZwj);
+        start = breaks[i];
+    }
+    muniEmojiKind whole = 99;
+    Require(muniGetEmojiKind(text, length, &whole) == muni_success &&
+            (whole == muni_emojiKindNone || count == 1) &&
+            (whole == muni_emojiKindNone || muniValidateUtf8(text, length).status == muni_success));
+}
+
 // muniMeasureUtf8 at a few byte limits gives the last grapheme boundary
 // within each, of those the break finder reported, and the last code
 // point boundary, of those muniDecodeUtf8 steps over. Over the whole text
@@ -656,6 +674,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     if (kind == 0)
     {
         CheckMeasure(text, length, whole, count, data[0]);
+        CheckEmojiKinds(text, length, whole, count);
     }
     if (kind == 1)
     {

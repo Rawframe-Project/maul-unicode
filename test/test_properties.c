@@ -10,11 +10,15 @@
 #include "tables.h"
 #include "test_harness.h"
 
+#include "maul-unicode/encoding.h"
 #include "maul-unicode/properties.h"
 
 #ifdef MUNI_UCD_DATA
 #include "ucd.h"
 #endif
+
+#include <stdlib.h>
+#include <string.h>
 
 static uint64_t HashAll(uint8_t (*lookup)(uint32_t))
 {
@@ -566,6 +570,311 @@ static void TestBinaryPropertiesAgainstTheUcd(void)
     }
 }
 
+// The RGI emoji sequences of emoji-sequences.txt and
+// emoji-zwj-sequences.txt, read without the generator: each sequence's
+// code points and kind.
+#define MAX_RGI      8192
+#define MAX_RGI_SIZE 16
+
+typedef struct Rgi
+{
+    uint32_t codePoints[MAX_RGI_SIZE];
+    size_t count;
+    muniEmojiKind kind;
+} Rgi;
+
+static Rgi s_rgi[MAX_RGI];
+static size_t s_rgiCount;
+
+static muniEmojiKind RgiKind(const char* type)
+{
+    static const struct
+    {
+        const char* name;
+        muniEmojiKind kind;
+    } kinds[] = {
+        {"Basic_Emoji", muni_emojiKindBasic},
+        {"Emoji_Keycap_Sequence", muni_emojiKindKeycap},
+        {"RGI_Emoji_Flag_Sequence", muni_emojiKindFlag},
+        {"RGI_Emoji_Modifier_Sequence", muni_emojiKindModifier},
+        {"RGI_Emoji_Tag_Sequence", muni_emojiKindTag},
+        {"RGI_Emoji_ZWJ_Sequence", muni_emojiKindZwj},
+    };
+    for (size_t i = 0; i < COUNT(kinds); i++)
+    {
+        if (strcmp(type, kinds[i].name) == 0)
+        {
+            return kinds[i].kind;
+        }
+    }
+    return -1;
+}
+
+static void AddRgi(const uint32_t* codePoints, size_t count, muniEmojiKind kind)
+{
+    if (s_rgiCount < MAX_RGI)
+    {
+        Rgi* rgi = &s_rgi[s_rgiCount++];
+        memcpy(rgi->codePoints, codePoints, count * sizeof(uint32_t));
+        rgi->count = count;
+        rgi->kind = kind;
+    }
+}
+
+// Reads one file's sequences; false when it does not open or a line is
+// not understood.
+static bool ReadRgi(const char* name)
+{
+    FILE* file = UcdOpen(name);
+    if (file == nullptr)
+    {
+        return false;
+    }
+    static char line[4096];
+    bool understood = true;
+    while (fgets(line, sizeof(line), file) != nullptr)
+    {
+        char* hash = strchr(line, '#');
+        if (hash != nullptr)
+        {
+            *hash = '\0';
+        }
+        char* semicolon = strchr(line, ';');
+        if (semicolon == nullptr)
+        {
+            continue;
+        }
+        *semicolon = '\0';
+        char* type = UcdTrim(semicolon + 1);
+        char* end = strchr(type, ';');
+        if (end != nullptr)
+        {
+            *end = '\0';
+        }
+        muniEmojiKind kind = RgiKind(UcdTrim(type));
+        char* dots = strstr(line, "..");
+        uint32_t codePoints[MAX_RGI_SIZE];
+        size_t count = 0;
+        if (dots != nullptr)
+        {
+            uint32_t first = (uint32_t)strtoul(line, nullptr, 16);
+            uint32_t last = (uint32_t)strtoul(dots + 2, nullptr, 16);
+            for (uint32_t c = first; c <= last; c++)
+            {
+                AddRgi(&c, 1, kind);
+            }
+            understood = understood && kind >= 0 && first <= last;
+            continue;
+        }
+        char* cursor = line;
+        for (;;)
+        {
+            char* after = nullptr;
+            unsigned long value = strtoul(cursor, &after, 16);
+            if (after == cursor || count == MAX_RGI_SIZE)
+            {
+                break;
+            }
+            codePoints[count++] = (uint32_t)value;
+            cursor = after;
+        }
+        understood = understood && kind >= 0 && count > 0;
+        AddRgi(codePoints, count, kind);
+    }
+    fclose(file);
+    return understood && s_rgiCount < MAX_RGI;
+}
+
+// Orders sequences by length, then code point by code point.
+static int CompareRgi(const uint32_t* a, size_t aCount, const uint32_t* b, size_t bCount)
+{
+    if (aCount != bCount)
+    {
+        return aCount < bCount ? -1 : 1;
+    }
+    for (size_t i = 0; i < aCount; i++)
+    {
+        if (a[i] != b[i])
+        {
+            return a[i] < b[i] ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+static int CompareRgiEntries(const void* a, const void* b)
+{
+    const Rgi* x = a;
+    const Rgi* y = b;
+    return CompareRgi(x->codePoints, x->count, y->codePoints, y->count);
+}
+
+// The kind the files give a sequence, or muni_emojiKindNone, by binary
+// search over the sorted list.
+static muniEmojiKind ListedKind(const uint32_t* codePoints, size_t count)
+{
+    size_t low = 0;
+    size_t high = s_rgiCount;
+    while (low < high)
+    {
+        size_t middle = (low + high) / 2;
+        int order = CompareRgi(s_rgi[middle].codePoints, s_rgi[middle].count, codePoints, count);
+        if (order == 0)
+        {
+            return s_rgi[middle].kind;
+        }
+        if (order < 0)
+        {
+            low = middle + 1;
+        }
+        else
+        {
+            high = middle;
+        }
+    }
+    return muni_emojiKindNone;
+}
+
+// What muniGetEmojiKind says of the code points, encoded as UTF-8 in a
+// heap allocation of exactly their length, so that AddressSanitizer sees
+// a read past it.
+static muniEmojiKind KindOf(const uint32_t* codePoints, size_t count)
+{
+    char bytes[MAX_RGI_SIZE * 4];
+    size_t length = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        size_t size = 0;
+        (void)muniEncodeUtf8(codePoints[i], bytes + length, sizeof(bytes) - length, &size);
+        length += size;
+    }
+    char* text = malloc(length == 0 ? 1 : length);
+    memcpy(text, bytes, length);
+    muniEmojiKind kind = 99;
+    if (muniGetEmojiKind(text, length, &kind) != muni_success)
+    {
+        kind = 98;
+    }
+    free(text);
+    return kind;
+}
+
+static void CompareWithFiles(const uint32_t* codePoints, size_t count, int* failures)
+{
+    muniEmojiKind expected = ListedKind(codePoints, count);
+    muniEmojiKind kind = KindOf(codePoints, count);
+    if (kind != expected && (*failures)++ < 5)
+    {
+        printf("emoji kind of U+%04X and %zu more: %d, expected %d\n", (unsigned)codePoints[0],
+               count - 1, (int)kind, (int)expected);
+    }
+}
+
+static void TestEmojiSequencesAgainstTheUcd(void)
+{
+    bool read = ReadRgi("emoji-sequences.txt") && ReadRgi("emoji-zwj-sequences.txt");
+    CHECK(read && s_rgiCount > 3500, "the RGI emoji files read");
+    qsort(s_rgi, s_rgiCount, sizeof(Rgi), CompareRgiEntries);
+    int failures = 0;
+    // Every listed sequence.
+    for (size_t i = 0; i < s_rgiCount; i++)
+    {
+        CompareWithFiles(s_rgi[i].codePoints, s_rgi[i].count, &failures);
+    }
+    // Every code point alone and with U+FE0F, every pair of regional
+    // indicators, and every emoji with every skin tone.
+    for (uint32_t c = 0; c < UCD_CODE_POINTS; c++)
+    {
+        if (c >= 0xD800 && c <= 0xDFFF)
+        {
+            continue;
+        }
+        uint32_t pair[2] = {c, 0xFE0F};
+        CompareWithFiles(pair, 1, &failures);
+        CompareWithFiles(pair, 2, &failures);
+        if (muniIsEmoji(c))
+        {
+            for (uint32_t tone = 0x1F3FB; tone <= 0x1F3FF; tone++)
+            {
+                pair[1] = tone;
+                CompareWithFiles(pair, 2, &failures);
+            }
+        }
+    }
+    for (uint32_t a = 0x1F1E6; a <= 0x1F1FF; a++)
+    {
+        for (uint32_t b = 0x1F1E6; b <= 0x1F1FF; b++)
+        {
+            uint32_t pair[2] = {a, b};
+            CompareWithFiles(pair, 2, &failures);
+        }
+    }
+    // Near misses of each listed sequence of three or more code points:
+    // its last code point dropped, U+FE0F dropped or added after the
+    // first, a skin tone changed, and U+200D and a man added.
+    size_t listed = s_rgiCount;
+    for (size_t i = 0; i < listed; i++)
+    {
+        const Rgi* rgi = &s_rgi[i];
+        if (rgi->count < 3)
+        {
+            continue;
+        }
+        uint32_t variant[MAX_RGI_SIZE + 2];
+        memcpy(variant, rgi->codePoints, rgi->count * sizeof(uint32_t));
+        CompareWithFiles(variant, rgi->count - 1, &failures);
+        size_t count = 0;
+        for (size_t k = 0; k < rgi->count; k++)
+        {
+            if (k != 1 || rgi->codePoints[1] != 0xFE0F)
+            {
+                variant[count++] = rgi->codePoints[k];
+            }
+            if (k == 0 && rgi->codePoints[1] != 0xFE0F)
+            {
+                variant[count++] = 0xFE0F;
+            }
+        }
+        CompareWithFiles(variant, count, &failures);
+        memcpy(variant, rgi->codePoints, rgi->count * sizeof(uint32_t));
+        for (size_t k = 0; k < rgi->count; k++)
+        {
+            if (variant[k] >= 0x1F3FB && variant[k] <= 0x1F3FF)
+            {
+                variant[k] = variant[k] == 0x1F3FF ? 0x1F3FB : variant[k] + 1;
+                break;
+            }
+        }
+        CompareWithFiles(variant, rgi->count, &failures);
+        memcpy(variant, rgi->codePoints, rgi->count * sizeof(uint32_t));
+        variant[rgi->count] = 0x200D;
+        variant[rgi->count + 1] = 0x1F468;
+        if (rgi->count + 2 <= MAX_RGI_SIZE)
+        {
+            CompareWithFiles(variant, rgi->count + 2, &failures);
+        }
+    }
+    CHECK(failures == 0, "RGI emoji sequences and their near misses");
+}
+
+static void TestEmojiKindRefusals(void)
+{
+    muniEmojiKind kind = 99;
+    CHECK(muniGetEmojiKind(nullptr, 0, &kind) == muni_success && kind == muni_emojiKindNone,
+          "no text is no emoji");
+    kind = 99;
+    CHECK(muniGetEmojiKind("\xF0\x9F\x98\x80\xF0\x9F\x98\x80", 8, &kind) == muni_success &&
+              kind == muni_emojiKindNone,
+          "two emoji are not one");
+    kind = 99;
+    CHECK(muniGetEmojiKind("\xF0\x9F\x98", 3, &kind) == muni_success && kind == muni_emojiKindNone,
+          "a cut emoji is ill-formed and no emoji");
+    kind = 99;
+    CHECK(muniGetEmojiKind(nullptr, 1, &kind) == muni_errorInvalid && kind == 99,
+          "emoji kind: NULL text with a length");
+    CHECK(muniGetEmojiKind("a", 1, nullptr) == muni_errorInvalid, "emoji kind: NULL kindOut");
+}
+
 static uint8_t DecimalDigit(uint32_t codePoint)
 {
     return (uint8_t)(muniGetDecimalDigitValue(codePoint) + 1);
@@ -810,6 +1119,8 @@ int main(void)
     TestUnicodeDataAgainstTheUcd();
     TestMirroringAgainstTheUcd();
     TestScriptsAgainstTheUcd();
+    TestEmojiSequencesAgainstTheUcd();
+    TestEmojiKindRefusals();
 #endif
     return s_failures == 0 ? 0 : 1;
 }

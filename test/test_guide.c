@@ -12,6 +12,7 @@
 #include "maul-unicode/case.h"
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
+#include "maul-unicode/properties.h"
 #include "maul-unicode/script.h"
 #include "maul-unicode/segment.h"
 
@@ -307,6 +308,27 @@ static void GuideCaseless(void)
     CHECK(status == muni_success && order == 0, "a typed command");
 }
 
+static void GuideOnlyEmoji(void)
+{
+    // A flag and a ZWJ family: man, woman, girl.
+    const char* text = "\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7"
+                       "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7";
+    size_t length = 26;
+    bool onlyEmoji = length > 0;
+    muniSegmentIterator clusters;
+    (void)muniInitGraphemeIterator(&clusters, text, length, false);
+    size_t start = 0;
+    size_t end = 0;
+    while (onlyEmoji && muniSegmentIterator_NextBreak(&clusters, &end) == muni_success)
+    {
+        muniEmojiKind kind = muni_emojiKindNone;
+        onlyEmoji = muniGetEmojiKind(text + start, end - start, &kind) == muni_success &&
+                    kind != muni_emojiKindNone;
+        start = end;
+    }
+    CHECK(onlyEmoji, "a flag and a family are emoji alone");
+}
+
 int main(void)
 {
     GuideMeasure();
@@ -323,5 +345,6 @@ int main(void)
     GuideScripts();
     GuideIdentifierKey();
     GuideCaseless();
+    GuideOnlyEmoji();
     return s_failures == 0 ? 0 : 1;
 }

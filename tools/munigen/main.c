@@ -27,5 +27,6 @@ int main(int argc, char** argv)
     WriteNormalization();
     WriteCase();
     WriteSecurity();
+    WriteEmojiSequences();
     return 0;
 }
