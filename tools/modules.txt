@@ -29,12 +29,13 @@ nfkc_casefold: case_map decompose encoding invariant normalizer overlap tables
 properties: tables
 script_runs: invariant script_state tables
 script_state: cursor
-segment: encoding segmenter
+segment: encoding segmenter width
 segmenter: cursor invariant
 security: bits encoding tables
 sentence: segmenter tables
 skeleton: bidi_line bits decompose encoding invariant overlap tables writer
 tables:
+width: encoding tables
 word: complex segmenter tables word_kind
 word_kind: tables
 writer:

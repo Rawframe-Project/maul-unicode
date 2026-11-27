@@ -9,6 +9,7 @@
 
 #include "encoding.h"
 #include "segmenter.h"
+#include "width.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -782,9 +783,11 @@ static size_t MeasureCodePoints(const char* text, size_t length, bool utf16, siz
 }
 
 // The same at grapheme cluster boundaries: the last that fits, found by
-// reading up to the first one past it.
-static size_t MeasureClusters(const char* text, size_t length, size_t maxBytes, size_t maxUnits,
-                              size_t* unitsOut)
+// reading up to the first one past it. Each cluster weighs one unit, or
+// for the column units its columns, which may be 0: a prefix that has
+// all its columns still takes the clusters of no column after it.
+static size_t MeasureClusters(const char* text, size_t length, muniTextUnit unit, size_t maxBytes,
+                              size_t maxUnits, size_t* unitsOut)
 {
     muniSegmenter segmenter;
     memset(&segmenter, 0, sizeof(segmenter));
@@ -793,10 +796,18 @@ static size_t MeasureClusters(const char* text, size_t length, size_t maxBytes, 
     size_t bytes = 0;
     size_t units = 0;
     size_t offset;
-    while (units < maxUnits && Next(&segmenter, &offset) == muni_success && offset <= maxBytes)
+    while (Next(&segmenter, &offset) == muni_success && offset <= maxBytes)
     {
+        size_t weight = unit == muni_unitGraphemeCluster
+                            ? 1
+                            : muniClusterWidth((const uint8_t*)text + bytes, offset - bytes,
+                                               unit == muni_unitColumnWide);
+        if (weight > maxUnits - units)
+        {
+            break;
+        }
         bytes = offset;
-        units++;
+        units += weight;
     }
     *unitsOut = units;
     return bytes;
@@ -805,21 +816,25 @@ static size_t MeasureClusters(const char* text, size_t length, size_t maxBytes, 
 muniResult muniMeasureUtf8(const char* text, size_t length, muniTextUnit unit, size_t maxBytes,
                            size_t maxUnits, size_t* bytesOut, size_t* unitsOut)
 {
-    if ((text == nullptr && length != 0) ||
-        (unit != muni_unitCodePoint && unit != muni_unitGraphemeCluster && unit != muni_unitUtf16))
+    if ((text == nullptr && length != 0) || (uint32_t)unit > muni_unitColumnWide)
     {
         return muni_errorInvalid;
     }
     size_t bytes = length;
     size_t units = 0;
-    if (maxBytes < length || maxUnits < length || unitsOut != nullptr)
+    // A cut that fits whole and counts nothing needs no walk. A text has
+    // no more units than bytes, but in the wide column unit up to twice
+    // as many: an ill-formed byte reads as U+FFFD, which is Ambiguous. In
+    // the other column unit a cluster of two columns has two bytes or
+    // more, since its first code point is a well-formed one past U+1000
+    // or it holds U+FE0F or two regional indicators.
+    bool fitsAll = unit == muni_unitColumnWide ? maxUnits / 2 >= length : maxUnits >= length;
+    if (maxBytes < length || !fitsAll || unitsOut != nullptr)
     {
-        // A cut that fits whole and counts nothing needs no walk: a unit is
-        // at least a byte.
-        bytes = unit == muni_unitGraphemeCluster
-                    ? MeasureClusters(text, length, maxBytes, maxUnits, &units)
-                    : MeasureCodePoints(text, length, unit == muni_unitUtf16, maxBytes, maxUnits,
-                                        &units);
+        bytes = unit == muni_unitCodePoint || unit == muni_unitUtf16
+                    ? MeasureCodePoints(text, length, unit == muni_unitUtf16, maxBytes, maxUnits,
+                                        &units)
+                    : MeasureClusters(text, length, unit, maxBytes, maxUnits, &units);
     }
     if (bytesOut != nullptr)
     {

@@ -417,6 +417,74 @@ static void CheckUnitLimit(const char* text, size_t length, muniTextUnit unit, u
     free(output);
 }
 
+// The column units: each cluster the break finder reported, measured
+// alone, takes 0, 1 or 2 columns, and no more with ambiguous characters
+// narrow than wide; the whole text takes their sum; a byte budget ends at
+// the same boundary as for clusters; and a column limit ends after the
+// most clusters whose columns fit, with the clusters of no column after
+// them.
+static void CheckColumns(const char* text, size_t length, const size_t* breaks, size_t count,
+                         muniTextUnit unit, uint8_t salt)
+{
+    size_t total = 0;
+    size_t start = 0;
+    for (size_t i = 0; i < count; i++)
+    {
+        size_t bytes = 0;
+        size_t width = 3;
+        size_t wide = 3;
+        Require(muniMeasureUtf8(text + start, breaks[i] - start, unit, SIZE_MAX, SIZE_MAX, &bytes,
+                                &width) == muni_success &&
+                bytes == breaks[i] - start && width <= 2);
+        Require(muniMeasureUtf8(text + start, breaks[i] - start, muni_unitColumnWide, SIZE_MAX,
+                                SIZE_MAX, nullptr, &wide) == muni_success &&
+                width <= wide && wide <= 2);
+        total += width;
+        start = breaks[i];
+    }
+    size_t bytes = 0;
+    size_t units = 0;
+    Require(muniMeasureUtf8(text, length, unit, SIZE_MAX, SIZE_MAX, &bytes, &units) ==
+                muni_success &&
+            bytes == length && units == total);
+    for (size_t k = 0; k < 4; k++)
+    {
+        size_t budget = (salt * 31u + k * (length / 3 + 1)) % (length + 2);
+        size_t cluster = 0;
+        for (size_t i = 0; i < count && breaks[i] <= budget; i++)
+        {
+            cluster = breaks[i];
+        }
+        Require(muniMeasureUtf8(text, length, unit, budget, SIZE_MAX, &bytes, nullptr) ==
+                    muni_success &&
+                bytes == cluster);
+        size_t limit = (salt * 13u + k * (total / 3 + 1)) % (total + 2);
+        size_t fitBytes = 0;
+        size_t fitColumns = 0;
+        start = 0;
+        for (size_t i = 0; i < count; i++)
+        {
+            size_t width = 0;
+            (void)muniMeasureUtf8(text + start, breaks[i] - start, unit, SIZE_MAX, SIZE_MAX,
+                                  nullptr, &width);
+            start = breaks[i];
+            if (fitColumns + width > limit)
+            {
+                break;
+            }
+            fitColumns += width;
+            fitBytes = breaks[i];
+        }
+        Require(muniMeasureUtf8(text, length, unit, SIZE_MAX, limit, &bytes, &units) ==
+                    muni_success &&
+                bytes == fitBytes && units == fitColumns);
+        // Asking for the bytes alone gives the same cut.
+        Require(muniMeasureUtf8(text, length, unit, SIZE_MAX, limit, &bytes, nullptr) ==
+                    muni_success &&
+                bytes == fitBytes);
+    }
+}
+
 // muniMeasureUtf8 at a few byte limits gives the last grapheme boundary
 // within each, of those the break finder reported, and the last code
 // point boundary, of those muniDecodeUtf8 steps over. Over the whole text
@@ -475,6 +543,8 @@ static void CheckMeasure(const char* text, size_t length, const size_t* breaks, 
         CheckUnitLimit(text, length, muni_unitUtf16, salt, k);
         CheckUnitLimit(text, length, muni_unitCodePoint, salt, k);
     }
+    CheckColumns(text, length, breaks, count, muni_unitColumn, salt);
+    CheckColumns(text, length, breaks, count, muni_unitColumnWide, salt);
 }
 
 // The kind a code point gives a word segment, from the public

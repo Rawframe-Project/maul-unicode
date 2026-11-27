@@ -1434,6 +1434,176 @@ static void TestMeasureUses(void)
           "where a count of clusters ends");
 }
 
+// The columns of one code point alone, from the public properties as the
+// column units define them.
+static size_t ExpectedColumns(uint32_t codePoint, bool ambiguousWide)
+{
+    muniGeneralCategory category = muniGetGeneralCategory(codePoint);
+    if (category == muni_gcCc || category == muni_gcZl || category == muni_gcZp ||
+        category == muni_gcMn || category == muni_gcMe || muniIsDefaultIgnorable(codePoint))
+    {
+        return 0;
+    }
+    if (muniIsEmoji(codePoint))
+    {
+        if (codePoint >= 0x1F1E6 && codePoint <= 0x1F1FF)
+        {
+            return 1;
+        }
+        if (muniIsEmojiPresentation(codePoint))
+        {
+            return 2;
+        }
+    }
+    muniEastAsianWidth width = muniGetEastAsianWidth(codePoint);
+    if (width == muni_eawWide || width == muni_eawFullwidth)
+    {
+        return 2;
+    }
+    return width == muni_eawAmbiguous && ambiguousWide ? 2 : 1;
+}
+
+static void TestColumnsOfEveryCodePoint(void)
+{
+    int mismatches = 0;
+    for (uint32_t c = 0; c < 0x110000; c++)
+    {
+        if (c >= 0xD800 && c <= 0xDFFF)
+        {
+            continue;
+        }
+        char bytes[4];
+        size_t size = 0;
+        (void)muniEncodeUtf8(c, bytes, sizeof(bytes), &size);
+        size_t narrow = 9;
+        size_t wide = 9;
+        (void)muniMeasureUtf8(bytes, size, muni_unitColumn, SIZE_MAX, SIZE_MAX, nullptr, &narrow);
+        (void)muniMeasureUtf8(bytes, size, muni_unitColumnWide, SIZE_MAX, SIZE_MAX, nullptr, &wide);
+        if ((narrow != ExpectedColumns(c, false) || wide != ExpectedColumns(c, true)) &&
+            mismatches++ < 5)
+        {
+            printf("columns of U+%04X: %zu and %zu\n", (unsigned)c, narrow, wide);
+        }
+    }
+    CHECK(mismatches == 0, "the columns of every code point alone");
+}
+
+static void TestColumnsOfClusters(void)
+{
+    static const struct
+    {
+        const char* text;
+        size_t narrow;
+        size_t wide;
+    } cases[] = {
+        {"a", 1, 1},
+        // e and a combining acute accent; the accent with no base.
+        {"e\xCC\x81", 1, 1},
+        {"\xCC\x81", 0, 0},
+        // CR LF, one cluster; a tab, which the caller expands; the soft
+        // hyphen and the zero width space, default ignorables.
+        {"\r\n", 0, 0},
+        {"\t", 0, 0},
+        {"\xC2\xAD", 0, 0},
+        {"\xE2\x80\x8B", 0, 0},
+        // The section sign and U+FFFD are Ambiguous; an ill-formed byte
+        // reads as U+FFFD.
+        {"\xC2\xA7", 1, 2},
+        {"\xEF\xBF\xBD", 1, 2},
+        {"\xFF", 1, 2},
+        // Halfwidth katakana a, fullwidth A, an ideograph, a Hangul
+        // syllable and the same syllable as conjoining jamo.
+        {"\xEF\xBD\xB1", 1, 1},
+        {"\xEF\xBC\xA1", 2, 2},
+        {"\xE6\x97\xA5", 2, 2},
+        {"\xED\x95\x9C", 2, 2},
+        {"\xE1\x84\x92\xE1\x85\xA1\xE1\x86\xAB", 2, 2},
+        // The keycap number sign with and without U+FE0F; the smiling face,
+        // text by default, alone and with U+FE0F; the watch, emoji by
+        // default, alone and with U+FE0E.
+        {"#\xEF\xB8\x8F\xE2\x83\xA3", 2, 2},
+        {"#\xE2\x83\xA3", 1, 1},
+        {"\xE2\x98\xBA", 1, 1},
+        {"\xE2\x98\xBA\xEF\xB8\x8F", 2, 2},
+        {"\xE2\x8C\x9A", 2, 2},
+        {"\xE2\x8C\x9A\xEF\xB8\x8E", 1, 1},
+        // A flag, a lone regional indicator, thumbs up with a skin tone, and
+        // a family: man, ZWJ, woman, ZWJ, girl.
+        {"\xF0\x9F\x87\xB9\xF0\x9F\x87\xB7", 2, 2},
+        {"\xF0\x9F\x87\xB9", 1, 1},
+        {"\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBD", 2, 2},
+        {"\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7", 2, 2},
+    };
+    int mismatches = 0;
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        size_t length = strlen(cases[i].text);
+        size_t narrow = 9;
+        size_t wide = 9;
+        size_t clusters = 9;
+        (void)muniMeasureUtf8(cases[i].text, length, muni_unitColumn, SIZE_MAX, SIZE_MAX, nullptr,
+                              &narrow);
+        (void)muniMeasureUtf8(cases[i].text, length, muni_unitColumnWide, SIZE_MAX, SIZE_MAX,
+                              nullptr, &wide);
+        (void)muniMeasureUtf8(cases[i].text, length, muni_unitGraphemeCluster, SIZE_MAX, SIZE_MAX,
+                              nullptr, &clusters);
+        if ((narrow != cases[i].narrow || wide != cases[i].wide || clusters != 1) &&
+            mismatches++ < 5)
+        {
+            printf("columns of case %zu: %zu and %zu, %zu clusters\n", i, narrow, wide, clusters);
+        }
+    }
+    CHECK(mismatches == 0, "the columns of each kind of cluster");
+}
+
+static void TestColumnUses(void)
+{
+    // Two ideographs, a, b and a zero width space: 2 + 2 + 1 + 1 + 0.
+    static const char text[] = "\xE6\x97\xA5\xE6\x9C\xAC"
+                               "ab\xE2\x80\x8B";
+    size_t length = sizeof(text) - 1;
+    size_t bytes = 99;
+    size_t columns = 99;
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, SIZE_MAX, SIZE_MAX, &bytes, &columns) ==
+                  muni_success &&
+              bytes == length && columns == 6,
+          "the columns of a text");
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, SIZE_MAX, 5, &bytes, &columns) ==
+                  muni_success &&
+              bytes == 7 && columns == 5,
+          "a text cut to five columns");
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, SIZE_MAX, 3, &bytes, &columns) ==
+                  muni_success &&
+              bytes == 3 && columns == 2,
+          "a limit inside a wide character ends before it");
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, SIZE_MAX, 1, &bytes, &columns) ==
+                  muni_success &&
+              bytes == 0 && columns == 0,
+          "a first character that does not fit");
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, SIZE_MAX, 6, &bytes, &columns) ==
+                  muni_success &&
+              bytes == length && columns == 6,
+          "a cluster of no column after the limit belongs to the prefix");
+    CHECK(muniMeasureUtf8(text, length, muni_unitColumn, 4, SIZE_MAX, &bytes, &columns) ==
+                  muni_success &&
+              bytes == 3 && columns == 2,
+          "a byte offset as a column");
+    // An ill-formed byte reads as U+FFFD, Ambiguous: two columns from one
+    // byte in the wide unit, whether or not the columns are asked for.
+    CHECK(muniMeasureUtf8("\xFF", 1, muni_unitColumnWide, SIZE_MAX, 1, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 0,
+          "a wide ill-formed byte past a one-column limit, columns not asked");
+    CHECK(muniMeasureUtf8("a\xFF", 2, muni_unitColumnWide, SIZE_MAX, 2, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 1,
+          "a cut to two wide columns before an ill-formed byte");
+    CHECK(muniMeasureUtf8("a\xFF", 2, muni_unitColumnWide, SIZE_MAX, 3, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 2,
+          "the same cut to three columns takes it");
+}
+
 static void TestMeasureRefusals(void)
 {
     size_t bytes = 7;
@@ -1448,7 +1618,7 @@ static void TestMeasureRefusals(void)
                   muni_errorInvalid &&
               bytes == 7 && units == 7,
           "no text with a length is refused and leaves the outputs");
-    CHECK(muniMeasureUtf8("a", 1, 3, 5, SIZE_MAX, &bytes, &units) == muni_errorInvalid &&
+    CHECK(muniMeasureUtf8("a", 1, 5, 5, SIZE_MAX, &bytes, &units) == muni_errorInvalid &&
               bytes == 7 && units == 7,
           "an unknown unit");
     CHECK(muniMeasureUtf8("a", 1, -1, 5, SIZE_MAX, &bytes, &units) == muni_errorInvalid &&
@@ -2031,6 +2201,9 @@ int main(void)
     TestMeasureLimits();
     TestMeasureUses();
     TestMeasureRefusals();
+    TestColumnsOfEveryCodePoint();
+    TestColumnsOfClusters();
+    TestColumnUses();
     TestBreaksAround();
     TestBreaksAroundRefusals();
     return s_failures == 0 ? 0 : 1;
