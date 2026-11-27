@@ -816,12 +816,15 @@ muniResult muniMeasureUtf8(const char* text, size_t length, muniTextUnit unit, s
     }
     size_t bytes = length;
     size_t units = 0;
-    if (maxBytes < length || maxUnits < length || unitsOut != nullptr)
+    // A cut that fits whole and counts nothing needs no walk. A text has
+    // no more units than bytes, but in the wide column unit up to twice
+    // as many: an ill-formed byte reads as U+FFFD, which is Ambiguous. In
+    // the other column unit a cluster of two columns has two bytes or
+    // more, since its first code point is a well-formed one past U+1000
+    // or it holds U+FE0F or two regional indicators.
+    bool fitsAll = unit == muni_unitColumnWide ? maxUnits / 2 >= length : maxUnits >= length;
+    if (maxBytes < length || !fitsAll || unitsOut != nullptr)
     {
-        // A cut that fits whole and counts nothing needs no walk: a text
-        // has no more units than bytes. A cluster of two columns has two
-        // bytes or more, since its first code point is past U+00A0 or it
-        // holds U+FE0F.
         bytes = unit == muni_unitCodePoint || unit == muni_unitUtf16
                     ? MeasureCodePoints(text, length, unit == muni_unitUtf16, maxBytes, maxUnits,
                                         &units)

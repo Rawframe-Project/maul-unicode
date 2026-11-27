@@ -1588,6 +1588,20 @@ static void TestColumnUses(void)
                   muni_success &&
               bytes == 3 && columns == 2,
           "a byte offset as a column");
+    // An ill-formed byte reads as U+FFFD, Ambiguous: two columns from one
+    // byte in the wide unit, whether or not the columns are asked for.
+    CHECK(muniMeasureUtf8("\xFF", 1, muni_unitColumnWide, SIZE_MAX, 1, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 0,
+          "a wide ill-formed byte past a one-column limit, columns not asked");
+    CHECK(muniMeasureUtf8("a\xFF", 2, muni_unitColumnWide, SIZE_MAX, 2, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 1,
+          "a cut to two wide columns before an ill-formed byte");
+    CHECK(muniMeasureUtf8("a\xFF", 2, muni_unitColumnWide, SIZE_MAX, 3, &bytes, nullptr) ==
+                  muni_success &&
+              bytes == 2,
+          "the same cut to three columns takes it");
 }
 
 static void TestMeasureRefusals(void)

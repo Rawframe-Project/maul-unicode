@@ -478,6 +478,10 @@ static void CheckColumns(const char* text, size_t length, const size_t* breaks, 
         Require(muniMeasureUtf8(text, length, unit, SIZE_MAX, limit, &bytes, &units) ==
                     muni_success &&
                 bytes == fitBytes && units == fitColumns);
+        // Asking for the bytes alone gives the same cut.
+        Require(muniMeasureUtf8(text, length, unit, SIZE_MAX, limit, &bytes, nullptr) ==
+                    muni_success &&
+                bytes == fitBytes);
     }
 }
 
