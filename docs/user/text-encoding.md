@@ -22,6 +22,21 @@ Validation treats its input as hostile. It accepts exactly the well-formed seque
 
 An output that is too small gets whole code points, never part of one. The conversion returns `muni_errorCapacity` with the offset of the first code point it did not write, so the output holds the conversion of the input before that offset, and `neededOut` still counts the whole conversion. A caller that fills a fixed buffer keeps what was written, such as a name cut to fit, or converts the rest from that offset into the next buffer.
 
+## Repair
+
+`muniRepairUtf8` replaces each maximal ill-formed subpart with U+FFFD in the caller's buffer, the same bytes a replacing conversion to UTF-16 or UTF-32 and back would give, so text that must stay UTF-8 needs no second buffer. U+FFFD takes three bytes and a subpart one to three, so the repaired text can be longer than the input, at most three times: it grows into the buffer after the text. When it does not fit, the call returns `muni_errorCapacity` with the length it needs and leaves the text as it was, so the caller can grow the buffer and call again:
+
+```c
+size_t repaired = 0;
+muniResult status = muniRepairUtf8(buffer, length, capacity, &repaired);
+if (status == muni_errorCapacity)
+{
+    // Grow the buffer to at least repaired bytes, then repair again.
+}
+```
+
+A buffer of three times the length always holds the result. Valid text costs one validation pass and is not written.
+
 `muniValidateUtf16` checks that every surrogate is half of a pair. `muniDecodeUtf8`, `muniDecodeUtf16` and `muniEncodeUtf8` handle one code point; on an error a decoder reports the length to skip, at least one unit (the maximal subpart in UTF-8, the unpaired surrogate in UTF-16), so a loop that skips it always makes progress. The encoder takes the room left in its output and writes nothing when the code point does not fit, reporting the 1 to 4 bytes it needs, so a loop that encodes into the rest of a buffer cannot write past its end.
 
 ## Not obvious

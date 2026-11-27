@@ -234,6 +234,35 @@ extern "C"
                                                                   char* bytesOut, size_t capacity,
                                                                   size_t* neededOut);
 
+    /// Repairs UTF-8 in place: replaces each maximal ill-formed subpart
+    /// with U+FFFD, as `muni_convertReplace` reads the text, so the result
+    /// decodes to what a replacing conversion gives. U+FFFD is three bytes
+    /// and a subpart one to three, so the text grows into the buffer after
+    /// it: by two bytes for a subpart of one byte, by one for a subpart of
+    /// two. The repaired text is at most three times as long, so a buffer
+    /// of `3 * length` bytes always holds it. Valid text is not written.
+    ///
+    /// @param bytes      The text, at the start of a buffer of capacity
+    ///                   bytes. May be NULL when capacity is 0.
+    /// @param length     The number of bytes of text.
+    /// @param capacity   The number of bytes the buffer holds, at least
+    ///                   length.
+    /// @param lengthOut  Receives the repaired length. On success the
+    ///                   buffer holds the repaired text in its first
+    ///                   lengthOut bytes and the rest is as it was. On
+    ///                   `muni_errorCapacity`, the length the repair needs,
+    ///                   or SIZE_MAX when that does not fit in a size_t.
+    ///                   `muni_errorInvalid` leaves it as it was.
+    /// @return `muni_success`; `muni_errorCapacity` when the repaired text
+    ///         does not fit in capacity bytes, and then the buffer is left
+    ///         as it was; `muni_errorInvalid` for a NULL lengthOut, NULL
+    ///         bytes with a nonzero capacity, or a capacity below the
+    ///         length.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniRepairUtf8(char* bytes, size_t length, size_t capacity,
+                                                      size_t* lengthOut);
+
 #ifdef __cplusplus
 }
 #endif

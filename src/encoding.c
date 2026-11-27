@@ -462,3 +462,82 @@ muniTextResult muniConvertUtf32ToUtf8(const uint32_t* codePoints, size_t length,
     }
     return Finish(needed, capacity, stopped, neededOut);
 }
+
+// The length the text from start has once each maximal ill-formed subpart
+// is U+FFFD, three bytes, or SIZE_MAX when that does not fit in size_t. A
+// subpart is one to three bytes, so the text only grows.
+static size_t RepairedLength(const uint8_t* text, size_t length, size_t start)
+{
+    size_t repaired = length;
+    size_t offset = start;
+    while (offset < length)
+    {
+        uint32_t codePoint;
+        size_t size;
+        if (muniStepUtf8(text + offset, length - offset, &codePoint, &size) != muni_success)
+        {
+            MUNI_ASSERT(size <= 3);
+            size_t growth = 3 - size;
+            if (repaired > SIZE_MAX - growth)
+            {
+                return SIZE_MAX;
+            }
+            repaired += growth;
+        }
+        offset += size;
+    }
+    return repaired;
+}
+
+muniResult muniRepairUtf8(char* bytes, size_t length, size_t capacity, size_t* lengthOut)
+{
+    if ((bytes == nullptr && capacity != 0) || capacity < length || lengthOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    muniTextResult valid = muniValidateUtf8(bytes, length);
+    if (valid.status == muni_success)
+    {
+        *lengthOut = length;
+        return muni_success;
+    }
+    uint8_t* text = (uint8_t*)bytes;
+    size_t first = valid.offset;
+    size_t repaired = RepairedLength(text, length, first);
+    if (repaired > capacity)
+    {
+        *lengthOut = repaired;
+        return muni_errorCapacity;
+    }
+    // The text from the first error moves to the end of the repaired
+    // length and is rewritten forward from there. The bytes written up to
+    // any point are the bytes read so far plus their growth, and the
+    // growth so far is at most the whole growth, the distance moved, so
+    // the writer never passes the reader.
+    size_t shift = repaired - length;
+    memmove(text + first + shift, text + first, length - first);
+    size_t read = first + shift;
+    size_t written = first;
+    while (read < repaired)
+    {
+        uint32_t codePoint;
+        size_t size;
+        if (muniStepUtf8(text + read, repaired - read, &codePoint, &size) == muni_success)
+        {
+            memmove(text + written, text + read, size);
+            written += size;
+        }
+        else
+        {
+            text[written] = 0xEF;
+            text[written + 1] = 0xBF;
+            text[written + 2] = 0xBD;
+            written += 3;
+        }
+        read += size;
+        MUNI_ASSERT(written <= read);
+    }
+    MUNI_ASSERT(written == repaired);
+    *lengthOut = repaired;
+    return muni_success;
+}
