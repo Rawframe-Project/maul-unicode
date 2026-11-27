@@ -13,7 +13,7 @@ It never compromises on:
 ## Commands
 
 ```sh
-tools/check.sh changed          # before every push: rules, format, tidy on changed sources, Debug build, affected tests (< 2 min)
+tools/check.sh changed          # before every push (tools/hooks/pre-push runs it): rules, format, tidy on changed sources, Debug build, affected tests (< 2 min)
 tools/check.sh pr               # what the pull request check runs (< 10 min)
 tools/check.sh full             # adds TSan, shared, minimal and Release builds, longer fuzzing (< 20 min)
 cmake --preset linux-clang-20-asan && cmake --build --preset linux-clang-20-asan   # one CI cell
@@ -28,7 +28,7 @@ Run the `pr` and `full` tiers through the workspace's heavy-job wrapper on the s
 - **Killing by pattern.** Never `pkill -f`, `pgrep | kill` or `kill` a PID found by matching a name or path: other sessions build and fuzz on the same machine with the same binary names. Kill only a PID you started.
 - **Endless fuzzing.** A libFuzzer target runs until it finds something. Always pass `-max_total_time`, and stop what you started.
 - **Editing generated or external files.** `src/generated/` is written by `tools/munigen`; `tools/ucd/` holds the Unicode files exactly as published, with their SHA-256 in `tools/ucd/README.md`, which `tools/check_ucd.py` checks. Change the generator, or replace the data as [development.md](docs/operations/development.md#a-new-unicode-version) describes.
-- **Editing shared family files.** These are synced from the canonical copies in the organization's `.github` repository and fail CI when they differ: `docs/internals/maul-conventions.md`; `.clang-format`, `.clang-tidy`, `.editorconfig`, `.gitattributes`, `.gitignore`; `cmake/CompilerFlags.cmake`, `cmake/Install.cmake`, `cmake/Library.cmake`, `cmake/ReadVersion.cmake`, `cmake/Testing.cmake`, `cmake/Config.cmake.in`, `cmake/pkg-config.pc.in`, `cmake/HeaderCheck/CMakeLists.txt`; `bench/CMakeLists.txt`; `test/test_harness.h`; and `tools/build_docs.py`, `check_docs.py`, `check_exports.py`, `check_guide.py`, `check_lengths.py`, `check_modules.py`, `check_source.py`, `check_test_hygiene.py`, `gen_api.py`, `fuzz_target.sh`, `run_quarantine.sh`, `tidy_filter.sh`, and the fixtures in `tools/test_hygiene/`. Change the canonical copy first.
+- **Editing shared family files.** These are synced from the canonical copies in the organization's `.github` repository and fail CI when they differ: `docs/internals/maul-conventions.md`; `.clang-format`, `.clang-tidy`, `.editorconfig`, `.gitattributes`, `.gitignore`; `cmake/CompilerFlags.cmake`, `cmake/Install.cmake`, `cmake/Library.cmake`, `cmake/ReadVersion.cmake`, `cmake/Testing.cmake`, `cmake/Config.cmake.in`, `cmake/pkg-config.pc.in`, `cmake/HeaderCheck/CMakeLists.txt`; `bench/CMakeLists.txt`; `test/test_harness.h`; and `tools/build_docs.py`, `check_docs.py`, `check_exports.py`, `check_guide.py`, `check_lengths.py`, `check_modules.py`, `check_source.py`, `check_test_hygiene.py`, `gen_api.py`, `fuzz_target.sh`, `run_quarantine.sh`, `tidy_filter.sh`, `hooks/pre-push`, and the fixtures in `tools/test_hygiene/`. Change the canonical copy first.
 
 ## Invariants
 
