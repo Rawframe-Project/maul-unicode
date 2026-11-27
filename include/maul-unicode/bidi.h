@@ -78,6 +78,34 @@ extern "C"
                                                        size_t* paragraphLengthOut,
                                                        uint8_t* paragraphLevelOut);
 
+    /// Finds the base direction of the first paragraph of a UTF-8 text
+    /// from its first strong character (rules P2 and P3): a character of
+    /// class L, R or AL outside the isolates it holds. This is the
+    /// paragraph level muniResolveBidi gives with muni_bidiAuto, found
+    /// without resolving the paragraph: the call reads up to that
+    /// character, or the first paragraph separator, and no further.
+    ///
+    /// @param text          The text. May be NULL when length is 0. Each
+    ///                      maximal ill-formed subpart reads as U+FFFD, a
+    ///                      neutral.
+    /// @param length        The number of bytes.
+    /// @param directionOut  Receives muni_bidiLeftToRight for L,
+    ///                      muni_bidiRightToLeft for R or AL, and
+    ///                      muni_bidiAuto when the first paragraph has no
+    ///                      strong character outside isolates, which
+    ///                      muniResolveBidi takes as left to right.
+    /// @param offsetOut     Receives the offset of the strong character, or
+    ///                      with none, of the first paragraph separator, or
+    ///                      the length when there is none. May be NULL.
+    ///                      `muni_errorInvalid` leaves both as they were.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL
+    ///         directionOut or a NULL text with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniGetBaseDirection(const char* text, size_t length,
+                                                            muniBidiDirection* directionOut,
+                                                            size_t* offsetOut);
+
     /// Orders one line of a resolved paragraph for display (rules L1 and
     /// L2): writes its runs from left to right. Trailing whitespace and
     /// isolate formatting characters, and those before a tab or paragraph

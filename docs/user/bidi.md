@@ -15,6 +15,21 @@ muniResult status = muniResolveBidi(text, length, muni_bidiAuto, levels, workspa
 
 A paragraph ends after its first paragraph separator (LF, CR LF, U+2029 and the like) or at the end of the text; call again on the rest for the next paragraph. `muni_bidiAuto` takes the direction from the first strong character; a program that knows the direction, such as a right-to-left user interface, passes `muni_bidiLeftToRight` or `muni_bidiRightToLeft`.
 
+## The direction of a text
+
+A chat line, a player name or a text field whose direction comes from what it says, as `dir="auto"` does on the web, needs only its base direction, which `muniGetBaseDirection` finds without resolving the paragraph:
+
+```c
+muniBidiDirection direction = muni_bidiAuto;
+muniResult status = muniGetBaseDirection(text, length, &direction, nullptr);
+if (status == muni_success && direction == muni_bidiRightToLeft)
+{
+    // Align the line to the right.
+}
+```
+
+It reads up to the first strong character outside isolates, or to the end of the first paragraph, and gives `muni_bidiAuto` when there is none, as in a line of digits or emoji: the program then keeps its own default, where `muniResolveBidi` would take left to right. Its answer is the paragraph level `muniResolveBidi` finds with `muni_bidiAuto`, and an optional offset says where the deciding character is.
+
 ## Ordering lines
 
 After line breaking (see [Characters, words, sentences and lines](segmentation.md)), `muniReorderBidiLine` orders each line: it writes the line's runs of equal level from left to right, after putting trailing whitespace back at the paragraph level (rule L1). A renderer lays out the runs in that order. The glyphs of an odd run go right to left, and characters with a `muniGetMirroringGlyph`, such as parentheses, are drawn mirrored there.

@@ -92,6 +92,40 @@ static void ParseOrder(const char* text, Case* c)
 
 static uint8_t s_lineLevels[MAX_CODE_POINTS * 4];
 
+// The base direction of a text whose paragraph level muniResolveBidi
+// found with muni_bidiAuto: right to left exactly when that level is 1,
+// found at a strong character of its direction, or, with none, at the
+// end of the paragraph or its separator.
+static bool BaseDirectionAgrees(const char* text, size_t length, uint8_t paragraphLevel)
+{
+    muniBidiDirection direction = 99;
+    size_t offset = SIZE_MAX;
+    if (muniGetBaseDirection(text, length, &direction, &offset) != muni_success || offset > length)
+    {
+        return false;
+    }
+    if (direction == muni_bidiAuto)
+    {
+        uint32_t codePoint = 0;
+        size_t size = 0;
+        return paragraphLevel == 0 &&
+               (offset == length || (muniDecodeUtf8(text + offset, length - offset, &codePoint,
+                                                    &size) == muni_success &&
+                                     muniGetBidiClass(codePoint) == muni_bcB));
+    }
+    uint32_t codePoint = 0;
+    size_t size = 0;
+    if (offset == length ||
+        muniDecodeUtf8(text + offset, length - offset, &codePoint, &size) != muni_success)
+    {
+        return false;
+    }
+    muniBidiClass type = muniGetBidiClass(codePoint);
+    return direction == muni_bidiRightToLeft
+               ? paragraphLevel == 1 && (type == muni_bcR || type == muni_bcAl)
+               : direction == muni_bidiLeftToRight && paragraphLevel == 0 && type == muni_bcL;
+}
+
 // Resolves the case into the buffers given and compares levels and order.
 static bool Resolved(const Case* c, const char* text, uint8_t* levels, uint8_t* workspace,
                      muniBidiRun** runsOut, muniBidiDirection direction, int expectedParagraphLevel)
@@ -102,7 +136,8 @@ static bool Resolved(const Case* c, const char* text, uint8_t* levels, uint8_t* 
     if (muniResolveBidi(text, c->length, direction, levels, workspace, &paragraphLength,
                         &paragraphLevel) != muni_success ||
         paragraphLength != c->length ||
-        (expectedParagraphLevel >= 0 && paragraphLevel != expectedParagraphLevel))
+        (expectedParagraphLevel >= 0 && paragraphLevel != expectedParagraphLevel) ||
+        (direction == muni_bidiAuto && !BaseDirectionAgrees(text, c->length, paragraphLevel)))
     {
         return false;
     }
@@ -694,6 +729,58 @@ static void TestNegativeDirection(void)
     CHECK(refused, "a negative direction refused");
 }
 
+static void TestBaseDirection(void)
+{
+    // An isolate's letters do not count; a paragraph separator ends the
+    // search; ill-formed bytes are neutral.
+    static const struct
+    {
+        const char* text;
+        muniBidiDirection direction;
+        size_t offset;
+    } cases[] = {
+        {"abc", muni_bidiLeftToRight, 0},
+        {"12 \xD7\x90", muni_bidiRightToLeft, 3}, // digits, then alef
+        {"\xE2\x81\xA7\xD7\x90\xE2\x81\xA9"
+         "b",
+         muni_bidiLeftToRight, 8},                  // RLI alef PDI b
+        {"\xE2\x81\xA6\xD7\x90", muni_bidiAuto, 5}, // LRI alef, never closed
+        {"1\n\xD7\x90", muni_bidiAuto, 1},          // the alef is in the next paragraph
+        {"\xFF\xD8\xA7", muni_bidiRightToLeft, 1},  // an ill-formed byte, then Arabic alef
+        {"", muni_bidiAuto, 0},
+    };
+    int mismatches = 0;
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        size_t length = strlen(cases[i].text);
+        // Exactly the text's bytes, so AddressSanitizer sees a read past
+        // them.
+        char* text = malloc(length == 0 ? 1 : length);
+        memcpy(text, cases[i].text, length);
+        muniBidiDirection direction = 99;
+        size_t offset = 99;
+        bool agrees = muniGetBaseDirection(length == 0 ? nullptr : text, length, &direction,
+                                           &offset) == muni_success &&
+                      direction == cases[i].direction && offset == cases[i].offset;
+        if (!agrees && mismatches++ < 5)
+        {
+            printf("base direction of case %zu: %d at %zu\n", i, (int)direction, offset);
+        }
+        free(text);
+    }
+    CHECK(mismatches == 0, "base directions");
+    muniBidiDirection direction = 99;
+    size_t offset = 99;
+    CHECK(muniGetBaseDirection(nullptr, 1, &direction, &offset) == muni_errorInvalid &&
+              direction == 99 && offset == 99,
+          "base direction: NULL text with a length");
+    CHECK(muniGetBaseDirection("a", 1, nullptr, &offset) == muni_errorInvalid && offset == 99,
+          "base direction: NULL directionOut");
+    CHECK(muniGetBaseDirection("a", 1, &direction, nullptr) == muni_success &&
+              direction == muni_bidiLeftToRight,
+          "base direction: no offsetOut");
+}
+
 int main(void)
 {
     TestCharacterFile();
@@ -704,5 +791,6 @@ int main(void)
     TestMaps();
     TestMapOverlap();
     TestNegativeDirection();
+    TestBaseDirection();
     return s_failures == 0 ? 0 : 1;
 }

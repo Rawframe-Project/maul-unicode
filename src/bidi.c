@@ -33,7 +33,7 @@ muniResult muniResolveBidi(const char* text, size_t length, muniBidiDirection di
                                    workspace, 0};
     if (direction == muni_bidiAuto)
     {
-        paragraph.level = muniBidiFirstStrongLevel(&paragraph, 0, false, 0);
+        paragraph.level = muniBidiFirstStrongLevel(&paragraph, 0, false, 0, nullptr);
     }
     else
     {
@@ -49,5 +49,27 @@ muniResult muniResolveBidi(const char* text, size_t length, muniBidiDirection di
     }
     *paragraphLengthOut = paragraph.length;
     *paragraphLevelOut = paragraph.level;
+    return muni_success;
+}
+
+muniResult muniGetBaseDirection(const char* text, size_t length, muniBidiDirection* directionOut,
+                                size_t* offsetOut)
+{
+    if ((text == nullptr && length != 0) || directionOut == nullptr)
+    {
+        return muni_errorInvalid;
+    }
+    // The search ends at the first paragraph separator, so the paragraph
+    // need not be measured first: the whole text stands for it.
+    const muniBidiParagraph paragraph = {(const uint8_t*)text, length, nullptr, nullptr, 0};
+    size_t offset;
+    uint8_t level = muniBidiFirstStrongLevel(&paragraph, 0, false, 2, &offset);
+    *directionOut = level == 2   ? muni_bidiAuto
+                    : level == 1 ? muni_bidiRightToLeft
+                                 : muni_bidiLeftToRight;
+    if (offsetOut != nullptr)
+    {
+        *offsetOut = offset;
+    }
     return muni_success;
 }

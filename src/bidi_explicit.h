@@ -16,9 +16,13 @@ size_t muniBidiParagraphLength(const uint8_t* text, size_t length);
 // Rules P2 and P3 from index, within the paragraph: 1 when the first
 // strong class outside isolates is R or AL, 0 when it is L, and
 // fallback when there is none. With stopAtPdi, the search also ends at
-// the PDI that closes an isolate starting just before index.
+// the PDI that closes an isolate starting just before index. A search
+// also ends at a paragraph separator, so a paragraph of the whole text
+// gives the answer for its first paragraph. offsetOut, when not NULL,
+// receives where the search ended: the strong character's offset, or
+// that of the PDI or separator it stopped at, or the length.
 uint8_t muniBidiFirstStrongLevel(const muniBidiParagraph* paragraph, size_t index, bool stopAtPdi,
-                                 uint8_t fallback);
+                                 uint8_t fallback, size_t* offsetOut);
 
 // Rules X1 to X9 over the paragraph: writes each code point's explicit
 // level and class, and marks continuation bytes and removed code points.
