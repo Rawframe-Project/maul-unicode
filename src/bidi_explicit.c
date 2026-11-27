@@ -52,15 +52,15 @@ size_t muniBidiParagraphLength(const uint8_t* text, size_t length)
 }
 
 uint8_t muniBidiFirstStrongLevel(const muniBidiParagraph* paragraph, size_t index, bool stopAtPdi,
-                                 uint8_t fallback)
+                                 uint8_t fallback, size_t* offsetOut)
 {
     size_t depth = 0;
+    uint8_t level = fallback;
     while (index < paragraph->length)
     {
         size_t size;
         uint8_t type = muniLookupBidiClass(
             muniBidiCodePoint(paragraph->text, paragraph->length, index, &size));
-        index += size;
         if (muniBidiIsIsolateInitiator(type))
         {
             depth += 1;
@@ -79,14 +79,21 @@ uint8_t muniBidiFirstStrongLevel(const muniBidiParagraph* paragraph, size_t inde
         }
         else if (depth == 0 && type == muni_bcL)
         {
-            return 0;
+            level = 0;
+            break;
         }
         else if (depth == 0 && (type == muni_bcR || type == muni_bcAl))
         {
-            return 1;
+            level = 1;
+            break;
         }
+        index += size;
     }
-    return fallback;
+    if (offsetOut != nullptr)
+    {
+        *offsetOut = index;
+    }
+    return level;
 }
 
 static Status* Top(Explicit* state)
@@ -221,9 +228,9 @@ static void Apply(Explicit* state, const muniBidiParagraph* paragraph, size_t in
         // direction is looked for only while one could still be pushed.
         bool pushable = RaisedLevel(state, true) <= MUNI_BIDI_MAX_DEPTH &&
                         state->overflowIsolates == 0 && state->overflowEmbeddings == 0;
-        bool rightToLeft =
-            type == muni_bcRli || (type == muni_bcFsi && pushable &&
-                                   muniBidiFirstStrongLevel(paragraph, next, true, 0) == 1);
+        bool rightToLeft = type == muni_bcRli ||
+                           (type == muni_bcFsi && pushable &&
+                            muniBidiFirstStrongLevel(paragraph, next, true, 0, nullptr) == 1);
         PushIsolate(state, rightToLeft);
         return;
     }

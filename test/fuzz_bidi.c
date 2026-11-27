@@ -4,7 +4,8 @@
 // libFuzzer target for the bidi algorithm. The first input byte picks
 // the direction and a line split; the rest is the text. Paragraphs must
 // tile the text, levels stay within 126, the runs of each line cover it
-// exactly once, and the visual order from levels is a permutation.
+// exactly once, the visual order from levels is a permutation, and the
+// base direction found without resolving is the paragraph level.
 
 #include "maul-unicode/bidi.h"
 
@@ -78,6 +79,14 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         Require(muniResolveBidi(text + offset, length - offset, direction, levels, workspace,
                                 &paragraph, &level) == muni_success);
         Require(paragraph > 0 && paragraph <= length - offset && level <= 1);
+        // The base direction found without resolving is the paragraph level
+        // of muni_bidiAuto, decided within the paragraph.
+        muniBidiDirection base = 99;
+        size_t decided = SIZE_MAX;
+        Require(muniGetBaseDirection(text + offset, length - offset, &base, &decided) ==
+                    muni_success &&
+                decided <= paragraph &&
+                (direction != muni_bidiAuto || (base == muni_bidiRightToLeft) == (level == 1)));
         for (size_t k = 0; k < paragraph; k++)
         {
             Require(levels[k] <= 126);

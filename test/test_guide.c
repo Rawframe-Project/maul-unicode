@@ -233,6 +233,19 @@ static void GuideBidi(void)
           "a left-to-right paragraph");
 }
 
+static void GuideBaseDirection(void)
+{
+    const char* text = "\xD7\xA9\xD7\x9C\xD7\x95\xD7\x9D!";
+    size_t length = 9;
+    muniBidiDirection direction = muni_bidiAuto;
+    muniResult status = muniGetBaseDirection(text, length, &direction, nullptr);
+    if (status == muni_success && direction == muni_bidiRightToLeft)
+    {
+        // Align the line to the right.
+    }
+    CHECK(status == muni_success && direction == muni_bidiRightToLeft, "a Hebrew line");
+}
+
 static void GuideScripts(void)
 {
     const char* text = "abc \xCE\xB1\xCE\xB2";
@@ -273,6 +286,7 @@ int main(void)
     GuideComplexBreaker();
     GuideLanguageConventions();
     GuideBidi();
+    GuideBaseDirection();
     GuideScripts();
     GuideIdentifierKey();
     return s_failures == 0 ? 0 : 1;
