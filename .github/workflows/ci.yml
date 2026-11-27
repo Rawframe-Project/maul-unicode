@@ -321,7 +321,10 @@ jobs:
 
   # The library and its tests under Emscripten and Node, and the size of the
   # static library in total and per optional component. The CI image has no
-  # Emscripten, so this job uses the runner and the emsdk action.
+  # Emscripten, so this job uses the runner and the emsdk action, pinned to
+  # the family's Emscripten version: the action installs the latest one
+  # otherwise, and a new release then changes the compiler under a commit
+  # that did not change. The version moves in a pull request of its own.
   web:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -334,6 +337,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: 7.0.1
       - name: Configure
         run: emcmake cmake -B out/web -DCMAKE_BUILD_TYPE=Release -D${PREFIX}_WERROR=ON
       - name: Build
