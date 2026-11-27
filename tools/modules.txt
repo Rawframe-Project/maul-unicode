@@ -25,7 +25,7 @@ line_tailored: line_rules segmenter
 normalize: decompose encoding normalizer overlap tables writer
 normalizer: decompose tables writer
 overlap:
-nfkc_casefold: case_map decompose encoding invariant normalizer overlap tables
+nfkc_casefold: case_map decompose encoding invariant normalizer overlap tables writer
 properties: tables
 script_runs: invariant script_state tables
 script_state: cursor

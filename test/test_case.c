@@ -17,6 +17,8 @@
 
 #ifdef MUNI_UCD_DATA
 #include "ucd.h"
+
+#include "maul-unicode/normalize.h"
 #endif
 
 #include <stdlib.h>
@@ -998,6 +1000,216 @@ static void TestGreekAgainstTheUcd(void)
           "Greek letters follow UnicodeData.txt, the rest the default rules");
 }
 
+// The folded form of text for a caseless match, through the calls that
+// produce it into buffers; false when a call refuses. 256 bytes hold the
+// folded forms of every text below.
+static bool FoldedForm(const char* text, size_t length, muniCaselessMatch match, char* out,
+                       size_t* lengthOut)
+{
+    char decomposed[256];
+    char folded[256];
+    size_t size = 0;
+    switch (match)
+    {
+    case muni_caselessDefault:
+        return muniConvertCase(text, length, muni_caseFold, muni_caseDefault, muni_convertReplace,
+                               out, 256, lengthOut)
+                   .status == muni_success;
+    case muni_caselessCanonical:
+        return muniNormalize(text, length, muni_nfd, muni_convertReplace, decomposed, 256, &size)
+                       .status == muni_success &&
+               muniConvertCase(decomposed, size, muni_caseFold, muni_caseDefault,
+                               muni_convertStrict, folded, 256, &size)
+                       .status == muni_success &&
+               muniNormalize(folded, size, muni_nfd, muni_convertStrict, out, 256, lengthOut)
+                       .status == muni_success;
+    default:
+        return muniGetNfkcCasefold(text, length, muni_convertReplace, out, 256, lengthOut).status ==
+               muni_success;
+    }
+}
+
+// Texts whose folded forms differ in ways a caseless match must see or
+// must not: case, sharp s, composed and decomposed accents, marks out of
+// canonical order, compatibility ligatures, dotted and dotless i, the
+// Kelvin sign, final sigma, U+0345 before and after an accent, Hangul,
+// a default ignorable, ill-formed bytes, prefixes.
+static const char* const s_caselessTexts[] = {
+    "",
+    "a",
+    "A",
+    "ab",
+    "Ab",
+    "abc",
+    "Stra\xC3\x9F\x65", // "e" escaped: a letter after \x9F would extend it
+    "STRASSE",
+    "strasse",
+    "\xC3\xA9",
+    "e\xCC\x81",
+    "E\xCC\x81",
+    "\xC3\x89",
+    "a\xCC\x81\xCC\x96",
+    "a\xCC\x96\xCC\x81",
+    "\xEF\xAC\x81",
+    "fi",
+    "FI",
+    "\xC4\xB0",
+    "i\xCC\x87",
+    "\xC4\xB1",
+    "\xE2\x84\xAA",
+    "k",
+    "\xCE\xA3",
+    "\xCF\x83",
+    "\xCF\x82",
+    "\xCE\x90",
+    "\xCE\xB9\xCC\x88\xCC\x81",
+    "\xE1\xBE\xB3\xCC\x81",
+    "\xCE\xB1\xCD\x85\xCC\x81",
+    "\xCE\xB1\xCC\x81\xCD\x85",
+    "\xED\x95\x9C",
+    "\xE1\x84\x92\xE1\x85\xA1\xE1\x86\xAB",
+    "x\xC2\xAD",
+    "x",
+    "\xFF",
+    "\xEF\xBF\xBD",
+    "z\xF0\x9F\x98\x80",
+};
+
+static void TestCaselessAgainstFolding(void)
+{
+    size_t count = sizeof(s_caselessTexts) / sizeof(s_caselessTexts[0]);
+    int mismatches = 0;
+    for (muniCaselessMatch match = 0; match <= muni_caselessIdentifier; match++)
+    {
+        for (size_t i = 0; i < count; i++)
+        {
+            for (size_t j = 0; j < count; j++)
+            {
+                size_t firstLength = strlen(s_caselessTexts[i]);
+                size_t secondLength = strlen(s_caselessTexts[j]);
+                char firstForm[256];
+                char secondForm[256];
+                size_t firstSize = 0;
+                size_t secondSize = 0;
+                bool folded =
+                    FoldedForm(s_caselessTexts[i], firstLength, match, firstForm, &firstSize) &&
+                    FoldedForm(s_caselessTexts[j], secondLength, match, secondForm, &secondSize);
+                size_t common = firstSize < secondSize ? firstSize : secondSize;
+                int compared = memcmp(firstForm, secondForm, common);
+                int32_t expected = compared < 0              ? -1
+                                   : compared > 0            ? 1
+                                   : firstSize == secondSize ? 0
+                                   : firstSize < secondSize  ? -1
+                                                             : 1;
+                // Each text alone in a heap allocation of exactly its
+                // length, so that AddressSanitizer sees a read past it.
+                char* first = malloc(firstLength == 0 ? 1 : firstLength);
+                char* second = malloc(secondLength == 0 ? 1 : secondLength);
+                memcpy(first, s_caselessTexts[i], firstLength);
+                memcpy(second, s_caselessTexts[j], secondLength);
+                int32_t order = 9;
+                muniResult status =
+                    muniCompareCaseless(first, firstLength, second, secondLength, match, &order);
+                free(first);
+                free(second);
+                if ((!folded || status != muni_success || order != expected) && mismatches++ < 5)
+                {
+                    printf("caseless %d, texts %zu and %zu: %d, expected %d\n", (int)match, i, j,
+                           (int)order, (int)expected);
+                }
+            }
+        }
+    }
+    CHECK(mismatches == 0, "caseless comparison agrees with comparing folded forms");
+}
+
+static void TestCaselessExamples(void)
+{
+    int32_t order = 9;
+    CHECK(muniCompareCaseless("Stra\xC3\x9F"
+                              "e",
+                              7, "STRASSE", 7, muni_caselessDefault, &order) == muni_success &&
+              order == 0,
+          "sharp s matches SS");
+    CHECK(muniCompareCaseless("\xC3\xA9", 2, "E\xCC\x81", 3, muni_caselessDefault, &order) ==
+                  muni_success &&
+              order != 0,
+          "composed and decomposed differ in the default match");
+    CHECK(muniCompareCaseless("\xC3\xA9", 2, "E\xCC\x81", 3, muni_caselessCanonical, &order) ==
+                  muni_success &&
+              order == 0,
+          "and match canonically");
+    // Full case folding already turns the ligature fi into "fi"; a
+    // fullwidth letter folds to a fullwidth letter.
+    CHECK(muniCompareCaseless("\xEF\xAC\x81", 3, "FI", 2, muni_caselessDefault, &order) ==
+                  muni_success &&
+              order == 0,
+          "the ligature fi folds to fi");
+    CHECK(muniCompareCaseless("\xEF\xBC\xA1", 3, "a", 1, muni_caselessCanonical, &order) ==
+                  muni_success &&
+              order != 0,
+          "a fullwidth A differs from a canonically");
+    CHECK(muniCompareCaseless("\xEF\xBC\xA1", 3, "a", 1, muni_caselessIdentifier, &order) ==
+                  muni_success &&
+              order == 0,
+          "and matches it as an identifier");
+    CHECK(muniCompareCaseless("ab", 2, "AC", 2, muni_caselessDefault, &order) == muni_success &&
+              order == -1,
+          "b before c");
+    CHECK(muniCompareCaseless("ab", 2, "A", 1, muni_caselessDefault, &order) == muni_success &&
+              order == 1,
+          "a prefix comes first");
+}
+
+static void TestCaselessLimitsAndRefusals(void)
+{
+    // A base and 40 combining acute accents: one segment past the limit.
+    char marks[1 + 40 * 2];
+    marks[0] = 'a';
+    for (size_t i = 0; i < 40; i++)
+    {
+        marks[1 + 2 * i] = (char)0xCC;
+        marks[2 + 2 * i] = (char)0x81;
+    }
+    int32_t order = 9;
+    CHECK(muniCompareCaseless(marks, sizeof(marks), marks, sizeof(marks), muni_caselessDefault,
+                              &order) == muni_success &&
+              order == 0,
+          "the default match has no segment limit");
+    order = 9;
+    CHECK(muniCompareCaseless(marks, sizeof(marks), marks, sizeof(marks), muni_caselessCanonical,
+                              &order) == muni_errorLimit &&
+              order == 9,
+          "a canonical match refuses a segment past the limit");
+    CHECK(muniCompareCaseless(marks, sizeof(marks), "a", 1, muni_caselessIdentifier, &order) ==
+                  muni_errorLimit &&
+              order == 9,
+          "so does an identifier match");
+    CHECK(muniCompareCaseless("b", 1, marks, sizeof(marks), muni_caselessCanonical, &order) ==
+                  muni_errorLimit &&
+              order == 9,
+          "even when the segment differs from the first character");
+    CHECK(muniCompareCaseless("b", 1, marks, sizeof(marks), muni_caselessCanonical, nullptr) ==
+              muni_errorInvalid,
+          "caseless: NULL orderOut");
+    CHECK(muniCompareCaseless(nullptr, 1, "a", 1, muni_caselessDefault, &order) ==
+                  muni_errorInvalid &&
+              order == 9,
+          "caseless: NULL first text with a length");
+    CHECK(muniCompareCaseless("a", 1, nullptr, 1, muni_caselessDefault, &order) ==
+                  muni_errorInvalid &&
+              order == 9,
+          "caseless: NULL second text with a length");
+    CHECK(muniCompareCaseless("a", 1, "a", 1, 3, &order) == muni_errorInvalid && order == 9,
+          "caseless: an unknown match");
+    CHECK(muniCompareCaseless("a", 1, "a", 1, -1, &order) == muni_errorInvalid && order == 9,
+          "caseless: a negative match");
+    CHECK(muniCompareCaseless(nullptr, 0, nullptr, 0, muni_caselessIdentifier, &order) ==
+                  muni_success &&
+              order == 0,
+          "caseless: two empty texts");
+}
+
 #endif
 
 // The two text mappings, with their other arguments fixed.
@@ -1109,6 +1321,9 @@ int main(void)
     TestSimpleAgainstTheUcd();
     TestFullAgainstTheUcd();
     TestGreekAgainstTheUcd();
+    TestCaselessAgainstFolding();
+    TestCaselessExamples();
+    TestCaselessLimitsAndRefusals();
 #endif
     return s_failures == 0 ? 0 : 1;
 }

@@ -33,6 +33,18 @@ muniTextResult result =
 // all get the key "alice".
 ```
 
+A key suits text looked up many times, such as names in a table. To match one text against another once, such as a typed command against a known one, `muniCompareCaseless` compares them without buffers: it folds both a segment at a time and stops at the first difference. It gives 0 for a match and otherwise -1 or 1 in the code point order of the folded forms, so it can sort too. `muni_caselessDefault` folds case alone, `muni_caselessCanonical` also matches canonically equivalent texts, such as a composed "é" and "e" with a combining accent, and `muni_caselessIdentifier` matches as the keys above do. It needs both components.
+
+```c
+int32_t order = 1;
+muniResult status =
+    muniCompareCaseless(typed, typedLength, "/give", 5, muni_caselessIdentifier, &order);
+if (status == muni_success && order == 0)
+{
+    // The player typed the command, in any case.
+}
+```
+
 ## Not obvious
 
 - Normalization reorders at most `MUNI_MAX_NORMALIZATION_SEGMENT` (32) code points at once: a starter and the combining marks after it, once fully decomposed. That leaves 31 marks after a starter, and fewer when the starter itself decomposes (U+01D8 is u and two marks). Longer runs are refused with `muni_errorLimit` and the offset of the mark that makes the run too long; real text carries a handful, and UAX #15's stream-safe text at most 30. Skeletons and NFKC_Casefold share the limit.
