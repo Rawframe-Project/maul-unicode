@@ -56,10 +56,9 @@ typedef struct Emoji
     uint8_t* emoji;
     uint8_t* modifierBase;
     uint8_t* modifier;
-    uint8_t* basic;     // 1: alone, 2: with U+FE0F
+    uint8_t* basic;     // 1: alone, 2: with U+FE0F, 4: as a keycap base
     uint8_t* modifiers; // the modifiers a base takes in modifier sequences, as bits
     uint8_t flags[FLAG_BYTES];
-    int keycaps;
     char tags[MAX_TAGS][MAX_TAG_LENGTH + 1];
     int tagCount;
     uint32_t bases[MAX_BASES]; // the bases of ZWJ elements, sorted
@@ -185,11 +184,12 @@ static void LoadSequences(Emoji* data)
         }
         else if (strcmp(fields[1], "Emoji_Keycap_Sequence") == 0)
         {
-            if (n != 3 || !IsKeycapBase(s[0]) || s[1] != VS16 || s[2] != KEYCAP)
+            if (n != 3 || !IsKeycapBase(s[0]) || s[1] != VS16 || s[2] != KEYCAP ||
+                (data->basic[s[0]] & 4) != 0)
             {
-                Fail("U+%04X: a keycap sequence of another form", s[0]);
+                Fail("U+%04X: a keycap sequence of another form, or listed twice", s[0]);
             }
-            data->keycaps++;
+            data->basic[s[0]] |= 4;
         }
         else if (strcmp(fields[1], "RGI_Emoji_Flag_Sequence") == 0)
         {
@@ -222,15 +222,15 @@ static void CheckRules(const Emoji* data)
         {
             Fail("U+%04X: a basic emoji the rules do not give, or the other way round", c);
         }
+        if (((data->basic[c] & 4) != 0) != IsKeycapBase(c))
+        {
+            Fail("U+%04X: a keycap the rules do not give, or the other way round", c);
+        }
         uint8_t taken = data->modifiers[c];
         if (taken != 0 && taken != (1u << MODIFIERS) - 1)
         {
             Fail("U+%04X takes some modifiers but not all", c);
         }
-    }
-    if (data->keycaps != 12)
-    {
-        Fail("%d keycap sequences, where the rules give 12", data->keycaps);
     }
 }
 
