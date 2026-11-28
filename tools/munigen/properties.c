@@ -434,11 +434,11 @@ void WriteProperties(void)
                "GraphemeBreakProperty.txt");
     LoadEnumerated("WordBreakProperty.txt", "WB", nullptr, s_wordBreakNames,
                    COUNT_OF(s_wordBreakNames), values);
-    WriteTable(values, "word_break", "WordBreak", "Word_Break", "WordBreakProperty.txt");
+    WriteAsciiTable(values, "word_break", "WordBreak", "Word_Break", "WordBreakProperty.txt");
     LoadEnumerated("SentenceBreakProperty.txt", "SB", nullptr, s_sentenceBreakNames,
                    COUNT_OF(s_sentenceBreakNames), values);
-    WriteTable(values, "sentence_break", "SentenceBreak", "Sentence_Break",
-               "SentenceBreakProperty.txt");
+    WriteAsciiTable(values, "sentence_break", "SentenceBreak", "Sentence_Break",
+                    "SentenceBreakProperty.txt");
     LoadEnumerated("DerivedCoreProperties.txt", "InCB", "InCB", s_indicConjunctBreakNames,
                    COUNT_OF(s_indicConjunctBreakNames), values);
     WriteTable(values, "indic_conjunct_break", "IndicConjunctBreak", "Indic_Conjunct_Break",
@@ -454,7 +454,7 @@ void WriteProperties(void)
     WriteDecimalZeros();
     LoadEnumerated("LineBreak.txt", "lb", nullptr, s_lineBreakNames, COUNT_OF(s_lineBreakNames),
                    values);
-    WriteTable(values, "line_break", "LineBreak", "Line_Break", "LineBreak.txt");
+    WriteAsciiTable(values, "line_break", "LineBreak", "Line_Break", "LineBreak.txt");
     LoadEnumerated("EastAsianWidth.txt", "ea", nullptr, s_eastAsianWidthNames,
                    COUNT_OF(s_eastAsianWidthNames), values);
     WriteTable(values, "east_asian_width", "EastAsianWidth", "East_Asian_Width",
