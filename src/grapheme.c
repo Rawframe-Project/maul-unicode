@@ -47,9 +47,10 @@ MUNI_NODISCARD static bool JoinsHangul(uint8_t before, uint8_t after)
     return (before == muni_gcbLvt || before == muni_gcbT) && after == muni_gcbT;
 }
 
-bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t after, uint32_t codePoint)
+bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t properties)
 {
     uint8_t before = state->previous;
+    uint8_t after = properties & muni_graphemePropertyBreak;
     if (before == muni_gcbCr && after == muni_gcbLf)
     {
         return false; // GB3
@@ -67,12 +68,12 @@ bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t after, uint3
     {
         return false; // GB9, GB9a, GB9b
     }
-    if (state->linker && muniLookupIndicConjunctBreak(codePoint) == muni_incbConsonant)
+    if (state->linker && (properties & muni_graphemePropertyConjunct) >> 4 == muni_incbConsonant)
     {
         return false; // GB9c
     }
     if (state->emoji == EmojiJoined && before == muni_gcbZwj &&
-        (muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0)
+        (properties & muni_graphemePropertyPictographic) != 0)
     {
         return false; // GB11
     }
@@ -84,18 +85,20 @@ bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t after, uint3
     return true; // GB999
 }
 
-void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codePoint)
+void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t properties)
 {
-    if (codePoint < 0x80)
+    if (properties == 0)
     {
-        // ASCII has no InCB value and nothing Extended_Pictographic.
+        // Other, no Indic_Conjunct_Break and nothing Extended_Pictographic,
+        // as most letters are: every field starts over.
         state->linker = false;
         state->emoji = EmojiNone;
         state->oddRegional = false;
-        state->previous = value;
+        state->previous = muni_gcbOther;
         return;
     }
-    uint8_t conjunct = muniLookupIndicConjunctBreak(codePoint);
+    uint8_t value = properties & muni_graphemePropertyBreak;
+    uint8_t conjunct = (properties & muni_graphemePropertyConjunct) >> 4;
     if (conjunct == muni_incbLinker)
     {
         state->linker = true;
@@ -104,7 +107,7 @@ void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codeP
     {
         state->linker = false;
     }
-    if ((muniLookupEmoji(codePoint) & muni_emojiExtendedPictographic) != 0)
+    if ((properties & muni_graphemePropertyPictographic) != 0)
     {
         state->emoji = EmojiPictographic;
     }
@@ -138,9 +141,11 @@ bool muniGraphemeRestarts(uint32_t codePoint)
     return codePoint < 0x80 || muniLookupIndicConjunctBreak(codePoint) != muni_incbExtend;
 }
 
+// The value the engine carries is the code point's grapheme properties.
 static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
-    muniGraphemeAdvance(&segmenter->rules.grapheme, value, codePoint);
+    (void)codePoint;
+    muniGraphemeAdvance(&segmenter->rules.grapheme, value);
 }
 
 // Before ASCII the rules join only LF after CR (GB3) and anything but a
@@ -156,17 +161,18 @@ static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32
     {
         boundary = !(state->previous == muni_gcbCr && value == muni_gcbLf) &&
                    !(state->previous == muni_gcbPrepend && !IsControl(value));
-        MUNI_ASSERT(boundary == muniGraphemeIsBoundary(state, value, codePoint));
+        MUNI_ASSERT(boundary == muniGraphemeIsBoundary(state, value));
     }
     else
     {
-        boundary = muniGraphemeIsBoundary(state, value, codePoint);
+        boundary = muniGraphemeIsBoundary(state, value);
     }
     return boundary ? muni_decideBreak : muni_decideJoin;
 }
 
-// ASCII's Grapheme_Cluster_Break without the table: CR, LF, the other C0
-// controls and DEL, and Other.
+// ASCII's grapheme properties without the table: its Grapheme_Cluster_Break
+// is CR, LF, Control for the other C0 controls and DEL, or Other, and it
+// has no Indic_Conjunct_Break and nothing Extended_Pictographic.
 static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
 {
     (void)segmenter;
@@ -176,10 +182,10 @@ static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
                         : codePoint == '\n'                     ? muni_gcbLf
                         : codePoint < 0x20 || codePoint == 0x7F ? muni_gcbControl
                                                                 : muni_gcbOther;
-        MUNI_ASSERT(value == muniLookupGraphemeClusterBreak(codePoint));
+        MUNI_ASSERT(value == muniLookupGraphemeProperties(codePoint));
         return value;
     }
-    return muniLookupGraphemeClusterBreak(codePoint);
+    return muniLookupGraphemeProperties(codePoint);
 }
 
 muniResult muniNextGraphemeSegment(muniSegmenter* segmenter, size_t* offsetOut)

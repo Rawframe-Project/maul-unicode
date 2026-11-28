@@ -8,6 +8,8 @@ Each property has its own multi-level lookup table, and boolean properties use t
 
 One table per property maps queries one to one onto tables, lets a build that leaves out an algorithm keep every property query, and turns a property a later Unicode version adds into a new table rather than a new packing. A single combined record per code point would cost several times as much and could not leave out what a build does not use; a trie with one fixed split for every property costs more per table than a searched split.
 
+Where one loop reads several properties of every code point, they share a table, a trade of size for speed stated in the pull request that made it. QuickCheck holds the normalization quick checks. GraphemeProperties holds Grapheme_Cluster_Break, Indic_Conjunct_Break and Extended_Pictographic in one byte, so the grapheme rules look a code point up once instead of three times, for 83 bytes more than the two tables it replaced; Extended_Pictographic stays in the emoji table too, for the queries and rules outside grapheme breaking.
+
 Some data does not suit a per-code-point table:
 
 - **Rank indexes** store sparse mappings (decompositions, compatibility mappings, confusable prototypes). A small table gives each 64-code-point block that holds any entry a block number; per block, a 64-bit map marks the code points that have one, and the block's rank plus the count of marked bits below a code point is the position of its entry. Entries sit in code point order. A lookup costs a table walk, a bit test and a population count (`muniRank` in `src/bits.h`). Per-code-point indexes into such data would never repeat, so no block of their table could be shared.
@@ -27,7 +29,7 @@ CI rebuilds the generator, regenerates the tables and fails on any byte of diffe
 
 The library must stay small enough for web builds. Each component's tables have a ceiling, listed in `tools/table-budget.txt` with the generated tables it covers, and `tools/table_budget.py` checks the generator's report against it in CI: a component past its ceiling, or a table no component covers, fails.
 
-The ceilings come from the smallest measured implementation that stores the same data. General_Category, Canonical_Combining_Class, mirroring, Script and canonical decomposition together stay within HarfBuzz's total for the same data; line, word, sentence and grapheme breaking data stay within ICU4X's rule data for each. A component without such a reference takes its first measured size as its ceiling. East_Asian_Width counts toward line breaking (rule LB30 reads it) and Indic_Conjunct_Break toward grapheme breaking (rule GB9c).
+The ceilings come from the smallest measured implementation that stores the same data. General_Category, Canonical_Combining_Class, mirroring, Script and canonical decomposition together stay within HarfBuzz's total for the same data; line, word, sentence and grapheme breaking data stay within ICU4X's rule data for each. A component without such a reference takes its first measured size as its ceiling. East_Asian_Width counts toward line breaking (rule LB30 reads it) and the grapheme properties, with Indic_Conjunct_Break (rule GB9c) and Extended_Pictographic (GB11), toward grapheme breaking.
 
 A ceiling only moves with a reason: a new Unicode version that adds data, or a deliberate trade of size for speed, stated in the pull request. CI's web build also reports the built library's size in total and the cost of each optional component.
 

@@ -52,9 +52,9 @@ static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32
     {
         return muni_decideJoin; // LB6
     }
-    uint8_t cluster = muniLookupGraphemeClusterBreak(codePoint);
-    return muniGraphemeIsBoundary(&state->grapheme, cluster, codePoint) ? muni_decideBreak
-                                                                        : muni_decideJoin;
+    return muniGraphemeIsBoundary(&state->grapheme, muniLookupGraphemeProperties(codePoint))
+               ? muni_decideBreak
+               : muni_decideJoin;
 }
 
 // Keeps only the class for LB4 to LB6 and the grapheme cluster rules.
@@ -62,7 +62,7 @@ static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
     muniLineRules* state = &segmenter->rules.line;
     state->actual = value;
-    muniGraphemeAdvance(&state->grapheme, muniLookupGraphemeClusterBreak(codePoint), codePoint);
+    muniGraphemeAdvance(&state->grapheme, muniLookupGraphemeProperties(codePoint));
 }
 
 muniResult muniNextLineAnywhereSegment(muniSegmenter* segmenter, size_t* offsetOut)

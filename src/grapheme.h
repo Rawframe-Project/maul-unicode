@@ -10,12 +10,13 @@
 #include "segmenter.h"
 
 // Whether there is a boundary between the text so far and a code point
-// whose Grapheme_Cluster_Break is after. No rule looks ahead.
-MUNI_NODISCARD bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t after,
-                                           uint32_t codePoint);
+// whose grapheme properties (muniLookupGraphemeProperties) are
+// properties. No rule looks ahead.
+MUNI_NODISCARD bool muniGraphemeIsBoundary(const muniGraphemeRules* state, uint8_t properties);
 
-// Moves the state past a code point whose Grapheme_Cluster_Break is value.
-void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t value, uint32_t codePoint);
+// Moves the state past a code point whose grapheme properties are
+// properties.
+void muniGraphemeAdvance(muniGraphemeRules* state, uint8_t properties);
 
 // Whether a segmenter started at codePoint reads on as the whole text's
 // does from the position after it, wherever it breaks there.
