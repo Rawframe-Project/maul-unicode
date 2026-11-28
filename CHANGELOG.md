@@ -7,6 +7,56 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.2.0...v1.3.0) (2026-11-28)
+
+### Added
+
+- `muniRepairUtf8` repairs ill-formed UTF-8 in the caller's buffer:
+  each maximal ill-formed subpart becomes U+FFFD, the bytes a replacing
+  conversion to UTF-32 and back would give, so text that must stay
+  UTF-8 needs no second buffer. The repaired text can grow to three
+  times its length into the buffer after it; when it does not fit, the
+  call leaves the text as it was and reports the length it needs. Valid
+  text is only validated, never written
+  ([#294](https://github.com/Rawframe-Project/maul-unicode/pull/294)).
+- `muniMeasureUtf8` counts columns of a fixed-cell font with the new
+  units `muni_unitColumn` and `muni_unitColumnWide`, for a developer
+  console, a terminal or a table in a monospace font: the columns a
+  text takes, a text cut to a number of columns, and a byte offset as a
+  column and back. Each grapheme cluster takes 0, 1 or 2 columns: two
+  for wide and fullwidth characters, emoji in emoji presentation and
+  flags, none for controls, default ignorables and marks with no base.
+  The two units differ only for East Asian Ambiguous characters, one
+  column or two. No new tables
+  ([#299](https://github.com/Rawframe-Project/maul-unicode/pull/299)).
+- `muniGetBaseDirection` finds the base direction of a text's first
+  paragraph from its first strong character, as `dir="auto"` does,
+  without resolving the paragraph or a workspace: for aligning each
+  chat line or player name by its own direction. It reports no
+  direction for a text with no strong character, where a program keeps
+  its own default
+  ([#300](https://github.com/Rawframe-Project/maul-unicode/pull/300)).
+- `muniCompareCaseless` compares two texts ignoring case without folding
+  them into buffers, for a typed command or a name matched once: by
+  full case folding, by canonical caseless matching (canonically
+  equivalent texts match too) or by identifier caseless matching
+  (NFKC_Casefold). It stops at the first difference and gives the code
+  point order of the folded forms, so it sorts too. It needs the case
+  and normalization components
+  ([#301](https://github.com/Rawframe-Project/maul-unicode/pull/301)).
+- `muniGetEmojiKind` tells whether a grapheme cluster is one emoji of
+  the set UTS #51 recommends for general interchange (RGI) and of which
+  kind: basic, keycap, flag, skin tone, tag or ZWJ sequence. A chat can
+  show a message of emoji alone larger, and font fallback can send a
+  cluster to the color emoji font. It adds 2,026 bytes of tables to the
+  core library, from Unicode 18.0.0's `emoji-sequences.txt` and
+  `emoji-zwj-sequences.txt`
+  ([#302](https://github.com/Rawframe-Project/maul-unicode/pull/302)).
+
+No results change: the Unicode data is still 18.0.0 and
+`MUNI_RESULTS_VERSION` stays 2, so stored normalized keys, skeletons
+and verdicts from 1.2.0 stay valid.
+
 ## [1.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.2...v1.2.0) (2026-11-05)
 
 ### Added
