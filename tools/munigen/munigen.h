@@ -71,6 +71,12 @@ int AllShortNames(const char* property, char names[][8], int capacity);
 void WriteTable(const uint8_t* values, const char* fileName, const char* symbol,
                 const char* description, const char* inputs);
 
+// The same with an array of the 128 ASCII values that the lookup reads
+// before the trie, for the tables the segmentation rules read per code
+// point: 128 bytes more, for a lookup without the trie on ASCII.
+void WriteAsciiTable(const uint8_t* values, const char* fileName, const char* symbol,
+                     const char* description, const char* inputs);
+
 // The same for 16-bit values: the lookup returns uint16_t, and the hash
 // covers two bytes per code point, low byte first.
 void WriteWideTable(const uint16_t* values, const char* fileName, const char* symbol,
