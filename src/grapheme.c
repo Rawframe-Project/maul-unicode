@@ -143,15 +143,42 @@ static void Absorb(muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
     muniGraphemeAdvance(&segmenter->rules.grapheme, value, codePoint);
 }
 
+// Before ASCII the rules join only LF after CR (GB3) and anything but a
+// control after a prepended character (GB9b): ASCII is no extending
+// character, no spacing mark, no part of a Hangul syllable, no regional
+// indicator and nothing Extended_Pictographic, and is a control only
+// when it is CR, LF or Control.
 static muniDecision Decide(const muniSegmenter* segmenter, uint8_t value, uint32_t codePoint)
 {
-    return muniGraphemeIsBoundary(&segmenter->rules.grapheme, value, codePoint) ? muni_decideBreak
-                                                                                : muni_decideJoin;
+    const muniGraphemeRules* state = &segmenter->rules.grapheme;
+    bool boundary;
+    if (codePoint < 0x80)
+    {
+        boundary = !(state->previous == muni_gcbCr && value == muni_gcbLf) &&
+                   !(state->previous == muni_gcbPrepend && !IsControl(value));
+        MUNI_ASSERT(boundary == muniGraphemeIsBoundary(state, value, codePoint));
+    }
+    else
+    {
+        boundary = muniGraphemeIsBoundary(state, value, codePoint);
+    }
+    return boundary ? muni_decideBreak : muni_decideJoin;
 }
 
+// ASCII's Grapheme_Cluster_Break without the table: CR, LF, the other C0
+// controls and DEL, and Other.
 static uint8_t Lookup(const muniSegmenter* segmenter, uint32_t codePoint)
 {
     (void)segmenter;
+    if (codePoint < 0x80)
+    {
+        uint8_t value = codePoint == '\r'                       ? muni_gcbCr
+                        : codePoint == '\n'                     ? muni_gcbLf
+                        : codePoint < 0x20 || codePoint == 0x7F ? muni_gcbControl
+                                                                : muni_gcbOther;
+        MUNI_ASSERT(value == muniLookupGraphemeClusterBreak(codePoint));
+        return value;
+    }
     return muniLookupGraphemeClusterBreak(codePoint);
 }
 

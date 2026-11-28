@@ -337,6 +337,19 @@ static void TestGraphemeEdges(void)
     // Ill-formed bytes count as U+FFFD each, one cluster each.
     CHECK(muniFindGraphemeBreaks("a\xFF\xFE", 3, offsets, 4, &count) == muni_success && count == 3,
           "ill-formed bytes");
+    // Before ASCII only CR LF and a prepended character join: U+0600 is
+    // Prepend.
+    CHECK(muniFindGraphemeBreaks("a\r\nb", 4, offsets, 4, &count) == muni_success && count == 3 &&
+              offsets[0] == 1 && offsets[1] == 3,
+          "CR LF is one cluster");
+    CHECK(muniFindGraphemeBreaks("\xD8\x80"
+                                 "1 ",
+                                 4, offsets, 4, &count) == muni_success &&
+              count == 2 && offsets[0] == 3,
+          "a prepended character joins the ASCII digit after it");
+    CHECK(muniFindGraphemeBreaks("\xD8\x80\n", 3, offsets, 4, &count) == muni_success &&
+              count == 2 && offsets[0] == 2,
+          "but not a line feed");
 }
 
 static void TestWordAndSentence(void)
