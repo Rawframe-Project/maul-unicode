@@ -11,7 +11,8 @@
 // Turkic rules, and lowercased and uppercased by Lithuanian, Greek and
 // Armenian rules, unless a mapping reaches a character added since or
 // Final_Sigma, or the Greek disjunctive eta, which asks the same of the
-// text around it, meets a character both cased and case-ignorable.
+// text around it, meets a character both cased and case-ignorable or
+// one whose Cased value changed since.
 // Greek uppercasing is not idempotent, so its output is uppercased
 // again and compared too: fuzz_case leaves its second pass to ICU.
 //
@@ -211,6 +212,9 @@ static int32_t FoldTurkic(UChar* dest, int32_t capacity, const UChar* source, in
 // letter, which such a character is on its own; ICU skips it as
 // case-ignorable first. Greek uppercasing asks the same of an eta with a
 // tonos, which keeps the tonos when the context says it stands alone.
+// A character whose Cased value changed since ICU's version, such as
+// U+0295, Ll before Unicode 16 and Lo since, makes the context differ
+// too.
 static void AmbiguousContext(const UChar* units, int32_t count, bool* sigmaOut, bool* etaOut)
 {
     bool sigma = false;
@@ -228,8 +232,9 @@ static void AmbiguousContext(const UChar* units, int32_t count, bool* sigmaOut, 
             U_SUCCESS(error) ? unorm2_getDecomposition(nfd, c, decomposition, 8, &error) : -1;
         UChar32 base = length > 0 ? decomposition[0] : c;
         eta = eta || base == 0x0397 || base == 0x03B7;
-        both = both || (u_hasBinaryProperty(c, UCHAR_CASED) &&
-                        u_hasBinaryProperty(c, UCHAR_CASE_IGNORABLE));
+        bool cased = u_hasBinaryProperty(c, UCHAR_CASED);
+        both = both || (cased && u_hasBinaryProperty(c, UCHAR_CASE_IGNORABLE)) ||
+               cased != muniIsCased((uint32_t)c);
     }
     *sigmaOut = sigma && both;
     *etaOut = eta && both;
