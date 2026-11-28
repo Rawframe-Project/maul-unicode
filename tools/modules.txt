@@ -8,7 +8,7 @@ bidi_explicit: bidi_core invariant
 bidi_implicit: bidi_brackets bidi_core
 bidi_line: bidi_core invariant overlap
 bits: invariant
-case: case_map encoding overlap tables writer
+case: case_map encoding invariant overlap tables writer
 case_map: tables
 complex: encoding invariant segmenter tables
 cursor: encoding invariant
