@@ -14,6 +14,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 typedef struct muniWriter
 {
@@ -64,6 +65,22 @@ static inline void muniWriterPut(muniWriter* writer, uint32_t codePoint)
         {
             writer->output[writer->needed + i] = (char)bytes[i];
         }
+    }
+    writer->needed += size;
+}
+
+// Writes bytes that are already well-formed UTF-8, as they are.
+static inline void muniWriterPutBytes(muniWriter* writer, const uint8_t* bytes, size_t size)
+{
+    if (size >= SIZE_MAX - writer->needed)
+    {
+        writer->needed = SIZE_MAX;
+        return;
+    }
+    if (writer->needed < writer->capacity)
+    {
+        size_t room = writer->capacity - writer->needed;
+        memcpy(writer->output + writer->needed, bytes, size < room ? size : room);
     }
     writer->needed += size;
 }

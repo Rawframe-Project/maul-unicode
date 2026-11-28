@@ -53,6 +53,21 @@ uint8_t muniLookupBidiClass(uint32_t codePoint);
 extern const uint64_t muniBidiClassHash;
 uint8_t muniLookupCombiningClass(uint32_t codePoint);
 extern const uint64_t muniCombiningClassHash;
+// The four quick-check properties (UAX #15 section 9) as the
+// muni_quickCheck bits below, and whether the Canonical_Combining_Class
+// is nonzero; in the normalization component.
+enum
+{
+    muni_quickCheckNfcNo = 0x01,
+    muni_quickCheckNfcMaybe = 0x02,
+    muni_quickCheckNfkcNo = 0x04,
+    muni_quickCheckNfkcMaybe = 0x08,
+    muni_quickCheckNfdNo = 0x10,
+    muni_quickCheckNfkdNo = 0x20,
+    muni_quickCheckMarked = 0x40,
+};
+uint8_t muniLookupQuickCheck(uint32_t codePoint);
+extern const uint64_t muniQuickCheckHash;
 // The Script table stores an index into muniScriptTags.
 uint8_t muniLookupScript(uint32_t codePoint);
 extern const uint64_t muniScriptHash;

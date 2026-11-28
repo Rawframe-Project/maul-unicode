@@ -101,7 +101,8 @@ set(MUNI_NORMALIZATION_SOURCES
     src/generated/compatibility_blocks.c
     src/generated/compatibility_data.c
     src/generated/decomposition_blocks.c
-    src/generated/decomposition_data.c)
+    src/generated/decomposition_data.c
+    src/generated/quick_check.c)
 set(MUNI_CASE_SOURCES
     src/case.c
     src/case_map.c

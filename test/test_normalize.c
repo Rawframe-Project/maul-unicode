@@ -12,6 +12,7 @@
 
 #include "maul-unicode/encoding.h"
 #include "maul-unicode/normalize.h"
+#include "maul-unicode/properties.h"
 
 #ifdef MUNI_UCD_DATA
 #include "ucd.h"
@@ -339,6 +340,107 @@ static void TestEdges(void)
     CHECK(muniComposePair(0xAC00, 0x11C3) == 0, "the next code point does not");
 }
 
+// Whether text normalizes to expected in form, in replace mode.
+static bool NormalizesTo(const char* text, size_t length, muniNormalForm form, const char* expected,
+                         size_t expectedLength)
+{
+    char output[64];
+    size_t needed = 0;
+    muniTextResult result =
+        muniNormalize(text, length, form, muni_convertReplace, output, sizeof(output), &needed);
+    return result.status == muni_success && needed == expectedLength &&
+           memcmp(output, expected, needed) == 0;
+}
+
+// Runs of code points that need no segment of their own are copied as
+// they are, all but the last, which a mark after it may still change.
+static void TestCopiedRuns(void)
+{
+    CHECK(NormalizesTo("abce\xCC\x81", 6, muni_nfc, "abc\xC3\xA9", 5),
+          "the last of a run composes with the mark after it");
+    CHECK(NormalizesTo("abc\xC3\xA9x", 6, muni_nfd, "abce\xCC\x81x", 7),
+          "a decomposing code point ends a run in NFD");
+    CHECK(NormalizesTo("x\xEA\xB0\x80\xE1\x86\xA8", 7, muni_nfc, "x\xEA\xB0\x81", 4),
+          "a Hangul syllable at the end of a run takes the trailing consonant after it");
+    // U+0315 has class 232 and is NFC_QC=Yes; it is no run's member, so
+    // U+0300 (230) still moves before it and composes with the a.
+    CHECK(NormalizesTo("xa\xCC\x95\xCC\x80", 6, muni_nfc, "x\xC3\xA0\xCC\x95", 5),
+          "a mark that is NFC_QC=Yes still takes part in ordering");
+    CHECK(NormalizesTo("\xD0\xBA\xD0\xBE\xD1\x82\xC2\xA0!", 9, muni_nfkc,
+                       "\xD0\xBA\xD0\xBE\xD1\x82 !", 8),
+          "a compatibility character ends a run in NFKC");
+    CHECK(NormalizesTo("\xD0\xBA\xD0\xBE\xD1\x82\xC2\xA0!", 9, muni_nfc,
+                       "\xD0\xBA\xD0\xBE\xD1\x82\xC2\xA0!", 9),
+          "and is copied in NFC");
+    CHECK(NormalizesTo("ab\xFF"
+                       "cd",
+                       5, muni_nfc,
+                       "ab\xEF\xBF\xBD"
+                       "cd",
+                       7),
+          "an ill-formed byte in a run is replaced");
+    char output[8] = {0};
+    size_t needed = 0;
+    muniTextResult result = muniNormalize("ab\xFF"
+                                          "cd",
+                                          5, muni_nfc, muni_convertStrict, output, 8, &needed);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 2 && needed == 2 &&
+              memcmp(output, "ab", 2) == 0,
+          "an ill-formed byte in a run, in strict mode");
+    memset(output, 0, sizeof(output));
+    result = muniNormalize("abcdef", 6, muni_nfd, muni_convertStrict, output, 3, &needed);
+    CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "abc\0", 4) == 0,
+          "a run cut by the capacity writes what fits and counts the rest");
+}
+
+// A mark is never copied as part of a run: between two letters after a
+// mark of class 240 (U+0345), every mark of a lower class still moves
+// before it, so b, U+0345, the mark and c normalize as b, the mark,
+// U+0345 and c do, in every form.
+static void TestMarksAmongCopies(void)
+{
+    int failures = 0;
+    for (uint32_t mark = 0; mark < 0x110000; mark++)
+    {
+        uint8_t markClass = muniGetCombiningClass(mark);
+        if (markClass == 0 || markClass >= 240)
+        {
+            continue;
+        }
+        char encoded[4];
+        size_t size = 0;
+        (void)muniEncodeUtf8(mark, encoded, sizeof(encoded), &size);
+        char before[16] = "b\xCD\x85";
+        char after[16] = "b";
+        memcpy(before + 3, encoded, size);
+        before[3 + size] = 'c';
+        memcpy(after + 1, encoded, size);
+        memcpy(after + 1 + size,
+               "\xCD\x85"
+               "c",
+               3);
+        for (muniNormalForm form = 0; form < 4; form++)
+        {
+            char first[64];
+            char second[64];
+            size_t firstLength = 0;
+            size_t secondLength = 0;
+            bool same = muniNormalize(before, 4 + size, form, muni_convertStrict, first,
+                                      sizeof(first), &firstLength)
+                                .status == muni_success &&
+                        muniNormalize(after, 4 + size, form, muni_convertStrict, second,
+                                      sizeof(second), &secondLength)
+                                .status == muni_success &&
+                        firstLength == secondLength && memcmp(first, second, firstLength) == 0;
+            if (!same && failures++ < 5)
+            {
+                printf("U+%04X form %d: the orders differ\n", (unsigned)mark, (int)form);
+            }
+        }
+    }
+    CHECK(failures == 0, "every mark is ordered, never copied");
+}
+
 #ifdef MUNI_UCD_DATA
 // The quick check property of each form, from DerivedNormalizationProps.txt:
 // Yes unless listed.
@@ -627,6 +729,8 @@ int main(void)
     TestConformance();
     TestLimitsAndErrors();
     TestEdges();
+    TestCopiedRuns();
+    TestMarksAmongCopies();
     TestOverlap();
     TestNegativeKinds();
     TestDecomposition();

@@ -23,8 +23,10 @@
 //
 // The generator derives the four quick-check properties from these
 // tables and fails unless they match DerivedNormalizationProps.txt for
-// every code point, so the library can answer them without tables of
-// their own.
+// every code point. It writes them as one table, QuickCheck, with a bit
+// for a nonzero Canonical_Combining_Class, so that normalization tells
+// with one lookup whether a code point can be copied as it is. The bits
+// are src/tables.h's muni_quickCheck values.
 
 #include "munigen.h"
 
@@ -348,10 +350,14 @@ static void CheckFullLengths(const Normalization* data)
     }
 }
 
-// Checks the quick-check values the library derives against the UCD's.
-static void CheckQuickCheck(const Normalization* data, uint8_t* flags)
+// Checks the quick-check values derived from the mappings against the
+// UCD's, and sets each one's bit in values.
+static void CheckQuickCheck(const Normalization* data, uint8_t* flags, uint8_t* values)
 {
     static const char* const names[4] = {"NFD_QC", "NFKD_QC", "NFC_QC", "NFKC_QC"};
+    // The bits of src/tables.h's muni_quickCheck values, by form and
+    // maybe.
+    static const uint8_t bits[4][2] = {{0x10, 0}, {0x20, 0}, {0x01, 0x02}, {0x04, 0x08}};
     uint8_t* combines = Allocate(CODE_POINTS);
     for (uint32_t c = 0; c < CODE_POINTS; c++)
     {
@@ -397,6 +403,7 @@ static void CheckQuickCheck(const Normalization* data, uint8_t* flags)
                     Fail("U+%04X: %s=%s is %d in the UCD, %d derived", c, names[form],
                          maybe ? "M" : "N", flags[c], derived);
                 }
+                values[c] |= derived ? bits[form][maybe] : 0;
             }
         }
     }
@@ -523,7 +530,17 @@ void WriteNormalization(void)
         }
     }
     uint8_t* flags = Allocate(CODE_POINTS);
-    CheckQuickCheck(&data, flags);
+    uint8_t* quickCheck = Allocate(CODE_POINTS);
+    CheckQuickCheck(&data, flags, quickCheck);
+    LoadCombiningClass(flags);
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        quickCheck[c] |= flags[c] != 0 ? 0x40 : 0; // muni_quickCheckMarked
+    }
+    WriteTable(quickCheck, "quick_check", "QuickCheck",
+               "NFD_QC, NFKD_QC, NFC_QC and NFKC_QC, and a nonzero Canonical_Combining_Class",
+               "DerivedNormalizationProps.txt and UnicodeData.txt");
+    free(quickCheck);
     free(flags);
     static Blocks canonical;
     AddBlocks(&canonical, data.pairSources, data.pairCount);

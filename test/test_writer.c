@@ -39,9 +39,34 @@ static void TestSaturation(void)
     CHECK(whole.needed == SIZE_MAX && !muniWriterFits(&whole), "SIZE_MAX never fits");
 }
 
+// Bytes copied as they are: the part that fits, the whole count, and the
+// same saturation as a code point.
+static void TestBytes(void)
+{
+    char output[4] = {0};
+    muniWriter writer = {output, sizeof(output), 0};
+    muniWriterPutBytes(&writer, (const uint8_t*)"abc", 3);
+    muniWriterPutBytes(&writer, (const uint8_t*)"de", 2);
+    CHECK(writer.needed == 5 && memcmp(output, "abcd", 4) == 0 && !muniWriterFits(&writer),
+          "the bytes that fit, and the count of all");
+    muniWriterPutBytes(&writer, (const uint8_t*)"f", 1);
+    CHECK(writer.needed == 6 && memcmp(output, "abcd", 4) == 0, "nothing past the capacity");
+    muniWriter none = {nullptr, 0, 0};
+    muniWriterPutBytes(&none, (const uint8_t*)"", 0);
+    CHECK(none.needed == 0 && muniWriterFits(&none), "nothing written, nothing counted");
+    muniWriter high = {output, sizeof(output), SIZE_MAX - 4};
+    muniWriterPutBytes(&high, (const uint8_t*)"abc", 3);
+    CHECK(high.needed == SIZE_MAX - 1, "a count just below SIZE_MAX");
+    muniWriterPutBytes(&high, (const uint8_t*)"a", 1);
+    CHECK(high.needed == SIZE_MAX && !muniWriterFits(&high), "a count that reaches SIZE_MAX");
+    muniWriterPutBytes(&high, (const uint8_t*)"", 0);
+    CHECK(high.needed == SIZE_MAX, "a count that stays at SIZE_MAX");
+}
+
 int main(void)
 {
     TestCounting();
     TestSaturation();
+    TestBytes();
     return s_failures == 0 ? 0 : 1;
 }
