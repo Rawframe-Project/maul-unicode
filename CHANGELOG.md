@@ -7,6 +7,24 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.3.1](https://github.com/Rawframe-Project/maul-unicode/compare/v1.3.0...v1.3.1) (2026-11-28)
+
+
+### Fixed
+
+* **generator:** check the keycap sequences by base, not by count ([#305](https://github.com/Rawframe-Project/maul-unicode/issues/305)) ([b4ad170](https://github.com/Rawframe-Project/maul-unicode/commit/b4ad1706ad31c6f23be4d828fd3c783c4e6bdd75)), closes [#303](https://github.com/Rawframe-Project/maul-unicode/issues/303)
+
+
+### Changed
+
+* **bidi:** look up each code point's class fewer times ([#317](https://github.com/Rawframe-Project/maul-unicode/issues/317)) ([8f7a304](https://github.com/Rawframe-Project/maul-unicode/commit/8f7a30402db547fb1d715509cc6a3d4bdc6c5745))
+* **case:** look up each code point once and copy what does not change ([#316](https://github.com/Rawframe-Project/maul-unicode/issues/316)) ([761d53c](https://github.com/Rawframe-Project/maul-unicode/commit/761d53c0176651a90e661c258a064b9080d8adf0))
+* **generator:** look up grapheme properties in one table ([#321](https://github.com/Rawframe-Project/maul-unicode/issues/321)) ([ef74565](https://github.com/Rawframe-Project/maul-unicode/commit/ef7456559a96d4b4277dc0b4a88b9d5eb4f1ee5e))
+* **generator:** read ASCII from an array in the segmentation tables ([#320](https://github.com/Rawframe-Project/maul-unicode/issues/320)) ([c11aa77](https://github.com/Rawframe-Project/maul-unicode/commit/c11aa7734a5860a3e6c52f9f4a9e8999372b1888))
+* **normalize:** copy text that is already normalized ([#314](https://github.com/Rawframe-Project/maul-unicode/issues/314)) ([f3f8526](https://github.com/Rawframe-Project/maul-unicode/commit/f3f852637a382180a9e4f10dad7f2a4503ab7358))
+* **script:** look up one property per code point in script runs ([#318](https://github.com/Rawframe-Project/maul-unicode/issues/318)) ([8b4683a](https://github.com/Rawframe-Project/maul-unicode/commit/8b4683a04df1f871bffd324a4a73e3ea018ca68a))
+* **segment:** read ASCII without the table in grapheme clusters ([#319](https://github.com/Rawframe-Project/maul-unicode/issues/319)) ([fb6f497](https://github.com/Rawframe-Project/maul-unicode/commit/fb6f4973a73cff18eae30c0546c075b46c59c509))
+
 ## [1.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.2.0...v1.3.0) (2026-11-28)
 
 ### Added
