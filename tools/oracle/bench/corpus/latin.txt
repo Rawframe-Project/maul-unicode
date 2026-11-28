@@ -1,0 +1,10 @@
+The harbour was quiet that morning. Fishing boats rocked against the pier, and a gull walked along the railing as if it owned the place. Mrs. O'Neill opened the café at 7:30, wrote "Fresh bread, $2.50" on the board, and waited for the first customers.
+Nobody expected the storm. By noon the wind had turned, the sky was the colour of slate, and the ferry to the island (usually on time) was cancelled. "We'll try again tomorrow," said the captain; nobody argued.
+Am Montagmorgen fuhr Jürgen mit dem Fahrrad zur Arbeit. Die Straßen waren nass, die Ampeln blinkten gelb, und an der Bäckerei duftete es nach frischen Brötchen. Er kaufte zwei Laugenbrezeln und einen Kaffee für 3,20 €.
+Später im Büro las er die Nachrichten: Die Brücke über die Weser wird ab Oktober für sechs Wochen gesperrt. Größere Umwege seien unvermeidlich, hieß es.
+Le marché ouvre à six heures. Les marchands installent leurs étals, déballent les pêches, les cerises et les fromages, et échangent des nouvelles du quartier. À midi, l'église sonne et tout le monde s'arrête un instant.
+« Vous êtes déjà allé à Lyon ? » demanda Élodie. Il répondit qu'il n'y était jamais allé, mais qu'il en rêvait depuis l'été dernier, après avoir vu une émission sur les traboules.
+İstanbul'da sabah erkenden vapura binmek ayrı bir keyif. Martılar simit kırıntılarının peşinde, çay bardakları tıngırdıyor, Boğaz'ın iki yakası güneşle ağır ağır aydınlanıyor. Öğleye doğru Kadıköy çarşısı kalabalıklaşıyor.
+Ağabeyim dün akşam ilk kez ızgara balık yaptı; biraz fazla pişmişti ama hepimiz çok beğendik. Gelecek hafta hep birlikte Çeşme'ye gitmeyi düşünüyoruz.
+Sáng nay trời mưa nhẹ. Bà tôi dậy sớm, nấu một nồi phở thơm lừng và gọi cả nhà xuống ăn. Ngoài phố, người ta vẫn đi làm, áo mưa đủ màu sắc lướt qua những hàng cây xanh mướt.
+Version 2.4.1 fixes a crash when the file name contains spaces; see https://example.com/notes for details. Tests: 1,284 passed, 3 skipped (0.97 s).

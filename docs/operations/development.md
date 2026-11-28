@@ -75,6 +75,16 @@ A new Unicode version is a new minor release of the library, made in one pull re
 
 `out/<preset>/maul-unicode_bench` measures every component on fixed inputs and prints the best of five runs in MiB/s. Timings are never a CI gate. To measure a change, build the base and the change in Release with the same compiler and run each pinned to one core (`taskset -c 2 ./out/linux-gcc-14/maul-unicode_bench`) several times; give both numbers in the pull request. The benchmark compares with a saved output when given one as its argument.
 
+### Against ICU4C and ICU4X
+
+`tools/oracle/bench/` does the same work with the library, ICU4C 79.1 and ICU4X 2.4 on the same texts and counts the instructions each executes with valgrind's cachegrind, which load on the shared machine does not change. The operations are the four segmentations, NFC, NFD and NFKC, lowercase, uppercase and folding, bidi (each paragraph resolved and ordered as one line) and script runs; the texts, in `corpus/`, are Latin prose, other alphabets (Russian, Greek, Arabic, Hebrew and Hindi) and Chinese, Japanese and Korean, each repeated to 64 KiB. Every operation runs once and six times, and a fifth of the difference is one pass, so loading the text and ICU's data and making ICU's objects drop out.
+
+```sh
+tools/oracle/bench/measure.sh out/linux-gcc-14 $ICU $ICU_SRC   # a Release build; ICU4C installed and its icu4c/source
+```
+
+It prints a Markdown table of instructions per byte of UTF-8 text, the library through its iterators and through `muniFind*Breaks`, and the library's better figure over the faster reference's. The work differs in three places, which the table's counts show: ICU4C's word break iterator segments Chinese and Japanese with a dictionary, which the library does not, and ICU4X's word rules join runs of ideographs even without its models (`new_for_non_complex_scripts`), so CJK words compare with neither; ICU4C's bidi takes UTF-16 and counts the runs of the whole text where the other two order each paragraph; and script runs come from ICU's `ScriptRun` sample (`source/extra/scrptrun`), as neither ICU has them in its libraries. Two differences of setup favor ICU4X: it takes `&str`, so it validates the UTF-8 once, before the passes, where the library and ICU4C handle ill-formed UTF-8 in every pass; and it is built with link-time optimization. A pull request that changes speed gives the table's rows it moves, before and after.
+
 ## Reproducing a fuzz finding
 
 A fuzz target writes the input that failed as `crash-<hash>` in its working directory. CI keeps that input, its seed and the target's log on the runner and prints only the report of `tools/fuzz_target.sh`: the target, the kind of each finding and the sanitizers' report. So run the target locally on the same seeds:
