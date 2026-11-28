@@ -238,6 +238,51 @@ extern "C"
     /// Safe from any thread.
     MUNI_API bool muniIsEmojiComponent(uint32_t codePoint);
 
+    // The kinds of emoji UTS #51 recommends for general interchange (RGI),
+    // as emoji-sequences.txt and emoji-zwj-sequences.txt list them.
+    typedef int32_t muniEmojiKind;
+
+    enum
+    {
+        // Not one RGI emoji.
+        muni_emojiKindNone = 0,
+        // A code point shown as emoji by default, or another emoji with
+        // U+FE0F after it.
+        muni_emojiKindBasic = 1,
+        // "#", "*" or a digit, U+FE0F and U+20E3.
+        muni_emojiKindKeycap = 2,
+        // Two regional indicators that name a region.
+        muni_emojiKindFlag = 3,
+        // An emoji and a skin tone modifier.
+        muni_emojiKindModifier = 4,
+        // U+1F3F4 and tag characters naming a subdivision, such as the flag
+        // of Scotland.
+        muni_emojiKindTag = 5,
+        // Emoji joined by U+200D, such as a family or a profession.
+        muni_emojiKindZwj = 6,
+    };
+
+    /// Tells whether a UTF-8 text is exactly one RGI emoji, and of which
+    /// kind: for a chat that shows a message of emoji alone larger, an
+    /// emoji count, a picker, or font fallback that sends a cluster to the
+    /// color emoji font. Pass one grapheme cluster: an emoji is never more
+    /// than one, and a text of several gives `muni_emojiKindNone`. Only the
+    /// fully qualified form counts, as the files list it: "☺" alone and
+    /// "☺" with U+FE0F are text and emoji, and an emoji joined by U+200D
+    /// to another is RGI only as a listed sequence.
+    ///
+    /// @param text    The text. May be NULL when length is 0. A text with
+    ///                an ill-formed sequence is no emoji.
+    /// @param length  The number of bytes.
+    /// @param kindOut Receives the kind, or `muni_emojiKindNone`.
+    ///                `muni_errorInvalid` leaves it as it was.
+    /// @return `muni_success`, or `muni_errorInvalid` for a NULL kindOut or
+    ///         a NULL text with a nonzero length.
+    /// @par Thread safety
+    /// Safe from any thread.
+    MUNI_NODISCARD MUNI_API muniResult muniGetEmojiKind(const char* text, size_t length,
+                                                        muniEmojiKind* kindOut);
+
     /// Tells whether a code point has the White_Space property: spaces,
     /// tabs and line and paragraph separators, 25 code points in all.
     ///

@@ -13,6 +13,7 @@ case_map: tables
 complex: encoding invariant segmenter tables
 cursor: encoding invariant
 decompose: bits invariant tables
+emoji_sequence: encoding tables
 encoding: invariant
 grapheme: segmenter tables
 harfbuzz:

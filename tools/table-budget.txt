@@ -18,3 +18,4 @@ ideographic: 432 Ideographic
 bidi: 5200 BidiClass BidiBracket
 script extensions: 1633 ScriptExtensions
 identifiers: 6215 Identifier
+emoji sequences: 2026 EmojiSequences

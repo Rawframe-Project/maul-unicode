@@ -163,6 +163,26 @@ extern const uint16_t muniConfusables[];
 extern const uint16_t muniConfusablePool[];
 extern const uint16_t muniConfusableBlockCount;
 
+// RGI emoji sequences (UTS #51), as tools/munigen/emoji.c describes:
+// Flags has bit 26 * first + second for each pair of regional indicator
+// letters that is a flag; Unmodifiable lists the Emoji_Modifier_Base
+// code points that take no modifier; Tags holds the tag letters of each
+// tag sequence on U+1F3F4. ZwjBases are the bases of ZWJ elements,
+// sorted; the skeletons whose first base is ZwjBases[b] sit in
+// ZwjSkeletons from ZwjStarts[b] to ZwjStarts[b + 1], each a header (the
+// element count in the low four bits, 16 when it comes without
+// modifiers, 32 when its modifiers must all differ), the mask of the
+// elements that take a modifier, and the index of each element's base.
+extern const uint8_t muniEmojiFlags[];
+extern const uint32_t muniEmojiUnmodifiable[];
+extern const uint8_t muniEmojiUnmodifiableCount;
+extern const char muniEmojiTags[][9];
+extern const uint8_t muniEmojiTagCount;
+extern const uint32_t muniEmojiZwjBases[];
+extern const uint16_t muniEmojiZwjBaseCount;
+extern const uint16_t muniEmojiZwjStarts[];
+extern const uint8_t muniEmojiZwjSkeletons[];
+
 enum
 {
     muni_caseFlagCased = 1,

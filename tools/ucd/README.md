@@ -3,7 +3,9 @@
 The generator's inputs and the conformance test files, exactly as
 published at `https://www.unicode.org/Public/18.0.0/ucd/` (with its
 `auxiliary/`, `extracted/` and `emoji/` subdirectories flattened here),
-and `confusables.txt` and `IdentifierStatus.txt` from
+`emoji-sequences.txt` and `emoji-zwj-sequences.txt` from
+`https://www.unicode.org/Public/18.0.0/emoji/`, and `confusables.txt`
+and `IdentifierStatus.txt` from
 `https://www.unicode.org/Public/18.0.0/security/`. They are
 covered by the Unicode License v3,
 `https://www.unicode.org/license.txt`.
@@ -24,6 +26,8 @@ d6b151d2d40ee9b1876d26f417980f45ffae47b6055ccf7203cb31f07a030f94  DerivedGeneral
 98ac7f67d985fe781e317f6182e885e94cabb0c314769e6dd73e48b226931ccd  DerivedNormalizationProps.txt
 a0cf29eacd00cfcaec4381c6b7c281685f18dbb4e7ff82b4076ccb342ca839aa  EastAsianWidth.txt
 80d00f8e616a0ef27fd6b8de3b758c06383b5d917e2977709578e68baf733bf1  emoji-data.txt
+1823dce71f3dd9cb0ad1976797baee4ffbdc1909756f43af8ce4c57f732843a4  emoji-sequences.txt
+f61b5213bdf85a57741a9f903cb38d0f39a3d13be6ff4aca3b39857e859a9191  emoji-zwj-sequences.txt
 0839dcb79e4ac639ecd538b1abf7c9d22e3f9dd265b7e182d33627aa4d75b45a  GraphemeBreakProperty.txt
 b0cf047ee94485bbdc846de2b902f5f8a815f6b674f9d04223cddadd91c9df31  GraphemeBreakTest.txt
 5863c7d99ca18f213c41c7318aa5528bebfb6d32ec0f1d5944e37192c119aebd  IdentifierStatus.txt
