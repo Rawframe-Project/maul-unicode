@@ -476,6 +476,84 @@ static void TestParagraphsAndLines(void)
           "no runs with a capacity");
 }
 
+// The length and levels of a left-to-right paragraph at level 0.
+static bool LeftToRight(const char* text, size_t length, muniBidiDirection direction,
+                        size_t expected)
+{
+    uint8_t levels[32];
+    uint8_t workspace[32];
+    memset(levels, 0xFF, sizeof(levels));
+    size_t paragraph = 0;
+    uint8_t level = 9;
+    if (muniResolveBidi(text, length, direction, levels, workspace, &paragraph, &level) !=
+            muni_success ||
+        paragraph != expected || level != 0)
+    {
+        return false;
+    }
+    for (size_t i = 0; i < paragraph; i++)
+    {
+        if (levels[i] != 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// A paragraph at level 0 with nothing that raises a level is found
+// without the explicit rules: its end at any paragraph separator, and its
+// levels all 0. One with an R goes through them, even after ASCII.
+static void TestLeftToRightParagraphs(void)
+{
+    CHECK(LeftToRight("ab\r\ncd", 6, muni_bidiLeftToRight, 4), "CR LF ends the paragraph");
+    CHECK(LeftToRight("ab\r\ncd", 6, muni_bidiAuto, 4), "and so with an automatic direction");
+    CHECK(LeftToRight("ab\rcd", 5, muni_bidiLeftToRight, 3), "a CR alone");
+    CHECK(LeftToRight("a\xE2\x80\xA9"
+                      "b",
+                      5, muni_bidiLeftToRight, 4),
+          "U+2029 ends the paragraph");
+    CHECK(LeftToRight("a\xC2\x85"
+                      "b",
+                      4, muni_bidiLeftToRight, 3),
+          "U+0085 ends the paragraph");
+    CHECK(LeftToRight("a\x1C"
+                      "b",
+                      3, muni_bidiLeftToRight, 2),
+          "U+001C ends the paragraph");
+    CHECK(LeftToRight("a\tb \xD0\xB4", 6, muni_bidiLeftToRight, 6),
+          "a tab, a space and a Cyrillic letter raise nothing");
+    CHECK(LeftToRight("ab\n\xD7\x90", 5, muni_bidiLeftToRight, 3),
+          "a Hebrew letter in the next paragraph does not count");
+    uint8_t levels[32];
+    uint8_t workspace[32];
+    size_t paragraph = 0;
+    uint8_t level = 9;
+    CHECK(muniResolveBidi("abc def \xD7\x90\n", 11, muni_bidiLeftToRight, levels, workspace,
+                          &paragraph, &level) == muni_success &&
+              paragraph == 11 && level == 0 && levels[7] == 0 && levels[8] == 1 && levels[9] == 1,
+          "a Hebrew letter after ASCII raises its level");
+    // Runs keep their levels; trailing whitespace and the separator reset.
+    muniBidiRun runs[8];
+    size_t count = 0;
+    CHECK(muniReorderBidiLine("abc def \xD7\x90\n", levels, paragraph, level, runs, 8, &count) ==
+                  muni_success &&
+              count == 3 && runs[0].start == 0 && runs[0].length == 8 && runs[0].level == 0 &&
+              runs[1].start == 8 && runs[1].length == 2 && runs[1].level == 1 &&
+              runs[2].start == 10 && runs[2].length == 1 && runs[2].level == 0,
+          "the runs of a line with a Hebrew letter");
+    const char spaced[] = "\xD7\x90\xD7\x91 ab  ";
+    CHECK(muniResolveBidi(spaced, sizeof(spaced) - 1, muni_bidiRightToLeft, levels, workspace,
+                          &paragraph, &level) == muni_success &&
+              paragraph == sizeof(spaced) - 1 && level == 1,
+          "a right-to-left paragraph");
+    CHECK(muniReorderBidiLine(spaced, levels, paragraph, level, runs, 8, &count) == muni_success &&
+              count == 3 && runs[0].start == 7 && runs[0].length == 2 && runs[0].level == 1 &&
+              runs[1].start == 5 && runs[1].length == 2 && runs[1].level == 2 &&
+              runs[2].start == 0 && runs[2].length == 5 && runs[2].level == 1,
+          "trailing spaces take the paragraph level, in visual order");
+}
+
 // The level of the byte probe bytes into the content of an FSI that
 // follows left-to-right embeddings (each raises the level by 2) and then
 // the given extra initiator.
@@ -786,6 +864,7 @@ int main(void)
     TestCharacterFile();
     TestClassFile();
     TestParagraphsAndLines();
+    TestLeftToRightParagraphs();
     TestIsolateDepth();
     TestLongIsolateRun();
     TestMaps();

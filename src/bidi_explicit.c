@@ -34,23 +34,6 @@ typedef struct Explicit
     size_t validIsolates;
 } Explicit;
 
-size_t muniBidiParagraphLength(const uint8_t* text, size_t length)
-{
-    size_t index = 0;
-    while (index < length)
-    {
-        size_t size;
-        uint32_t codePoint = muniBidiCodePoint(text, length, index, &size);
-        index += size;
-        if (muniLookupBidiClass(codePoint) == muni_bcB)
-        {
-            bool crlf = codePoint == '\r' && index < length && text[index] == '\n';
-            return crlf ? index + 1 : index;
-        }
-    }
-    return length;
-}
-
 uint8_t muniBidiFirstStrongLevel(const muniBidiParagraph* paragraph, size_t index, bool stopAtPdi,
                                  uint8_t fallback, size_t* offsetOut)
 {
@@ -254,8 +237,50 @@ MUNI_NODISCARD static bool NeedsImplicit(uint8_t type)
            (type >= muni_bcLre && type <= muni_bcPdi);
 }
 
-bool muniBidiResolveExplicit(const muniBidiParagraph* paragraph)
+// For a paragraph at level 0, whether no code point needs the implicit
+// phase, found without the explicit rules; when none does, sets the
+// paragraph's length as muniBidiResolveExplicit would. ASCII from the
+// space up is no separator and none of those classes, so it needs no
+// table.
+MUNI_NODISCARD static bool LeftToRightOnly(muniBidiParagraph* paragraph)
 {
+    size_t index = 0;
+    while (index < paragraph->length)
+    {
+        uint8_t byte = paragraph->text[index];
+        if (byte >= 0x20 && byte < 0x80)
+        {
+            MUNI_ASSERT(!NeedsImplicit(muniLookupBidiClass(byte)) &&
+                        muniLookupBidiClass(byte) != muni_bcB);
+            index += 1;
+            continue;
+        }
+        size_t size;
+        uint32_t codePoint = muniBidiCodePoint(paragraph->text, paragraph->length, index, &size);
+        uint8_t type = muniLookupBidiClass(codePoint);
+        if (NeedsImplicit(type))
+        {
+            return false;
+        }
+        index += size;
+        if (type == muni_bcB)
+        {
+            bool crlf =
+                codePoint == '\r' && index < paragraph->length && paragraph->text[index] == '\n';
+            paragraph->length = crlf ? index + 1 : index;
+        }
+    }
+    return true;
+}
+
+bool muniBidiResolveExplicit(muniBidiParagraph* paragraph)
+{
+    // A left-to-right paragraph with nothing that could raise a level
+    // resolves to level 0 everywhere, which the caller writes.
+    if (paragraph->level == 0 && LeftToRightOnly(paragraph))
+    {
+        return false;
+    }
     bool needed = paragraph->level != 0;
     Explicit state;
     state.stack[0] = (Status){paragraph->level, OverrideNone, false};
@@ -277,6 +302,16 @@ bool muniBidiResolveExplicit(const muniBidiParagraph* paragraph)
         needed = needed || NeedsImplicit(type);
         Apply(&state, paragraph, index, index + size, type);
         index += size;
+        if (type == muni_bcB)
+        {
+            // P1: the separator ends the paragraph, the LF of a CR LF too.
+            if (codePoint == '\r' && index < paragraph->length && paragraph->text[index] == '\n')
+            {
+                Apply(&state, paragraph, index, index + 1, muni_bcB);
+                index += 1;
+            }
+            paragraph->length = index;
+        }
     }
     return needed;
 }
