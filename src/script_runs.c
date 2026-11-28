@@ -46,24 +46,14 @@ MUNI_NODISCARD static bool Has(const Scripts* scripts, uint8_t script)
     return (scripts->bits[script >> 6] >> (script & 63) & 1) != 0;
 }
 
-// The scripts a code point belongs to; false for Common and Inherited
-// code points without extensions, which join any run.
-MUNI_NODISCARD static bool ScriptsOf(uint32_t codePoint, uint8_t* scriptOut, Scripts* scriptsOut)
+// The scripts of a Script_Extensions set.
+static void SetOf(uint8_t set, Scripts* scriptsOut)
 {
-    uint8_t script = muniLookupScript(codePoint);
-    uint8_t set = muniLookupScriptExtensions(codePoint);
     memset(scriptsOut, 0, sizeof(*scriptsOut));
-    *scriptOut = script;
-    if (set == 0)
-    {
-        Add(scriptsOut, script);
-        return !IsNeutral(script);
-    }
     for (size_t k = muniScriptSetStarts[set - 1]; k < muniScriptSetStarts[set]; k++)
     {
         Add(scriptsOut, muniScriptSetMembers[k]);
     }
-    return true;
 }
 
 // The run's script: its first code point's Script when the set still
@@ -172,30 +162,17 @@ static void StartRun(ScriptState* state, uint8_t script, const Scripts* scripts)
     SettlePending(state);
 }
 
-// Reads code points until a run ends; true with the run when one does.
-MUNI_NODISCARD static bool Step(ScriptState* state, uint32_t codePoint, muniScriptRun* runOut)
+// Ends the run when its candidates do not hold script and scripts are the
+// next run's; otherwise narrows them to what both share. Returns whether
+// the run ended, with it.
+MUNI_NODISCARD static bool Narrow(ScriptState* state, uint8_t script, const Scripts* scripts,
+                                  muniScriptRun* runOut)
 {
-    uint8_t script;
-    Scripts scripts;
-    bool real = ScriptsOf(codePoint, &script, &scripts);
-    if (!real)
-    {
-        real = Bracket(state, codePoint, &script, &scripts);
-    }
-    if (!real)
-    {
-        return false;
-    }
-    if (!state->determined)
-    {
-        StartRun(state, script, &scripts);
-        return false;
-    }
     Scripts shared;
     bool any = false;
     for (int word = 0; word < 4; word++)
     {
-        shared.bits[word] = state->candidates.bits[word] & scripts.bits[word];
+        shared.bits[word] = state->candidates.bits[word] & scripts->bits[word];
         any = any || shared.bits[word] != 0;
     }
     if (any)
@@ -208,8 +185,59 @@ MUNI_NODISCARD static bool Step(ScriptState* state, uint32_t codePoint, muniScri
         return false;
     }
     *runOut = (muniScriptRun){state->cursor.offset, muniScriptTags[Best(state)]};
-    StartRun(state, script, &scripts);
+    StartRun(state, script, scripts);
     return true;
+}
+
+// Reads code points until a run ends; true with the run when one does.
+// ASCII other than the letters is Common with no extensions, and the
+// letters have no extensions either, so ASCII needs one lookup at most.
+// A code point without extensions has one script, which the run's
+// candidates hold or not, so it needs no set but when a run starts.
+MUNI_NODISCARD static bool Step(ScriptState* state, uint32_t codePoint, muniScriptRun* runOut)
+{
+    bool letter = (unsigned)((codePoint | 0x20) - 'a') < 26;
+    uint8_t script = 0;
+    uint8_t set = 0;
+    bool neutral = true;
+    if (codePoint >= 0x80 || letter)
+    {
+        script = muniLookupScript(codePoint);
+        set = codePoint < 0x80 ? 0 : muniLookupScriptExtensions(codePoint);
+        neutral = set == 0 && IsNeutral(script);
+    }
+    MUNI_ASSERT(codePoint >= 0x80 || (muniLookupScriptExtensions(codePoint) == 0 &&
+                                      IsNeutral(muniLookupScript(codePoint)) == !letter));
+    Scripts scripts;
+    if (neutral)
+    {
+        if (!Bracket(state, codePoint, &script, &scripts))
+        {
+            return false;
+        }
+    }
+    else if (set == 0)
+    {
+        if (state->determined && Has(&state->candidates, script))
+        {
+            memset(&state->candidates, 0, sizeof(state->candidates));
+            Add(&state->candidates, script);
+            state->firstScript = state->firstScript == NO_SCRIPT ? script : state->firstScript;
+            return false;
+        }
+        memset(&scripts, 0, sizeof(scripts));
+        Add(&scripts, script);
+    }
+    else
+    {
+        SetOf(set, &scripts);
+    }
+    if (!state->determined)
+    {
+        StartRun(state, script, &scripts);
+        return false;
+    }
+    return Narrow(state, script, &scripts, runOut);
 }
 
 static muniResult Next(ScriptState* state, muniScriptRun* runOut)

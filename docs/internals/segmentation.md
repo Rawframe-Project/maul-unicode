@@ -69,7 +69,7 @@ Elsewhere root takes every class from the Unicode properties, so a difference ca
 
 ## Script runs
 
-[`src/script_runs.c`](../../src/script_runs.c) keeps, for the current run, the set of scripts every code point in it can belong to, as a 256-bit mask over Script indexes. A code point with a real Script narrows the set to its Script or its Script_Extensions, and the run ends where that would leave no script; Common and Inherited code points leave it alone. Opening brackets remember the run's script on a stack of 32, whose oldest entry drops when it is full; a closing bracket that matches one counts as a code point of that script, so brackets around foreign text land in the script outside. The iterator shares the cursor and the piece protocol with the segmenters.
+[`src/script_runs.c`](../../src/script_runs.c) keeps, for the current run, the set of scripts every code point in it can belong to, as a 256-bit mask over Script indexes. A code point with a real Script narrows the set to its Script or its Script_Extensions, and the run ends where that would leave no script; Common and Inherited code points leave it alone. Opening brackets remember the run's script on a stack of 32, whose oldest entry drops when it is full; a closing bracket that matches one counts as a code point of that script, so brackets around foreign text land in the script outside. A code point without Script_Extensions has one script, so it is checked against the set without building one, unless it starts a run. ASCII needs no Script_Extensions lookup, and ASCII other than the letters, Common, none at all; an assertion holds both to the tables. The iterator shares the cursor and the piece protocol with the segmenters.
 
 ## Columns
 

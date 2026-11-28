@@ -111,6 +111,16 @@ static void TestSharedScripts(void)
     // either, and the first Script of its own is Greek.
     CHECK(Runs("\xC2\xB7\xCD\xB5", (muniScriptRun[]){{4, GREK}}, 1),
           "a run that starts neutral takes the first Script of its own");
+    // A letter of one script after them: U+00B7's extensions hold Latin,
+    // U+0375's do not.
+    CHECK(Runs("\xC2\xB7"
+               "a",
+               (muniScriptRun[]){{3, LATN}}, 1),
+          "a Latin letter the shared sign's scripts hold");
+    CHECK(Runs("\xCD\xB5"
+               "a",
+               (muniScriptRun[]){{2, GREK}, {3, LATN}}, 2),
+          "a Latin letter the Greek sign's scripts do not hold");
 }
 
 // The bracket stack: a closing bracket matches only its own opening one,
