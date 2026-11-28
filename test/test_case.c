@@ -156,6 +156,59 @@ static void TestFinalSigma(void)
           "a sigma inside a word is not");
 }
 
+// Code points an operation leaves as they are are copied in runs, and
+// ASCII letters are mapped without the table; the Final_Sigma context
+// moves past both as it moves past any code point.
+static void TestCopiedRuns(void)
+{
+    CHECK(Converts("Abc\xCE\xA3", muni_caseLower, muni_caseDefault, "abc\xCF\x82"),
+          "a cased letter before a run of unchanged ones makes a sigma final");
+    CHECK(Converts("abc'\xCE\xA3", muni_caseLower, muni_caseDefault, "abc'\xCF\x82"),
+          "a case-ignorable apostrophe in the run keeps the context");
+    CHECK(Converts("abc1\xCE\xA3", muni_caseLower, muni_caseDefault, "abc1\xCF\x83"),
+          "a digit in the run ends it");
+    CHECK(Converts("\xD0\xB4\xCE\xA3", muni_caseLower, muni_caseDefault, "\xD0\xB4\xCF\x82"),
+          "an unchanged Cyrillic letter is cased too");
+    CHECK(
+        Converts("\xE6\x97\xA5\xCE\xA3", muni_caseLower, muni_caseDefault, "\xE6\x97\xA5\xCF\x83"),
+        "an ideograph is not");
+    CHECK(Converts("x\xD0\x94\xD0\x94", muni_caseTitle, muni_caseDefault, "X\xD0\xB4\xD0\xB4"),
+          "titlecasing lowercases the rest of the word");
+    CHECK(Converts("ABC\xD0\x94", muni_caseFold, muni_caseDefault, "abc\xD0\xB4"),
+          "folding ASCII and Cyrillic");
+    CHECK(Converts("abc\xC3\x9F!", muni_caseUpper, muni_caseDefault, "ABCSS!"),
+          "uppercasing ASCII, then a special mapping");
+    char output[8] = {0};
+    size_t needed = 0;
+    muniTextResult result = muniConvertCase("ab\xFF"
+                                            "cd",
+                                            5, muni_caseLower, muni_caseDefault,
+                                            muni_convertReplace, output, sizeof(output), &needed);
+    CHECK(result.status == muni_success && needed == 7 &&
+              memcmp(output,
+                     "ab\xEF\xBF\xBD"
+                     "cd",
+                     7) == 0,
+          "an ill-formed byte in a run is replaced");
+    result = muniConvertCase("Ab\xFF"
+                             "cd",
+                             5, muni_caseLower, muni_caseDefault, muni_convertStrict, output,
+                             sizeof(output), &needed);
+    CHECK(result.status == muni_errorUtf8Lead && result.offset == 2 && needed == 2 &&
+              memcmp(output, "ab", 2) == 0,
+          "an ill-formed byte after a run, in strict mode");
+    memset(output, 0, sizeof(output));
+    result = muniConvertCase("abcdef", 6, muni_caseLower, muni_caseDefault, muni_convertStrict,
+                             output, 3, &needed);
+    CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "abc\0", 4) == 0,
+          "a run cut by the capacity");
+    memset(output, 0, sizeof(output));
+    result = muniConvertCase("abcdef", 6, muni_caseUpper, muni_caseDefault, muni_convertStrict,
+                             output, 3, &needed);
+    CHECK(result.status == muni_errorCapacity && needed == 6 && memcmp(output, "ABC\0", 4) == 0,
+          "mapped ASCII cut by the capacity");
+}
+
 // NFKC_Casefold of more combining marks than a normalizer segment holds
 // is refused, as normalization refuses it.
 static void TestNfkcCasefoldErrors(void)
@@ -1308,6 +1361,7 @@ int main(void)
     TestFull();
     TestTurkic();
     TestFinalSigma();
+    TestCopiedRuns();
     TestNfkcCasefoldErrors();
     TestLithuanian();
     TestGreek();

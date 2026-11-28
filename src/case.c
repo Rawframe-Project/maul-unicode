@@ -14,6 +14,7 @@
 
 #include "case_map.h"
 #include "encoding.h"
+#include "invariant.h"
 #include "overlap.h"
 #include "tables.h"
 #include "writer.h"
@@ -78,11 +79,17 @@ bool muniIsCased(uint32_t codePoint)
     return (muniCaseRecord(codePoint)[4] & muni_caseFlagCased) != 0;
 }
 
-// Writes the full mapping of a code point that needs no context.
-static void PutMapping(muniWriter* writer, uint32_t codePoint, int kind)
+// Writes the full mapping of a code point that needs no context, from
+// its case record.
+static void PutMapping(muniWriter* writer, uint32_t codePoint, const uint8_t* record, int kind)
 {
+    if ((record[4] & muni_caseFlagSpecial) == 0)
+    {
+        muniWriterPut(writer, (uint32_t)((int32_t)codePoint + muniCaseDeltas[record[kind]]));
+        return;
+    }
     uint32_t mapping[MUNI_MAX_CASE_MAPPING];
-    size_t count = muniMapCaseFully(codePoint, kind, mapping);
+    size_t count = muniMapCaseSpecial(codePoint, kind, mapping);
     for (size_t i = 0; i < count; i++)
     {
         muniWriterPut(writer, mapping[i]);
@@ -354,7 +361,7 @@ static size_t PutGreekUpper(Converter* converter, uint32_t entry, size_t next, s
 }
 
 // Lowercases one code point at offset, whose encoding ends at next.
-static void PutLower(Converter* converter, uint32_t codePoint, size_t next)
+static void PutLower(Converter* converter, uint32_t codePoint, const uint8_t* record, size_t next)
 {
     if (codePoint == CAPITAL_SIGMA)
     {
@@ -384,11 +391,11 @@ static void PutLower(Converter* converter, uint32_t codePoint, size_t next)
     {
         return;
     }
-    PutMapping(&converter->writer, codePoint, muni_caseKindLower);
+    PutMapping(&converter->writer, codePoint, record, muni_caseKindLower);
 }
 
 // Uppercases or titlecases one code point.
-static void PutUpper(Converter* converter, uint32_t codePoint, int kind)
+static void PutUpper(Converter* converter, uint32_t codePoint, const uint8_t* record, int kind)
 {
     if (converter->turkic && codePoint == SMALL_I)
     {
@@ -406,23 +413,22 @@ static void PutUpper(Converter* converter, uint32_t codePoint, int kind)
         muniWriterPut(&converter->writer, kind == muni_caseKindUpper ? CAPITAL_VEW : SMALL_VEW);
         return;
     }
-    PutMapping(&converter->writer, codePoint, kind);
+    PutMapping(&converter->writer, codePoint, record, kind);
 }
 
-static void PutFold(Converter* converter, uint32_t codePoint)
+static void PutFold(Converter* converter, uint32_t codePoint, const uint8_t* record)
 {
     if (converter->turkic && (codePoint == CAPITAL_I || codePoint == CAPITAL_I_DOT))
     {
         muniWriterPut(&converter->writer, codePoint == CAPITAL_I ? SMALL_DOTLESS_I : SMALL_I);
         return;
     }
-    PutMapping(&converter->writer, codePoint, muni_caseKindFold);
+    PutMapping(&converter->writer, codePoint, record, muni_caseKindFold);
 }
 
-// Moves the context past a code point. Folding needs none.
-static void Track(Converter* converter, uint32_t codePoint)
+// Moves the Final_Sigma context past a code point with the case flags.
+static void TrackCased(Converter* converter, uint8_t flags)
 {
-    uint8_t flags = muniCaseRecord(codePoint)[4];
     if ((flags & muni_caseFlagCased) != 0)
     {
         converter->casedBefore = true;
@@ -431,6 +437,13 @@ static void Track(Converter* converter, uint32_t codePoint)
     {
         converter->casedBefore = false;
     }
+}
+
+// Moves the context past a code point with the case flags. Folding needs
+// none.
+static void Track(Converter* converter, uint32_t codePoint, uint8_t flags)
+{
+    TrackCased(converter, flags);
     if (!converter->turkic && !converter->lithuanian)
     {
         return; // only the language rules look back past marks
@@ -443,56 +456,140 @@ static void Track(Converter* converter, uint32_t codePoint)
     }
 }
 
+// Whether a mapping of kind leaves a code point as it is, by its case
+// record.
+MUNI_NODISCARD static bool Unchanged(const uint8_t* record, int kind)
+{
+    return (record[4] & muni_caseFlagSpecial) == 0 && muniCaseDeltas[record[kind]] == 0;
+}
+
+// The case flags of an ASCII byte, Cased and Case_Ignorable, without the
+// table: the letters are cased, and five marks are case-ignorable.
+static uint8_t AsciiFlags(uint8_t byte)
+{
+    uint8_t flags = (unsigned)((byte | 0x20) - 'a') < 26 ? muni_caseFlagCased
+                    : byte == '\'' || byte == '.' || byte == ':' || byte == '^' || byte == '`'
+                        ? muni_caseFlagIgnorable
+                        : 0;
+    MUNI_ASSERT(flags == (muniCaseRecord(byte)[4] & (muni_caseFlagCased | muni_caseFlagIgnorable)));
+    return flags;
+}
+
+// The mapping of kind of an ASCII byte, without the table: uppercasing
+// changes a to z, the others A to Z, each to the other case of the
+// letter.
+static uint8_t AsciiMapping(uint8_t byte, int kind)
+{
+    char first = kind == muni_caseKindUpper ? 'a' : 'A';
+    uint8_t mapped = (unsigned)(byte - first) < 26 ? (uint8_t)(byte ^ 0x20) : byte;
+    MUNI_ASSERT((muniCaseRecord(byte)[4] & muni_caseFlagSpecial) == 0 &&
+                (uint32_t)((int32_t)byte + muniCaseDeltas[muniCaseRecord(byte)[kind]]) == mapped);
+    return mapped;
+}
+
+// Converts the code point at offset, whose encoding ends at next, with
+// its case record; returns where the next code point to convert starts,
+// past the marks Greek uppercasing takes with a letter.
+static size_t ConvertOne(Converter* converter, uint32_t codePoint, const uint8_t* record,
+                         size_t next, size_t end, muniCaseOperation operation, bool* titleDone)
+{
+    uint32_t greek = converter->greek && operation == muni_caseUpper ? GreekLetter(codePoint) : 0;
+    if (greek != 0)
+    {
+        next = PutGreekUpper(converter, greek, next, end);
+    }
+    else if (operation == muni_caseUpper)
+    {
+        converter->lostAccent = GreekAccentNone;
+        PutUpper(converter, codePoint, record, muni_caseKindUpper);
+    }
+    else if (operation == muni_caseFold)
+    {
+        PutFold(converter, codePoint, record);
+    }
+    else if (operation == muni_caseTitle && !*titleDone && (record[4] & muni_caseFlagCased) != 0)
+    {
+        PutUpper(converter, codePoint, record, muni_caseKindTitle);
+        *titleDone = true;
+    }
+    else
+    {
+        PutLower(converter, codePoint, record, next);
+    }
+    if (operation != muni_caseFold)
+    {
+        Track(converter, codePoint, record[4]);
+    }
+    return next;
+}
+
 // Converts text[start, end): with titleFirst, the first cased code point
 // is titlecased and the rest lowercased. Returns the offset of the first
-// ill-formed sequence in strict mode, or end.
+// ill-formed sequence in strict mode, or end. Each code point is looked
+// up once. A run of code points the operation leaves unchanged is copied
+// as it is where no rule of the language reads them: Greek uppercasing
+// reads every Greek letter, and the Turkic and Lithuanian rules track the
+// marks. An ill-formed sequence takes no run, since U+FFFD is written in
+// its place.
 static size_t Convert(Converter* converter, size_t start, size_t end, muniCaseOperation operation,
                       bool strict, muniResult* statusOut)
 {
     bool titleDone = false;
+    bool copies = !converter->turkic && !converter->lithuanian &&
+                  !(converter->greek && operation == muni_caseUpper);
+    int kind = operation == muni_caseUpper  ? muni_caseKindUpper
+               : operation == muni_caseFold ? muni_caseKindFold
+                                            : muni_caseKindLower;
+    size_t run = start; // where the unchanged code points not yet written start
     size_t offset = start;
     while (offset < end)
     {
+        uint8_t byte = converter->text[offset];
+        if (byte < 0x80 && copies && (operation != muni_caseTitle || titleDone))
+        {
+            // ASCII without the table: a byte that does not change joins
+            // the run, and a letter that does is written in its other case.
+            uint8_t mapped = AsciiMapping(byte, kind);
+            if (mapped != byte)
+            {
+                muniWriterPutBytes(&converter->writer, converter->text + run, offset - run);
+                muniWriterPutBytes(&converter->writer, &mapped, 1);
+                run = offset + 1;
+            }
+            if (operation != muni_caseFold)
+            {
+                TrackCased(converter, AsciiFlags(byte));
+            }
+            offset += 1;
+            continue;
+        }
         uint32_t codePoint;
         size_t size;
         muniResult status =
             muniStepUtf8(converter->text + offset, converter->length - offset, &codePoint, &size);
         if (status != muni_success && strict)
         {
+            muniWriterPutBytes(&converter->writer, converter->text + run, offset - run);
             *statusOut = status;
             return offset;
         }
-        size_t next = offset + size;
-        uint32_t greek =
-            converter->greek && operation == muni_caseUpper ? GreekLetter(codePoint) : 0;
-        if (greek != 0)
+        const uint8_t* record = muniCaseRecord(codePoint);
+        if (copies && status == muni_success && (operation != muni_caseTitle || titleDone) &&
+            Unchanged(record, kind))
         {
-            next = PutGreekUpper(converter, greek, next, end);
+            if (operation != muni_caseFold)
+            {
+                TrackCased(converter, record[4]);
+            }
+            offset += size;
+            continue;
         }
-        else if (operation == muni_caseUpper)
-        {
-            converter->lostAccent = GreekAccentNone;
-            PutUpper(converter, codePoint, muni_caseKindUpper);
-        }
-        else if (operation == muni_caseFold)
-        {
-            PutFold(converter, codePoint);
-        }
-        else if (operation == muni_caseTitle && !titleDone && muniIsCased(codePoint))
-        {
-            PutUpper(converter, codePoint, muni_caseKindTitle);
-            titleDone = true;
-        }
-        else
-        {
-            PutLower(converter, codePoint, next);
-        }
-        if (operation != muni_caseFold)
-        {
-            Track(converter, codePoint);
-        }
-        offset = next;
+        muniWriterPutBytes(&converter->writer, converter->text + run, offset - run);
+        offset =
+            ConvertOne(converter, codePoint, record, offset + size, end, operation, &titleDone);
+        run = offset;
     }
+    muniWriterPutBytes(&converter->writer, converter->text + run, end - run);
     return end;
 }
 
