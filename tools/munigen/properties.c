@@ -352,6 +352,40 @@ static void WriteIdentifier(uint8_t* values)
     free(bits);
 }
 
+// Grapheme_Cluster_Break in the low four bits, Indic_Conjunct_Break in
+// the next two and Extended_Pictographic in bit 6, src/tables.h's
+// muni_graphemeProperty layout, so that the grapheme rules read a code
+// point with one lookup.
+static void WriteGraphemeProperties(uint8_t* values)
+{
+    uint8_t* properties = Allocate(CODE_POINTS);
+    LoadEnumerated("GraphemeBreakProperty.txt", "GCB", nullptr, s_graphemeBreakNames,
+                   COUNT_OF(s_graphemeBreakNames), values);
+    if (COUNT_OF(s_graphemeBreakNames) > 16 || COUNT_OF(s_indicConjunctBreakNames) > 4)
+    {
+        Fail("Grapheme_Cluster_Break or Indic_Conjunct_Break outgrows its bits");
+    }
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        properties[c] = values[c];
+    }
+    LoadEnumerated("DerivedCoreProperties.txt", "InCB", "InCB", s_indicConjunctBreakNames,
+                   COUNT_OF(s_indicConjunctBreakNames), values);
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        properties[c] |= (uint8_t)(values[c] << 4);
+    }
+    LoadBinary("emoji-data.txt", "Extended_Pictographic", values);
+    for (uint32_t c = 0; c < CODE_POINTS; c++)
+    {
+        properties[c] |= (uint8_t)(values[c] << 6);
+    }
+    WriteTable(properties, "grapheme_properties", "GraphemeProperties",
+               "Grapheme_Cluster_Break, Indic_Conjunct_Break and Extended_Pictographic",
+               "GraphemeBreakProperty.txt, DerivedCoreProperties.txt and emoji-data.txt");
+    free(properties);
+}
+
 // The emoji properties of UTS #51 as bits, in the order src/tables.h
 // gives them: Extended_Pictographic, which segmentation reads, first.
 static void WriteEmoji(uint8_t* values)
@@ -428,10 +462,6 @@ void WriteProperties(void)
     LoadGeneralCategory(values);
     WriteTable(values, "general_category", "GeneralCategory", "General_Category",
                "UnicodeData.txt");
-    LoadEnumerated("GraphemeBreakProperty.txt", "GCB", nullptr, s_graphemeBreakNames,
-                   COUNT_OF(s_graphemeBreakNames), values);
-    WriteTable(values, "grapheme_cluster_break", "GraphemeClusterBreak", "Grapheme_Cluster_Break",
-               "GraphemeBreakProperty.txt");
     LoadEnumerated("WordBreakProperty.txt", "WB", nullptr, s_wordBreakNames,
                    COUNT_OF(s_wordBreakNames), values);
     WriteAsciiTable(values, "word_break", "WordBreak", "Word_Break", "WordBreakProperty.txt");
@@ -439,10 +469,7 @@ void WriteProperties(void)
                    COUNT_OF(s_sentenceBreakNames), values);
     WriteAsciiTable(values, "sentence_break", "SentenceBreak", "Sentence_Break",
                     "SentenceBreakProperty.txt");
-    LoadEnumerated("DerivedCoreProperties.txt", "InCB", "InCB", s_indicConjunctBreakNames,
-                   COUNT_OF(s_indicConjunctBreakNames), values);
-    WriteTable(values, "indic_conjunct_break", "IndicConjunctBreak", "Indic_Conjunct_Break",
-               "DerivedCoreProperties.txt");
+    WriteGraphemeProperties(values);
     WriteEmoji(values);
     LoadBinary("PropList.txt", "White_Space", values);
     WriteTable(values, "white_space", "WhiteSpace", "White_Space", "PropList.txt");

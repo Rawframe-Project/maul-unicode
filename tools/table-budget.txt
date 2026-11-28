@@ -8,7 +8,7 @@ property core: 42627 GeneralCategory CombiningClass BidiMirror Script Decomposit
 line breaking: 26577 LineBreak EastAsianWidth
 word breaking: 18488 WordBreak
 sentence breaking: 18379 SentenceBreak
-grapheme breaking: 12422 GraphemeClusterBreak IndicConjunctBreak
+grapheme breaking: 12422 GraphemeProperties
 compatibility decomposition: 22623 CompatibilityBlock CompatibilityData
 normalization quick check: 4451 QuickCheck
 case: 10304 Case CaseData SoftDotted GreekLetters

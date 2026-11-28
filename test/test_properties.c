@@ -54,6 +54,20 @@ static uint8_t GraphemeBreak(uint32_t codePoint)
     return muniGetGraphemeBreak(codePoint);
 }
 
+static uint8_t IndicConjunctBreak(uint32_t codePoint)
+{
+    return muniGetIndicConjunctBreak(codePoint);
+}
+
+// The byte the grapheme properties table holds, from the public getters:
+// Grapheme_Cluster_Break, Indic_Conjunct_Break above it, and
+// Extended_Pictographic in bit 6.
+static uint8_t GraphemeProperties(uint32_t codePoint)
+{
+    return (uint8_t)(muniGetGraphemeBreak(codePoint) | muniGetIndicConjunctBreak(codePoint) << 4 |
+                     (muniIsExtendedPictographic(codePoint) ? 0x40 : 0));
+}
+
 static uint8_t WordBreak(uint32_t codePoint)
 {
     return muniGetWordBreak(codePoint);
@@ -62,11 +76,6 @@ static uint8_t WordBreak(uint32_t codePoint)
 static uint8_t SentenceBreak(uint32_t codePoint)
 {
     return muniGetSentenceBreak(codePoint);
-}
-
-static uint8_t IndicConjunctBreak(uint32_t codePoint)
-{
-    return muniGetIndicConjunctBreak(codePoint);
 }
 
 // The emoji bits in the table's order, through the public API.
@@ -102,10 +111,10 @@ static uint8_t Ideographic(uint32_t codePoint)
 
 static void TestBreakPropertiesMatchTheUcdEverywhere(void)
 {
-    CHECK(HashAll(GraphemeBreak) == muniGraphemeClusterBreakHash, "Grapheme_Cluster_Break hash");
+    CHECK(HashAll(GraphemeProperties) == muniGraphemePropertiesHash,
+          "Grapheme_Cluster_Break, Indic_Conjunct_Break and Extended_Pictographic hash");
     CHECK(HashAll(WordBreak) == muniWordBreakHash, "Word_Break hash");
     CHECK(HashAll(SentenceBreak) == muniSentenceBreakHash, "Sentence_Break hash");
-    CHECK(HashAll(IndicConjunctBreak) == muniIndicConjunctBreakHash, "Indic_Conjunct_Break hash");
     CHECK(HashAll(Emoji) == muniEmojiHash, "emoji properties hash");
     CHECK(HashAll(WhiteSpace) == muniWhiteSpaceHash, "White_Space hash");
     CHECK(HashAll(DefaultIgnorable) == muniDefaultIgnorableHash,

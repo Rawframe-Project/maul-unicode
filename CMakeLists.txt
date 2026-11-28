@@ -70,9 +70,8 @@ set(MUNI_SOURCES
     src/generated/emoji.c
     src/generated/emoji_sequences.c
     src/generated/general_category.c
-    src/generated/grapheme_cluster_break.c
+    src/generated/grapheme_properties.c
     src/generated/identifier.c
-    src/generated/indic_conjunct_break.c
     src/generated/line_break.c
     src/generated/script.c
     src/generated/script_extensions.c

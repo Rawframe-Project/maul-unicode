@@ -13,14 +13,33 @@
 
 uint8_t muniLookupGeneralCategory(uint32_t codePoint);
 extern const uint64_t muniGeneralCategoryHash;
-uint8_t muniLookupGraphemeClusterBreak(uint32_t codePoint);
-extern const uint64_t muniGraphemeClusterBreakHash;
+// Grapheme_Cluster_Break, Indic_Conjunct_Break and Extended_Pictographic
+// in one table, as the muni_graphemeProperty bits below, so that the
+// grapheme rules read a code point with one lookup.
+enum
+{
+    muni_graphemePropertyBreak = 0x0F,        // Grapheme_Cluster_Break
+    muni_graphemePropertyConjunct = 0x30,     // Indic_Conjunct_Break, shifted by 4
+    muni_graphemePropertyPictographic = 0x40, // Extended_Pictographic
+};
+uint8_t muniLookupGraphemeProperties(uint32_t codePoint);
+extern const uint64_t muniGraphemePropertiesHash;
+
+static inline uint8_t muniLookupGraphemeClusterBreak(uint32_t codePoint)
+{
+    return (uint8_t)(muniLookupGraphemeProperties(codePoint) & muni_graphemePropertyBreak);
+}
+
+static inline uint8_t muniLookupIndicConjunctBreak(uint32_t codePoint)
+{
+    return (uint8_t)((muniLookupGraphemeProperties(codePoint) & muni_graphemePropertyConjunct) >>
+                     4);
+}
+
 uint8_t muniLookupWordBreak(uint32_t codePoint);
 extern const uint64_t muniWordBreakHash;
 uint8_t muniLookupSentenceBreak(uint32_t codePoint);
 extern const uint64_t muniSentenceBreakHash;
-uint8_t muniLookupIndicConjunctBreak(uint32_t codePoint);
-extern const uint64_t muniIndicConjunctBreakHash;
 // The emoji properties of UTS #51 as the muni_emoji bits below.
 uint8_t muniLookupEmoji(uint32_t codePoint);
 extern const uint64_t muniEmojiHash;
