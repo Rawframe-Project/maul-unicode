@@ -7,6 +7,17 @@ minor and patch only: the API only grows, and a change of results moves
 `MUNI_RESULTS_VERSION` and is named here. Before 1.0.0, any release
 could change the API, the ABI and every data format.
 
+## [1.3.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.2.0...v1.3.0) (2026-11-28)
+
+
+### Added
+
+* **bidi:** find a text's base direction without resolving it ([#300](https://github.com/Rawframe-Project/maul-unicode/issues/300)) ([bf04251](https://github.com/Rawframe-Project/maul-unicode/commit/bf04251054be8cd0eb673006d60b7a9d8d9d3436)), closes [#296](https://github.com/Rawframe-Project/maul-unicode/issues/296)
+* **case:** compare texts caselessly without folding them into buffers ([#301](https://github.com/Rawframe-Project/maul-unicode/issues/301)) ([7736612](https://github.com/Rawframe-Project/maul-unicode/commit/7736612c2042a66062dabc3ac3784e6d3f3efcb4)), closes [#297](https://github.com/Rawframe-Project/maul-unicode/issues/297)
+* **encoding:** repair ill-formed UTF-8 in place ([#294](https://github.com/Rawframe-Project/maul-unicode/issues/294)) ([6c7f181](https://github.com/Rawframe-Project/maul-unicode/commit/6c7f181d45a5ea8d0bd379167feb9ea9bc2b8979)), closes [#292](https://github.com/Rawframe-Project/maul-unicode/issues/292)
+* **properties:** tell whether a cluster is an RGI emoji ([#302](https://github.com/Rawframe-Project/maul-unicode/issues/302)) ([42430ab](https://github.com/Rawframe-Project/maul-unicode/commit/42430ab00f106249ede4a390e28f56e4fbecfc02)), closes [#298](https://github.com/Rawframe-Project/maul-unicode/issues/298)
+* **segment:** measure text in the columns of a fixed-cell font ([#299](https://github.com/Rawframe-Project/maul-unicode/issues/299)) ([7a3c5f3](https://github.com/Rawframe-Project/maul-unicode/commit/7a3c5f3573e37056c5d67bf595232bd60924dd9e)), closes [#295](https://github.com/Rawframe-Project/maul-unicode/issues/295)
+
 ## [1.2.0](https://github.com/Rawframe-Project/maul-unicode/compare/v1.1.2...v1.2.0) (2026-11-05)
 
 ### Added
