@@ -16,9 +16,9 @@ Walks rescan, bounded by the nesting the standard allows (125 isolates, 63 brack
 
 ## Phases
 
-[`src/bidi_explicit.c`](../../src/bidi_explicit.c) runs P1 to P3 and X1 to X9: the paragraph, its level and the explicit levels. [`src/bidi_implicit.c`](../../src/bidi_implicit.c) runs X10, W1 to W7 and N0 to N2 over each isolating run sequence in a few passes, keeping the explicit levels until every sequence is done, because X10 computes sequences and their sos and eos from them; I1 and I2 run last. A paragraph that is left to right with no R, AL, AN or explicit formatting character resolves to level 0 without the implicit phase.
+[`src/bidi_explicit.c`](../../src/bidi_explicit.c) runs P1 to P3 and X1 to X9: the paragraph, its level and the explicit levels. [`src/bidi_implicit.c`](../../src/bidi_implicit.c) runs X10, W1 to W7 and N0 to N2 over each isolating run sequence in a few passes, keeping the explicit levels until every sequence is done, because X10 computes sequences and their sos and eos from them; I1 and I2 run last. The paragraph ends where the explicit phase meets its separator, so no walk of its own looks for the end. A paragraph that is left to right with no R, AL, AN or explicit formatting character resolves to level 0 without the implicit phase. Such a paragraph is found by a scan before the explicit rules run, and they never run for it. ASCII from the space up needs no lookup in that scan, since it is none of those classes and no separator.
 
-[`src/bidi_line.c`](../../src/bidi_line.c) applies L1 and L2 per line. L2 reverses, from the highest level down to the lowest odd one, every maximal stretch at or above that level; over runs, a line of n runs costs at most 126 n steps and no memory. Skeletons use its rule L1 on their own copy of the levels (see [security.md](security.md)).
+[`src/bidi_line.c`](../../src/bidi_line.c) applies L1 and L2 per line. L1 tells only separators, whitespace, isolates and BN apart, so ASCII from `!` to `~` reads without the table there, and runs are collected a stretch of one level at a time. L2 reverses, from the highest level down to the lowest odd one, every maximal stretch at or above that level; over runs, a line of n runs costs at most 126 n steps and no memory. Skeletons use its rule L1 on their own copy of the levels (see [security.md](security.md)).
 
 ## Traps
 

@@ -29,8 +29,10 @@ muniResult muniResolveBidi(const char* text, size_t length, muniBidiDirection di
         return muni_success;
     }
     const uint8_t* bytes = (const uint8_t*)text;
-    muniBidiParagraph paragraph = {bytes, muniBidiParagraphLength(bytes, length), levelsOut,
-                                   workspace, 0};
+    // The text stands for the paragraph until the explicit phase finds
+    // where it ends: the search for the first strong character ends at a
+    // paragraph separator too.
+    muniBidiParagraph paragraph = {bytes, length, levelsOut, workspace, 0};
     if (direction == muni_bidiAuto)
     {
         paragraph.level = muniBidiFirstStrongLevel(&paragraph, 0, false, 0, nullptr);

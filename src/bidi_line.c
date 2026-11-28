@@ -64,12 +64,17 @@ static void Add(Runs* runs, size_t start, size_t end, uint8_t level)
     runs->end = end;
 }
 
-// Bytes with their own levels.
+// Bytes with their own levels, a stretch of one level at a time.
 static void AddOwn(Runs* runs, const uint8_t* levels, size_t start, size_t end)
 {
-    for (size_t index = start; index < end; index++)
+    size_t from = start;
+    for (size_t index = start + 1; index <= end; index++)
     {
-        Add(runs, index, index + 1, levels[index]);
+        if (index == end || levels[index] != levels[from])
+        {
+            Add(runs, from, index, levels[from]);
+            from = index;
+        }
     }
 }
 
@@ -97,34 +102,61 @@ MUNI_NODISCARD static bool IsTrailing(uint8_t type)
     }
 }
 
+// The class of the code point at index as far as rule L1 tells them
+// apart, and its size: ASCII from '!' to '~' is never a separator,
+// whitespace, an isolate or BN, so it reads as L without the table.
+static uint8_t LineClass(const uint8_t* text, size_t length, size_t index, size_t* sizeOut)
+{
+    uint8_t byte = text[index];
+    if ((unsigned)(byte - 0x21) < 0x5E)
+    {
+        MUNI_ASSERT(muniLookupBidiClass(byte) != muni_bcS &&
+                    muniLookupBidiClass(byte) != muni_bcB &&
+                    !IsTrailing(muniLookupBidiClass(byte)));
+        *sizeOut = 1;
+        return muni_bcL;
+    }
+    return muniLookupBidiClass(muniBidiCodePoint(text, length, index, sizeOut));
+}
+
 // L1: the runs of the line in logical order. Every stretch it adds holds
 // at least one code point: each step reads one, and muniStepUtf8 reports
 // at least one byte even for an ill-formed sequence.
 static void CollectRuns(Runs* runs, const uint8_t* text, const uint8_t* levels, size_t length,
                         uint8_t paragraphLevel)
 {
+    size_t pending = 0;         // where the bytes that keep their levels, not yet added, start
     size_t trailing = SIZE_MAX; // where a stretch of IsTrailing code points starts
     size_t index = 0;
     while (index < length)
     {
         size_t size;
-        uint8_t type = muniLookupBidiClass(muniBidiCodePoint(text, length, index, &size));
-        size_t start = trailing != SIZE_MAX ? trailing : index;
+        uint8_t type = LineClass(text, length, index, &size);
         if (type == muni_bcS || type == muni_bcB)
         {
-            Add(runs, start, index + size, paragraphLevel);
+            size_t reset = trailing != SIZE_MAX ? trailing : index;
+            if (reset > pending)
+            {
+                AddOwn(runs, levels, pending, reset);
+            }
+            Add(runs, reset, index + size, paragraphLevel);
+            pending = index + size;
             trailing = SIZE_MAX;
         }
         else if (IsTrailing(type))
         {
-            trailing = start;
+            trailing = trailing != SIZE_MAX ? trailing : index;
         }
         else
         {
-            AddOwn(runs, levels, start, index + size);
-            trailing = SIZE_MAX;
+            trailing = SIZE_MAX; // the stretch before keeps its levels
         }
         index += size;
+    }
+    size_t reset = trailing != SIZE_MAX ? trailing : length;
+    if (reset > pending)
+    {
+        AddOwn(runs, levels, pending, reset);
     }
     if (trailing != SIZE_MAX)
     {
@@ -140,7 +172,7 @@ void muniBidiResetLineLevels(const uint8_t* line, uint8_t* levels, size_t length
     while (index < length)
     {
         size_t size;
-        uint8_t type = muniLookupBidiClass(muniBidiCodePoint(line, length, index, &size));
+        uint8_t type = LineClass(line, length, index, &size);
         size_t start = trailing != SIZE_MAX ? trailing : index;
         if (type == muni_bcS || type == muni_bcB)
         {
