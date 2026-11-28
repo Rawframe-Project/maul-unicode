@@ -35,8 +35,7 @@ static const char* const s_bidiClassNames[] = {
     "WS", "ON", "LRE", "LRO", "RLE", "RLO", "PDF", "LRI", "RLI", "FSI", "PDI",
 };
 
-// Canonical_Combining_Class, field 3 of UnicodeData.txt, stored as is.
-static void LoadCombiningClass(uint8_t* values)
+void LoadCombiningClass(uint8_t* values)
 {
     FILE* file = OpenUcd("UnicodeData.txt");
     char line[MAX_LINE];

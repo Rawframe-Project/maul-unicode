@@ -177,52 +177,6 @@ uint32_t muniComposeCanonical(uint32_t first, uint32_t second)
     return 0;
 }
 
-bool muniIsCompositionExcluded(uint32_t codePoint)
-{
-    uint8_t block = muniLookupDecompositionBlock(codePoint);
-    if (muniRank(block, codePoint, muniDecompositionSingleBits, muniDecompositionSingleRanks) >= 0)
-    {
-        return true;
-    }
-    int32_t pair =
-        muniRank(block, codePoint, muniDecompositionPairBits, muniDecompositionPairRanks);
-    return pair >= 0 && (muniDecompositionPairs[pair] & PAIR_EXCLUDED) != 0;
-}
-
-// Whether codePoint is a second code point that composes: a mark of a
-// composing pair, or a Hangul vowel or trailing consonant.
-MUNI_NODISCARD static bool Combines(uint32_t codePoint)
-{
-    if (codePoint - HangulVBase < HangulVCount || codePoint - HangulTBase - 1 < HangulTCount - 1)
-    {
-        return true;
-    }
-    int32_t mark = MarkIndex(codePoint);
-    return mark >= 0 && (muniDecompositionMarks[mark] & MARK_COMPOSES) != 0;
-}
-
-bool muniCombinesBackward(uint32_t codePoint)
-{
-    // A composing pair whose first code point combines backward combines
-    // too, as the Tulu-Tigalari vowel signs do; follow the first code
-    // points down.
-    for (;;)
-    {
-        if (Combines(codePoint))
-        {
-            return true;
-        }
-        uint32_t first;
-        uint32_t second;
-        if (IsHangulSyllable(codePoint) || !muniCanonicalMapping(codePoint, &first, &second) ||
-            second == 0 || muniIsCompositionExcluded(codePoint))
-        {
-            return false;
-        }
-        codePoint = first;
-    }
-}
-
 // The one-level compatibility mapping of codePoint into out; its length,
 // 0 when it has none.
 static size_t CompatibilityMapping(uint32_t codePoint, uint32_t* out)
@@ -263,33 +217,6 @@ static size_t CompatibilityMapping(uint32_t codePoint, uint32_t* out)
 // The work stack of the full decompositions: the most pending code
 // points while decomposing is a mapping of 18 plus the few left above it.
 #define WORK_DEPTH 40
-
-bool muniUsesCompatibility(uint32_t codePoint)
-{
-    uint32_t work[WORK_DEPTH];
-    size_t depth = 0;
-    work[depth++] = codePoint;
-    uint32_t scratch[MUNI_MAX_DECOMPOSITION];
-    while (depth > 0)
-    {
-        uint32_t current = work[--depth];
-        if (CompatibilityMapping(current, scratch) > 0)
-        {
-            return true;
-        }
-        uint32_t first;
-        uint32_t second;
-        if (muniCanonicalMapping(current, &first, &second) && depth + 2 <= WORK_DEPTH)
-        {
-            work[depth++] = first;
-            if (second != 0)
-            {
-                work[depth++] = second;
-            }
-        }
-    }
-    return false;
-}
 
 size_t muniDecomposeFully(uint32_t codePoint, bool compatibility, uint32_t* out)
 {

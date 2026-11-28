@@ -53,6 +53,9 @@ void ParseRange(const char* text, uint32_t* firstOut, uint32_t* lastOut, const c
 void LoadEnumerated(const char* fileName, const char* property, const char* key,
                     const char* const* names, int nameCount, uint8_t* values);
 
+// Canonical_Combining_Class, field 3 of UnicodeData.txt, stored as is.
+void LoadCombiningClass(uint8_t* values);
+
 // A binary property: 1 for every code point a line of fileName lists
 // with the given name, 0 elsewhere.
 void LoadBinary(const char* fileName, const char* name, uint8_t* values);

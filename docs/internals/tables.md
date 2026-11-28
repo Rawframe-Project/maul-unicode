@@ -17,7 +17,7 @@ Some data does not suit a per-code-point table:
 
 ## Verification
 
-The generator stops at the first problem. It checks every code point through each finished table against the array it built, so a table is verified before it is written. It derives the four normalization quick-check properties from the decomposition tables and fails unless they match `DerivedNormalizationProps.txt` for every code point, which is why the library needs no quick-check tables. It checks Soft_Dotted against `PropList.txt`, every decimal digit's derived value, and that Identifier_Status follows from Identifier_Type.
+The generator stops at the first problem. It checks every code point through each finished table against the array it built, so a table is verified before it is written. It derives the four normalization quick-check properties from the decomposition tables and fails unless they match `DerivedNormalizationProps.txt` for every code point; the QuickCheck table it then writes holds the derived values. It checks Soft_Dotted against `PropList.txt`, every decimal digit's derived value, and that Identifier_Status follows from Identifier_Type.
 
 Each generated file also carries the hash of its array (FNV-1a 64 over one byte per code point), and the property, case, identifier and security tests hash the library's own lookups over every code point against it. That checks the compiled lookup functions on every platform CI builds, where the generator's check covered only its own reading of the tables.
 
